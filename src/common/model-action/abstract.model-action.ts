@@ -96,7 +96,12 @@ export abstract class AbstractModelAction<T extends object> {
       const limit = +options.paginationPayload.limit;
       const page = +options.paginationPayload.page;
       const [payload, total] = await Promise.all([
-        repo.find({ where: options.findOptions, take: limit, skip: limit * (page - 1), order: orderBy }),
+        repo.find({
+          where: options.findOptions,
+          take: limit,
+          skip: limit * (page - 1),
+          order: orderBy,
+        }),
         repo.count({ where: options.findOptions }),
       ]);
       return { payload, paginationMeta: computePaginationMeta(total, limit, page) };
@@ -160,7 +165,10 @@ export abstract class AbstractModelAction<T extends object> {
   }
 
   /** Save an entity instance (insert or update based on primary key presence). */
-  async save(options: { entity: DeepPartial<T>; transactionOptions: AnyTransactionOptions }): Promise<T> {
+  async save(options: {
+    entity: DeepPartial<T>;
+    transactionOptions: AnyTransactionOptions;
+  }): Promise<T> {
     const repo = this.repoFor(options.transactionOptions);
     return repo.save(options.entity);
   }
