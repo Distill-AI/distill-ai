@@ -4,7 +4,7 @@ if command -v gitleaks >/dev/null 2>&1; then
   gitleaks protect --staged -v
 else
   echo "  gitleaks not installed — skipping local secret scan"
-  echo "  Install: https://github.com/gitleaks/gitleaks#installing"
+  echo "  Install v8.30.1: https://github.com/gitleaks/gitleaks/releases/tag/v8.30.1"
 fi
 
 pnpm lint-staged
