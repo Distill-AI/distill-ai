@@ -1,0 +1,7 @@
+packages:
+  - "client"
+
+allowBuilds:
+  "@nestjs/core": true
+  "@scarf/scarf": true
+  msgpackr-extract: true

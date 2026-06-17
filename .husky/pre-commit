@@ -1,0 +1,10 @@
+node scripts/forbidden-pattern-scan.js .
+
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged -v
+else
+  echo "  gitleaks not installed — skipping local secret scan"
+  echo "  Install: https://github.com/gitleaks/gitleaks#installing"
+fi
+
+pnpm lint-staged
