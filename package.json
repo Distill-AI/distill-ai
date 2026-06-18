@@ -23,6 +23,7 @@
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
     "typeorm": "DOTENV_CONFIG_PATH=.env ts-node -r tsconfig-paths/register -r dotenv/config node_modules/typeorm/cli.js",
+    "migration:create": "pnpm run typeorm migration:create",
     "migration:generate": "pnpm run typeorm migration:generate -d src/database/data-source.ts",
     "migration:run": "pnpm run typeorm migration:run -d src/database/data-source.ts",
     "migration:revert": "pnpm run typeorm migration:revert -d src/database/data-source.ts",
