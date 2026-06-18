@@ -91,6 +91,9 @@
       "@nestjs/core",
       "@scarf/scarf",
       "msgpackr-extract"
-    ]
+    ],
+    "overrides": {
+      "multer": ">=2.2.0"
+    }
   }
 }
