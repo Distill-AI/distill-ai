@@ -2,3 +2,8 @@ node_modules/
 dist/
 .env
 *.js.map
+
+# local planning / scratch files
+plan.md
+deploy-plan.md
+learning.md
