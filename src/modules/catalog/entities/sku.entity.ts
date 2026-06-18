@@ -33,8 +33,11 @@ export class Sku extends BaseEntity {
   @Column({ type: 'smallint', nullable: true })
   lead_time_days: number | null;
 
-  // DB column is VECTOR(384) (set by migration) — TypeORM sees text; never write via ORM.
-  // When running migration:generate, remove any ALTER COLUMN for this field.
-  @Column({ type: 'text', nullable: true })
+  // DB column is vector(384) — declared as text so TypeORM can read it without a custom type.
+  // insert: false / update: false makes this ORM-read-only: save() will never attempt to write
+  // a text value into a vector column, preventing a runtime type mismatch.
+  // To write embeddings use a raw query or a dedicated repository method that casts to vector.
+  // When running migration:generate, remove any ALTER COLUMN for this field (known type drift).
+  @Column({ type: 'text', nullable: true, insert: false, update: false })
   embedding: string | null;
 }
