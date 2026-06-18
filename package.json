@@ -93,7 +93,7 @@
       "msgpackr-extract"
     ],
     "overrides": {
-      "multer": ">2.2.0"
+      "multer": "^2.2.0"
     }
   }
 }
