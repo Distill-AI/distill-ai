@@ -1,4 +1,5 @@
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, Unique } from 'typeorm';
+import { numericTransformer } from '@common/transformers/numeric.transformer';
 import { LineItem } from './line-item.entity';
 import { Sku } from './sku.entity';
 
@@ -22,7 +23,7 @@ export class CandidateMatch {
   @JoinColumn({ name: 'sku_id' })
   sku: Sku;
 
-  @Column({ type: 'numeric', precision: 4, scale: 3 })
+  @Column({ type: 'numeric', precision: 4, scale: 3, transformer: numericTransformer })
   score: number;
 
   @Column({ type: 'smallint' })

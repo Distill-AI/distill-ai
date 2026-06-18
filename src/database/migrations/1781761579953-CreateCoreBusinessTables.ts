@@ -8,13 +8,13 @@ export class CreateCoreBusinessTables1781761579953 implements MigrationInterface
     await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "vector"`);
     await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "citext"`);
     await queryRunner.query(
-      `CREATE TABLE "organizations" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "name" text NOT NULL, CONSTRAINT "PK_6b031fcd0863e3f6b44230163f9" PRIMARY KEY ("id"))`,
+      `CREATE TABLE IF NOT EXISTS "organizations" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "name" text NOT NULL, CONSTRAINT "PK_6b031fcd0863e3f6b44230163f9" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
       `CREATE TYPE "public"."user_role" AS ENUM('estimator', 'approver', 'admin')`,
     );
     await queryRunner.query(
-      `CREATE TABLE "users" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "org_id" uuid NOT NULL, "email" citext NOT NULL, "name" text NOT NULL, "role" "public"."user_role" NOT NULL DEFAULT 'estimator', CONSTRAINT "users_org_email_unique" UNIQUE ("org_id", "email"), CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id"))`,
+      `CREATE TABLE IF NOT EXISTS "users" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "org_id" uuid NOT NULL, "email" citext NOT NULL, "name" text NOT NULL, "role" "public"."user_role" NOT NULL DEFAULT 'estimator', CONSTRAINT "users_org_email_unique" UNIQUE ("org_id", "email"), CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
       `CREATE TYPE "public"."request_channel" AS ENUM('email', 'upload', 'form')`,
@@ -32,62 +32,62 @@ export class CreateCoreBusinessTables1781761579953 implements MigrationInterface
       `CREATE TYPE "public"."request_routing" AS ENUM('auto_eligible', 'needs_review')`,
     );
     await queryRunner.query(
-      `CREATE TABLE "requests" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "org_id" uuid NOT NULL, "channel" "public"."request_channel" NOT NULL, "source_subject" text, "source_body" text, "sender_company" text, "sender_contact" text, "sender_email" citext, "request_type" "public"."request_type" NOT NULL DEFAULT 'unknown', "status" "public"."request_status" NOT NULL DEFAULT 'received', "current_node" "public"."current_node" NOT NULL DEFAULT 'parse', "processing_started_at" TIMESTAMP WITH TIME ZONE, "overall_confidence" numeric(4,3), "routing" "public"."request_routing", "routing_reasons" jsonb NOT NULL DEFAULT '[]', "delivery_date" date, CONSTRAINT "PK_0428f484e96f9e6a55955f29b5f" PRIMARY KEY ("id"))`,
+      `CREATE TABLE IF NOT EXISTS "requests" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "org_id" uuid NOT NULL, "channel" "public"."request_channel" NOT NULL, "source_subject" text, "source_body" text, "sender_company" text, "sender_contact" text, "sender_email" citext, "request_type" "public"."request_type" NOT NULL DEFAULT 'unknown', "status" "public"."request_status" NOT NULL DEFAULT 'received', "current_node" "public"."current_node" NOT NULL DEFAULT 'parse', "processing_started_at" TIMESTAMP WITH TIME ZONE, "overall_confidence" numeric(4,3), "routing" "public"."request_routing", "routing_reasons" jsonb NOT NULL DEFAULT '[]', "delivery_date" date, CONSTRAINT "PK_0428f484e96f9e6a55955f29b5f" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
       `CREATE TYPE "public"."tool_name" AS ENUM('extract_request', 'search_catalog', 'render_quote_pdf', 'explain_routing')`,
     );
     await queryRunner.query(`CREATE TYPE "public"."tool_call_status" AS ENUM('ok', 'error')`);
     await queryRunner.query(
-      `CREATE TABLE "tool_calls" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "request_id" uuid NOT NULL, "tool_name" "public"."tool_name" NOT NULL, "args" jsonb NOT NULL, "status" "public"."tool_call_status" NOT NULL, "latency_ms" integer, "error_detail" jsonb, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_08984f8a6bc13859241462df855" PRIMARY KEY ("id"))`,
+      `CREATE TABLE IF NOT EXISTS "tool_calls" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "request_id" uuid NOT NULL, "tool_name" "public"."tool_name" NOT NULL, "args" jsonb NOT NULL, "status" "public"."tool_call_status" NOT NULL, "latency_ms" integer, "error_detail" jsonb, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_08984f8a6bc13859241462df855" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
-      `CREATE INDEX "tool_calls_request_idx" ON "tool_calls" ("request_id", "created_at") `,
+      `CREATE INDEX IF NOT EXISTS "tool_calls_request_idx" ON "tool_calls" ("request_id", "created_at") `,
     );
     await queryRunner.query(
-      `CREATE TABLE "attachments" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "request_id" uuid NOT NULL, "filename" text NOT NULL, "mime_type" text NOT NULL, "size_bytes" integer NOT NULL, "storage_url" text NOT NULL, "parsed_text" text, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_5e1f050bcff31e3084a1d662412" PRIMARY KEY ("id"))`,
+      `CREATE TABLE IF NOT EXISTS "attachments" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "request_id" uuid NOT NULL, "filename" text NOT NULL, "mime_type" text NOT NULL, "size_bytes" integer NOT NULL, "storage_url" text NOT NULL, "parsed_text" text, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_5e1f050bcff31e3084a1d662412" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
       `CREATE TYPE "public"."quote_status" AS ENUM('draft', 'approved', 'ready', 'sent')`,
     );
     await queryRunner.query(
-      `CREATE TABLE "quotes" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "org_id" uuid NOT NULL, "request_id" uuid NOT NULL, "quote_number" text NOT NULL, "status" "public"."quote_status" NOT NULL DEFAULT 'draft', "subtotal_minor" integer NOT NULL, "discount_minor" integer NOT NULL DEFAULT '0', "total_minor" integer NOT NULL, "currency" text NOT NULL DEFAULT 'GBP', "terms" text, "lead_time_days" smallint, "valid_until" date, "created_by" uuid, "approved_by" uuid, CONSTRAINT "quotes_org_quote_number_unique" UNIQUE ("org_id", "quote_number"), CONSTRAINT "PK_99a0e8bcbcd8719d3a41f23c263" PRIMARY KEY ("id"))`,
+      `CREATE TABLE IF NOT EXISTS "quotes" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "org_id" uuid NOT NULL, "request_id" uuid NOT NULL, "quote_number" text NOT NULL, "status" "public"."quote_status" NOT NULL DEFAULT 'draft', "subtotal_minor" integer NOT NULL, "discount_minor" integer NOT NULL DEFAULT '0', "total_minor" integer NOT NULL, "currency" text NOT NULL DEFAULT 'GBP', "terms" text, "lead_time_days" smallint, "valid_until" date, "created_by" uuid, "approved_by" uuid, CONSTRAINT "quotes_org_quote_number_unique" UNIQUE ("org_id", "quote_number"), CONSTRAINT "PK_99a0e8bcbcd8719d3a41f23c263" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
       `CREATE TYPE "public"."pricing_rule_type" AS ENUM('margin_floor', 'max_discount', 'qty_break', 'lead_time')`,
     );
     await queryRunner.query(
-      `CREATE TABLE "pricing_rules" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "org_id" uuid NOT NULL, "rule_type" "public"."pricing_rule_type" NOT NULL, "config" jsonb NOT NULL, "active" boolean NOT NULL DEFAULT true, CONSTRAINT "PK_fda27bb8db4630894decda61ff6" PRIMARY KEY ("id"))`,
+      `CREATE TABLE IF NOT EXISTS "pricing_rules" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "org_id" uuid NOT NULL, "rule_type" "public"."pricing_rule_type" NOT NULL, "config" jsonb NOT NULL, "active" boolean NOT NULL DEFAULT true, CONSTRAINT "PK_fda27bb8db4630894decda61ff6" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
-      `CREATE TABLE "jobs" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "type" character varying NOT NULL, "payload" jsonb NOT NULL, "priority" integer NOT NULL DEFAULT '2', "status" character varying NOT NULL DEFAULT 'pending', "retry_count" integer NOT NULL DEFAULT '0', "max_retries" integer NOT NULL DEFAULT '3', "error_message" text, "scheduled_at" TIMESTAMP WITH TIME ZONE, "recurring_interval" character varying, "next_run_at" TIMESTAMP WITH TIME ZONE, "started_at" TIMESTAMP WITH TIME ZONE, "completed_at" TIMESTAMP WITH TIME ZONE, "depends_on" text, "priority_score" double precision NOT NULL DEFAULT '0', "lease_expires_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "PK_cf0a6c42b72fcc7f7c237def345" PRIMARY KEY ("id"))`,
+      `CREATE TABLE IF NOT EXISTS "jobs" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "type" character varying NOT NULL, "payload" jsonb NOT NULL, "priority" integer NOT NULL DEFAULT '2', "status" character varying NOT NULL DEFAULT 'pending', "retry_count" integer NOT NULL DEFAULT '0', "max_retries" integer NOT NULL DEFAULT '3', "error_message" text, "scheduled_at" TIMESTAMP WITH TIME ZONE, "recurring_interval" character varying, "next_run_at" TIMESTAMP WITH TIME ZONE, "started_at" TIMESTAMP WITH TIME ZONE, "completed_at" TIMESTAMP WITH TIME ZONE, "depends_on" text, "priority_score" double precision NOT NULL DEFAULT '0', "lease_expires_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "PK_cf0a6c42b72fcc7f7c237def345" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
-      `CREATE TABLE "extractions" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "request_id" uuid NOT NULL, "model" text NOT NULL, "schema_valid" boolean NOT NULL, "raw_json" jsonb NOT NULL, "reextract_count" smallint NOT NULL DEFAULT '0', "loop_steps" jsonb NOT NULL DEFAULT '[]', "latency_ms" integer, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "UQ_ea1710c1574aafdd8d882754204" UNIQUE ("request_id"), CONSTRAINT "PK_21a6575e18d03d32ca61c4615f3" PRIMARY KEY ("id"))`,
+      `CREATE TABLE IF NOT EXISTS "extractions" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "request_id" uuid NOT NULL, "model" text NOT NULL, "schema_valid" boolean NOT NULL, "raw_json" jsonb NOT NULL, "reextract_count" smallint NOT NULL DEFAULT '0', "loop_steps" jsonb NOT NULL DEFAULT '[]', "latency_ms" integer, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "UQ_ea1710c1574aafdd8d882754204" UNIQUE ("request_id"), CONSTRAINT "PK_21a6575e18d03d32ca61c4615f3" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
-      `CREATE TABLE "skus" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "org_id" uuid NOT NULL, "sku_code" text NOT NULL, "name" text NOT NULL, "description" text, "attributes" jsonb NOT NULL DEFAULT '{}', "base_price_minor" integer NOT NULL, "currency" text NOT NULL DEFAULT 'GBP', "lead_time_days" smallint, "embedding" vector(384), CONSTRAINT "skus_org_sku_code_unique" UNIQUE ("org_id", "sku_code"), CONSTRAINT "PK_334d59b0b01e5f2193966266e27" PRIMARY KEY ("id"))`,
+      `CREATE TABLE IF NOT EXISTS "skus" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "org_id" uuid NOT NULL, "sku_code" text NOT NULL, "name" text NOT NULL, "description" text, "attributes" jsonb NOT NULL DEFAULT '{}', "base_price_minor" integer NOT NULL, "currency" text NOT NULL DEFAULT 'GBP', "lead_time_days" smallint, "embedding" vector(384), CONSTRAINT "skus_org_sku_code_unique" UNIQUE ("org_id", "sku_code"), CONSTRAINT "PK_334d59b0b01e5f2193966266e27" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
-      `CREATE TABLE "quote_line_items" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "quote_id" uuid NOT NULL, "sku_id" uuid, "description" text NOT NULL, "quantity" numeric(12,2) NOT NULL, "unit_price_minor" integer NOT NULL, "amount_minor" integer NOT NULL, "position" smallint NOT NULL, CONSTRAINT "PK_cf621b9092037d36e5c7e13a668" PRIMARY KEY ("id"))`,
+      `CREATE TABLE IF NOT EXISTS "quote_line_items" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "quote_id" uuid NOT NULL, "sku_id" uuid, "description" text NOT NULL, "quantity" numeric(12,2) NOT NULL, "unit_price_minor" integer NOT NULL, "amount_minor" integer NOT NULL, "position" smallint NOT NULL, CONSTRAINT "PK_cf621b9092037d36e5c7e13a668" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
-      `CREATE TABLE "audit_events" ("id" BIGINT GENERATED ALWAYS AS IDENTITY NOT NULL, "org_id" uuid NOT NULL, "request_id" uuid, "quote_id" uuid, "user_id" uuid, "event_name" text NOT NULL, "attributes" jsonb NOT NULL DEFAULT '{}', "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_910f64d901a5c3e9878f0d4a407" PRIMARY KEY ("id"))`,
+      `CREATE TABLE IF NOT EXISTS "audit_events" ("id" BIGINT GENERATED ALWAYS AS IDENTITY NOT NULL, "org_id" uuid NOT NULL, "request_id" uuid, "quote_id" uuid, "user_id" uuid, "event_name" text NOT NULL, "attributes" jsonb NOT NULL DEFAULT '{}', "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_910f64d901a5c3e9878f0d4a407" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
-      `CREATE TABLE "dlq_jobs" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "original_job_id" uuid NOT NULL, "type" character varying NOT NULL, "payload" jsonb NOT NULL, "priority" integer NOT NULL, "error_message" text NOT NULL, "retry_count" integer NOT NULL DEFAULT '3', "last_attempted_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "PK_b66854fe15c059508260c5100ca" PRIMARY KEY ("id"))`,
+      `CREATE TABLE IF NOT EXISTS "dlq_jobs" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "original_job_id" uuid NOT NULL, "type" character varying NOT NULL, "payload" jsonb NOT NULL, "priority" integer NOT NULL, "error_message" text NOT NULL, "retry_count" integer NOT NULL DEFAULT '3', "last_attempted_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "PK_b66854fe15c059508260c5100ca" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
-      `CREATE TABLE "clarifications" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "request_id" uuid NOT NULL, "gaps" jsonb NOT NULL, "draft_subject" text, "draft_body" text, "sent_at" TIMESTAMP WITH TIME ZONE, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_13bbcd97792a5c1663fcd28136f" PRIMARY KEY ("id"))`,
+      `CREATE TABLE IF NOT EXISTS "clarifications" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "request_id" uuid NOT NULL, "gaps" jsonb NOT NULL, "draft_subject" text, "draft_body" text, "sent_at" TIMESTAMP WITH TIME ZONE, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_13bbcd97792a5c1663fcd28136f" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
       `CREATE TYPE "public"."match_method" AS ENUM('exact', 'fuzzy', 'semantic', 'fused')`,
     );
     await queryRunner.query(
-      `CREATE TABLE "line_items" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "request_id" uuid NOT NULL, "position" smallint NOT NULL, "raw_text" text NOT NULL, "quantity" numeric(12,2), "unit" text, "matched_sku_id" uuid, "match_confidence" numeric(4,3), "match_method" "public"."match_method", "unit_price_minor" integer, "lead_time_days" smallint, "flags" jsonb NOT NULL DEFAULT '[]', "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_6d227c876e374542dc9bb44dfb4" PRIMARY KEY ("id"))`,
+      `CREATE TABLE IF NOT EXISTS "line_items" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "request_id" uuid NOT NULL, "position" smallint NOT NULL, "raw_text" text NOT NULL, "quantity" numeric(12,2), "unit" text, "matched_sku_id" uuid, "match_confidence" numeric(4,3), "match_method" "public"."match_method", "unit_price_minor" integer, "lead_time_days" smallint, "flags" jsonb NOT NULL DEFAULT '[]', "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_6d227c876e374542dc9bb44dfb4" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
-      `CREATE TABLE "candidate_matches" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "line_item_id" uuid NOT NULL, "sku_id" uuid NOT NULL, "score" numeric(4,3) NOT NULL, "rank" smallint NOT NULL, CONSTRAINT "candidate_matches_line_item_sku_unique" UNIQUE ("line_item_id", "sku_id"), CONSTRAINT "PK_55b0b0cee1b1585611d2d5d1f54" PRIMARY KEY ("id"))`,
+      `CREATE TABLE IF NOT EXISTS "candidate_matches" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "line_item_id" uuid NOT NULL, "sku_id" uuid NOT NULL, "score" numeric(4,3) NOT NULL, "rank" smallint NOT NULL, CONSTRAINT "candidate_matches_line_item_sku_unique" UNIQUE ("line_item_id", "sku_id"), CONSTRAINT "PK_55b0b0cee1b1585611d2d5d1f54" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
       `ALTER TABLE "users" ADD CONSTRAINT "FK_0a13270cd3101fd16b8000e00d4" FOREIGN KEY ("org_id") REFERENCES "organizations"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
