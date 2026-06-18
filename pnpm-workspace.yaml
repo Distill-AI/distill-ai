@@ -9,7 +9,7 @@ allowBuilds:
 # Force patched versions of vulnerable transitive dependencies.
 # Review on major NestJS / Axios upgrades.
 overrides:
-  multer: ">=2.1.1"       # GHSA-xf7r-hgr6-v32p / GHSA-v52c-386h-88mc / GHSA-5528-5vmv-3xc2
+  multer: ">=2.2.0"       # GHSA-xf7r-hgr6-v32p / GHSA-v52c-386h-88mc / GHSA-5528-5vmv-3xc2 / GHSA-72gw-mp4g-v24j
   lodash: ">=4.17.24"     # GHSA-r5fr-rjxr-66jc
   glob: ">=10.5.0"        # GHSA-c2c7-rcm5-vvqj (via @nestjs/cli, devDep)
   picomatch: ">=4.0.4"    # GHSA-5j98-mcp5-4vw2 (via @nestjs/cli, devDep)

@@ -503,13 +503,17 @@ Rules:
    pnpm test
    ```
 
-3. Run the security scan:
+3. Run the security scans:
 
    ```sh
    node scripts/forbidden-pattern-scan.js .
+   pnpm audit --audit-level=high
+   pnpm --filter client audit --audit-level=high
    ```
 
-   This also runs automatically on every commit and push via Husky. CI runs the same check on every PR.
+   The forbidden-pattern scan also runs automatically on every commit via Husky. All three run on every PR in CI.
+
+   If `pnpm audit` reports a high-severity vulnerability, bump the affected package's override in `pnpm-workspace.yaml` (adding the new advisory ID to the comment), delete `pnpm-lock.yaml`, run `pnpm install` to regenerate it, and re-run the audit before pushing. Do not raise the PR until `--audit-level=high` exits clean.
 
 4. Open a PR from your branch to `dev`. GitHub will pre-fill `.github/PULL_REQUEST_TEMPLATE.md`. Complete every section:
    - **Ticket** — the `US-E<epic>-<story>` this resolves
