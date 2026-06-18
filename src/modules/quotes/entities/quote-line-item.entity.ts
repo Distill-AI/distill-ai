@@ -1,4 +1,5 @@
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { numericTransformer } from '@common/transformers/numeric.transformer';
 import { Quote } from './quote.entity';
 import { Sku } from '../../catalog/entities/sku.entity';
 
@@ -24,7 +25,7 @@ export class QuoteLineItem {
   @Column({ type: 'text' })
   description: string;
 
-  @Column({ type: 'numeric', precision: 12, scale: 2 })
+  @Column({ type: 'numeric', precision: 12, scale: 2, transformer: numericTransformer })
   quantity: number;
 
   @Column({ type: 'int' })

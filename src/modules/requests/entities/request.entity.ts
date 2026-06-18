@@ -1,5 +1,6 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '@common/entities/base.entity';
+import { numericTransformer } from '@common/transformers/numeric.transformer';
 import { RequestChannel } from '../enums/request-channel.enum';
 import { RequestType } from '../enums/request-type.enum';
 import { RequestStatus } from '../enums/request-status.enum';
@@ -61,7 +62,13 @@ export class Request extends BaseEntity {
   @Column({ type: 'timestamptz', nullable: true })
   processing_started_at: Date | null;
 
-  @Column({ type: 'numeric', precision: 4, scale: 3, nullable: true })
+  @Column({
+    type: 'numeric',
+    precision: 4,
+    scale: 3,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   overall_confidence: number | null;
 
   @Column({ type: 'enum', enum: RequestRouting, enumName: 'request_routing', nullable: true })

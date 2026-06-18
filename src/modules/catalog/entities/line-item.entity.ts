@@ -6,6 +6,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { numericTransformer } from '@common/transformers/numeric.transformer';
 import { MatchMethod } from '../enums/match-method.enum';
 import { Request } from '../../requests/entities/request.entity';
 import { Sku } from './sku.entity';
@@ -28,7 +29,13 @@ export class LineItem {
   @Column({ type: 'text' })
   raw_text: string;
 
-  @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true })
+  @Column({
+    type: 'numeric',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   quantity: number | null;
 
   @Column({ type: 'text', nullable: true })
@@ -41,7 +48,13 @@ export class LineItem {
   @JoinColumn({ name: 'matched_sku_id' })
   matched_sku: Sku | null;
 
-  @Column({ type: 'numeric', precision: 4, scale: 3, nullable: true })
+  @Column({
+    type: 'numeric',
+    precision: 4,
+    scale: 3,
+    nullable: true,
+    transformer: numericTransformer,
+  })
   match_confidence: number | null;
 
   @Column({ type: 'enum', enum: MatchMethod, enumName: 'match_method', nullable: true })

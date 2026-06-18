@@ -15,9 +15,9 @@ import { User } from '../../users/entities/user.entity';
 // append-only with REVOKE applied per environment. Never let TypeORM diff this entity.
 @Entity('audit_events', { synchronize: false })
 export class AuditEvent {
-  // bigint identity PK — migration creates BIGINT GENERATED ALWAYS AS IDENTITY
-  @PrimaryGeneratedColumn('increment')
-  id: number;
+  // bigint identity PK — migration creates BIGINT GENERATED ALWAYS AS IDENTITY; typed as string to avoid JS precision loss
+  @PrimaryGeneratedColumn({ type: 'bigint' })
+  id: string;
 
   @Column({ type: 'uuid' })
   org_id: string;
