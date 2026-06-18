@@ -11,7 +11,9 @@ import { Request } from '../../requests/entities/request.entity';
 import { Quote } from '../../quotes/entities/quote.entity';
 import { User } from '../../users/entities/user.entity';
 
-@Entity('audit_events')
+// synchronize: false — entire table is hand-managed: BIGINT GENERATED ALWAYS AS IDENTITY PK,
+// append-only with REVOKE applied per environment. Never let TypeORM diff this entity.
+@Entity('audit_events', { synchronize: false })
 export class AuditEvent {
   // bigint identity PK — migration creates BIGINT GENERATED ALWAYS AS IDENTITY
   @PrimaryGeneratedColumn('increment')

@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '@common/entities/base.entity';
 import { RequestChannel } from '../enums/request-channel.enum';
 import { RequestType } from '../enums/request-type.enum';
@@ -7,6 +7,7 @@ import { CurrentNode } from '../enums/current-node.enum';
 import { RequestRouting } from '../enums/request-routing.enum';
 import { Organization } from '../../organizations/entities/organization.entity';
 
+@Index('requests_stale_processing_idx', ['processing_started_at'], { where: "status = 'parsing'" })
 @Entity('requests')
 export class Request extends BaseEntity {
   @Column({ type: 'uuid' })
@@ -31,6 +32,8 @@ export class Request extends BaseEntity {
   @Column({ type: 'text', nullable: true })
   sender_contact: string | null;
 
+  // DB column is citext (set by migration) — TypeORM sees text; compatible at runtime.
+  // When running migration:generate, remove any ALTER COLUMN for this field.
   @Column({ type: 'text', nullable: true })
   sender_email: string | null;
 

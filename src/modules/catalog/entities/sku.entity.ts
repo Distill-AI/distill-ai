@@ -33,8 +33,8 @@ export class Sku extends BaseEntity {
   @Column({ type: 'smallint', nullable: true })
   lead_time_days: number | null;
 
-  // Stored as VECTOR(384) in the DB — migration creates the correct type.
-  // TypeORM sees text to avoid compile errors; never write to this column via ORM.
+  // DB column is VECTOR(384) (set by migration) — TypeORM sees text; never write via ORM.
+  // When running migration:generate, remove any ALTER COLUMN for this field.
   @Column({ type: 'text', nullable: true })
   embedding: string | null;
 }
