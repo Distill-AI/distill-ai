@@ -10,34 +10,60 @@ export class CreateCoreBusinessTables1781761579953 implements MigrationInterface
     await queryRunner.query(
       `CREATE TABLE IF NOT EXISTS "organizations" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "name" text NOT NULL, CONSTRAINT "PK_6b031fcd0863e3f6b44230163f9" PRIMARY KEY ("id"))`,
     );
-    await queryRunner.query(
-      `CREATE TYPE "public"."user_role" AS ENUM('estimator', 'approver', 'admin')`,
-    );
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "public"."user_role" AS ENUM('estimator', 'approver', 'admin');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
+    `);
     await queryRunner.query(
       `CREATE TABLE IF NOT EXISTS "users" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "org_id" uuid NOT NULL, "email" citext NOT NULL, "name" text NOT NULL, "role" "public"."user_role" NOT NULL DEFAULT 'estimator', CONSTRAINT "users_org_email_unique" UNIQUE ("org_id", "email"), CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id"))`,
     );
-    await queryRunner.query(
-      `CREATE TYPE "public"."request_channel" AS ENUM('email', 'upload', 'form')`,
-    );
-    await queryRunner.query(
-      `CREATE TYPE "public"."request_type" AS ENUM('catalog_rfq', 'service_quote', 'unknown')`,
-    );
-    await queryRunner.query(
-      `CREATE TYPE "public"."request_status" AS ENUM('received', 'parsing', 'needs_review', 'priced', 'ready', 'sent', 'declined', 'needs_clarification', 'failed')`,
-    );
-    await queryRunner.query(
-      `CREATE TYPE "public"."current_node" AS ENUM('parse', 'extract', 'classify', 'match', 'price', 'policy', 'score', 'done', 'failed')`,
-    );
-    await queryRunner.query(
-      `CREATE TYPE "public"."request_routing" AS ENUM('auto_eligible', 'needs_review')`,
-    );
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "public"."request_channel" AS ENUM('email', 'upload', 'form');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
+    `);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "public"."request_type" AS ENUM('catalog_rfq', 'service_quote', 'unknown');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
+    `);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "public"."request_status" AS ENUM('received', 'parsing', 'needs_review', 'priced', 'ready', 'sent', 'declined', 'needs_clarification', 'failed');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
+    `);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "public"."current_node" AS ENUM('parse', 'extract', 'classify', 'match', 'price', 'policy', 'score', 'done', 'failed');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
+    `);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "public"."request_routing" AS ENUM('auto_eligible', 'needs_review');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
+    `);
     await queryRunner.query(
       `CREATE TABLE IF NOT EXISTS "requests" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "org_id" uuid NOT NULL, "channel" "public"."request_channel" NOT NULL, "source_subject" text, "source_body" text, "sender_company" text, "sender_contact" text, "sender_email" citext, "request_type" "public"."request_type" NOT NULL DEFAULT 'unknown', "status" "public"."request_status" NOT NULL DEFAULT 'received', "current_node" "public"."current_node" NOT NULL DEFAULT 'parse', "processing_started_at" TIMESTAMP WITH TIME ZONE, "overall_confidence" numeric(4,3), "routing" "public"."request_routing", "routing_reasons" jsonb NOT NULL DEFAULT '[]', "delivery_date" date, CONSTRAINT "PK_0428f484e96f9e6a55955f29b5f" PRIMARY KEY ("id"))`,
     );
-    await queryRunner.query(
-      `CREATE TYPE "public"."tool_name" AS ENUM('extract_request', 'search_catalog', 'render_quote_pdf', 'explain_routing')`,
-    );
-    await queryRunner.query(`CREATE TYPE "public"."tool_call_status" AS ENUM('ok', 'error')`);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "public"."tool_name" AS ENUM('extract_request', 'search_catalog', 'render_quote_pdf', 'explain_routing');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
+    `);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "public"."tool_call_status" AS ENUM('ok', 'error');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
+    `);
     await queryRunner.query(
       `CREATE TABLE IF NOT EXISTS "tool_calls" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "request_id" uuid NOT NULL, "tool_name" "public"."tool_name" NOT NULL, "args" jsonb NOT NULL, "status" "public"."tool_call_status" NOT NULL, "latency_ms" integer, "error_detail" jsonb, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_08984f8a6bc13859241462df855" PRIMARY KEY ("id"))`,
     );
@@ -47,15 +73,21 @@ export class CreateCoreBusinessTables1781761579953 implements MigrationInterface
     await queryRunner.query(
       `CREATE TABLE IF NOT EXISTS "attachments" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "request_id" uuid NOT NULL, "filename" text NOT NULL, "mime_type" text NOT NULL, "size_bytes" integer NOT NULL, "storage_url" text NOT NULL, "parsed_text" text, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_5e1f050bcff31e3084a1d662412" PRIMARY KEY ("id"))`,
     );
-    await queryRunner.query(
-      `CREATE TYPE "public"."quote_status" AS ENUM('draft', 'approved', 'ready', 'sent')`,
-    );
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "public"."quote_status" AS ENUM('draft', 'approved', 'ready', 'sent');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
+    `);
     await queryRunner.query(
       `CREATE TABLE IF NOT EXISTS "quotes" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "org_id" uuid NOT NULL, "request_id" uuid NOT NULL, "quote_number" text NOT NULL, "status" "public"."quote_status" NOT NULL DEFAULT 'draft', "subtotal_minor" integer NOT NULL, "discount_minor" integer NOT NULL DEFAULT '0', "total_minor" integer NOT NULL, "currency" text NOT NULL DEFAULT 'GBP', "terms" text, "lead_time_days" smallint, "valid_until" date, "created_by" uuid, "approved_by" uuid, CONSTRAINT "quotes_org_quote_number_unique" UNIQUE ("org_id", "quote_number"), CONSTRAINT "PK_99a0e8bcbcd8719d3a41f23c263" PRIMARY KEY ("id"))`,
     );
-    await queryRunner.query(
-      `CREATE TYPE "public"."pricing_rule_type" AS ENUM('margin_floor', 'max_discount', 'qty_break', 'lead_time')`,
-    );
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "public"."pricing_rule_type" AS ENUM('margin_floor', 'max_discount', 'qty_break', 'lead_time');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
+    `);
     await queryRunner.query(
       `CREATE TABLE IF NOT EXISTS "pricing_rules" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "org_id" uuid NOT NULL, "rule_type" "public"."pricing_rule_type" NOT NULL, "config" jsonb NOT NULL, "active" boolean NOT NULL DEFAULT true, CONSTRAINT "PK_fda27bb8db4630894decda61ff6" PRIMARY KEY ("id"))`,
     );
@@ -80,9 +112,12 @@ export class CreateCoreBusinessTables1781761579953 implements MigrationInterface
     await queryRunner.query(
       `CREATE TABLE IF NOT EXISTS "clarifications" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "request_id" uuid NOT NULL, "gaps" jsonb NOT NULL, "draft_subject" text, "draft_body" text, "sent_at" TIMESTAMP WITH TIME ZONE, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_13bbcd97792a5c1663fcd28136f" PRIMARY KEY ("id"))`,
     );
-    await queryRunner.query(
-      `CREATE TYPE "public"."match_method" AS ENUM('exact', 'fuzzy', 'semantic', 'fused')`,
-    );
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "public"."match_method" AS ENUM('exact', 'fuzzy', 'semantic', 'fused');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
+    `);
     await queryRunner.query(
       `CREATE TABLE IF NOT EXISTS "line_items" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "request_id" uuid NOT NULL, "position" smallint NOT NULL, "raw_text" text NOT NULL, "quantity" numeric(12,2), "unit" text, "matched_sku_id" uuid, "match_confidence" numeric(4,3), "match_method" "public"."match_method", "unit_price_minor" integer, "lead_time_days" smallint, "flags" jsonb NOT NULL DEFAULT '[]', "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_6d227c876e374542dc9bb44dfb4" PRIMARY KEY ("id"))`,
     );
