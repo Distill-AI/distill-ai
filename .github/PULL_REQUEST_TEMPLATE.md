@@ -51,6 +51,7 @@ US-E
 - [ ] `pnpm lint` and `pnpm build` pass (server)
 - [ ] `pnpm --filter client lint` and `pnpm --filter client build` pass (if client changed)
 - [ ] Tests pass locally
+- [ ] `pnpm audit --audit-level=high` exits clean (and `pnpm --filter client audit --audit-level=high` if client changed)
 - [ ] Test evidence screenshot attached above
 
 ## Additional Notes
