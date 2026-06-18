@@ -190,98 +190,114 @@ export class CreateCoreBusinessTables1781761579953 implements MigrationInterface
     await queryRunner.query(
       `ALTER TABLE "candidate_matches" ADD CONSTRAINT "FK_23ca932dfcaf49fd290ac902dbc" FOREIGN KEY ("sku_id") REFERENCES "skus"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
     );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "line_items_request_id_idx" ON "line_items" ("request_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "attachments_request_id_idx" ON "attachments" ("request_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "quote_line_items_quote_id_idx" ON "quote_line_items" ("quote_id")`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TABLE "candidate_matches" DROP CONSTRAINT "FK_23ca932dfcaf49fd290ac902dbc"`,
+      `ALTER TABLE "candidate_matches" DROP CONSTRAINT IF EXISTS "FK_23ca932dfcaf49fd290ac902dbc"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "candidate_matches" DROP CONSTRAINT "FK_8f6accbbd7d70a8c96310552fc8"`,
+      `ALTER TABLE "candidate_matches" DROP CONSTRAINT IF EXISTS "FK_8f6accbbd7d70a8c96310552fc8"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "line_items" DROP CONSTRAINT "FK_0fb83ca77d09c917d4390b0fe7f"`,
+      `ALTER TABLE "line_items" DROP CONSTRAINT IF EXISTS "FK_0fb83ca77d09c917d4390b0fe7f"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "line_items" DROP CONSTRAINT "FK_60f558e7225858bfc15826e4ac1"`,
+      `ALTER TABLE "line_items" DROP CONSTRAINT IF EXISTS "FK_60f558e7225858bfc15826e4ac1"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "clarifications" DROP CONSTRAINT "FK_e08679b8c48fca9d31704cda39e"`,
+      `ALTER TABLE "clarifications" DROP CONSTRAINT IF EXISTS "FK_e08679b8c48fca9d31704cda39e"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "audit_events" DROP CONSTRAINT "FK_e1c246079d669576b847df55d90"`,
+      `ALTER TABLE "audit_events" DROP CONSTRAINT IF EXISTS "FK_e1c246079d669576b847df55d90"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "audit_events" DROP CONSTRAINT "FK_6b55fa9432fdde66709f8cf3c43"`,
+      `ALTER TABLE "audit_events" DROP CONSTRAINT IF EXISTS "FK_6b55fa9432fdde66709f8cf3c43"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "audit_events" DROP CONSTRAINT "FK_e63c8a1835d26f871f4195c3243"`,
+      `ALTER TABLE "audit_events" DROP CONSTRAINT IF EXISTS "FK_e63c8a1835d26f871f4195c3243"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "audit_events" DROP CONSTRAINT "FK_3c324fd6ad96b32d2be8bc4a3bc"`,
+      `ALTER TABLE "audit_events" DROP CONSTRAINT IF EXISTS "FK_3c324fd6ad96b32d2be8bc4a3bc"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "quote_line_items" DROP CONSTRAINT "FK_afbaddbd135b078076f870c5dc6"`,
+      `ALTER TABLE "quote_line_items" DROP CONSTRAINT IF EXISTS "FK_afbaddbd135b078076f870c5dc6"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "quote_line_items" DROP CONSTRAINT "FK_5d17fe21be606eb310e3a5668d4"`,
-    );
-    await queryRunner.query(`ALTER TABLE "skus" DROP CONSTRAINT "FK_d6ed239848968fae7200966f4da"`);
-    await queryRunner.query(
-      `ALTER TABLE "extractions" DROP CONSTRAINT "FK_ea1710c1574aafdd8d882754204"`,
+      `ALTER TABLE "quote_line_items" DROP CONSTRAINT IF EXISTS "FK_5d17fe21be606eb310e3a5668d4"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "pricing_rules" DROP CONSTRAINT "FK_08e0cec076a50f05b8ce8852d27"`,
+      `ALTER TABLE "skus" DROP CONSTRAINT IF EXISTS "FK_d6ed239848968fae7200966f4da"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "quotes" DROP CONSTRAINT "FK_c49dab53d01434d323ee9a207bd"`,
+      `ALTER TABLE "extractions" DROP CONSTRAINT IF EXISTS "FK_ea1710c1574aafdd8d882754204"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "quotes" DROP CONSTRAINT "FK_7597d56df256df54e6fda6cd646"`,
+      `ALTER TABLE "pricing_rules" DROP CONSTRAINT IF EXISTS "FK_08e0cec076a50f05b8ce8852d27"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "quotes" DROP CONSTRAINT "FK_0c53b33e44ecbc5e82486c076a8"`,
+      `ALTER TABLE "quotes" DROP CONSTRAINT IF EXISTS "FK_c49dab53d01434d323ee9a207bd"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "quotes" DROP CONSTRAINT "FK_2b3fffeb95e875497fa4dcb0480"`,
+      `ALTER TABLE "quotes" DROP CONSTRAINT IF EXISTS "FK_7597d56df256df54e6fda6cd646"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "attachments" DROP CONSTRAINT "FK_dcbe694cf3a439b06e0c7b6a73c"`,
+      `ALTER TABLE "quotes" DROP CONSTRAINT IF EXISTS "FK_0c53b33e44ecbc5e82486c076a8"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "tool_calls" DROP CONSTRAINT "FK_1dbd228ff9c2eaa913f7188e2ff"`,
+      `ALTER TABLE "quotes" DROP CONSTRAINT IF EXISTS "FK_2b3fffeb95e875497fa4dcb0480"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "requests" DROP CONSTRAINT "FK_f8e1fa4148511ae5a89a0a0f33d"`,
+      `ALTER TABLE "attachments" DROP CONSTRAINT IF EXISTS "FK_dcbe694cf3a439b06e0c7b6a73c"`,
     );
-    await queryRunner.query(`ALTER TABLE "users" DROP CONSTRAINT "FK_0a13270cd3101fd16b8000e00d4"`);
-    await queryRunner.query(`DROP TABLE "candidate_matches"`);
-    await queryRunner.query(`DROP TABLE "line_items"`);
-    await queryRunner.query(`DROP TYPE "public"."match_method"`);
-    await queryRunner.query(`DROP TABLE "clarifications"`);
-    await queryRunner.query(`DROP TABLE "dlq_jobs"`);
-    await queryRunner.query(`DROP TABLE "audit_events"`);
-    await queryRunner.query(`DROP TABLE "quote_line_items"`);
-    await queryRunner.query(`DROP TABLE "skus"`);
-    await queryRunner.query(`DROP TABLE "extractions"`);
-    await queryRunner.query(`DROP TABLE "jobs"`);
-    await queryRunner.query(`DROP TABLE "pricing_rules"`);
-    await queryRunner.query(`DROP TYPE "public"."pricing_rule_type"`);
-    await queryRunner.query(`DROP TABLE "quotes"`);
-    await queryRunner.query(`DROP TYPE "public"."quote_status"`);
-    await queryRunner.query(`DROP TABLE "attachments"`);
-    await queryRunner.query(`DROP INDEX "public"."tool_calls_request_idx"`);
-    await queryRunner.query(`DROP TABLE "tool_calls"`);
-    await queryRunner.query(`DROP TYPE "public"."tool_call_status"`);
-    await queryRunner.query(`DROP TYPE "public"."tool_name"`);
-    await queryRunner.query(`DROP TABLE "requests"`);
-    await queryRunner.query(`DROP TYPE "public"."request_routing"`);
-    await queryRunner.query(`DROP TYPE "public"."current_node"`);
-    await queryRunner.query(`DROP TYPE "public"."request_status"`);
-    await queryRunner.query(`DROP TYPE "public"."request_type"`);
-    await queryRunner.query(`DROP TYPE "public"."request_channel"`);
-    await queryRunner.query(`DROP TABLE "users"`);
-    await queryRunner.query(`DROP TYPE "public"."user_role"`);
-    await queryRunner.query(`DROP TABLE "organizations"`);
+    await queryRunner.query(
+      `ALTER TABLE "tool_calls" DROP CONSTRAINT IF EXISTS "FK_1dbd228ff9c2eaa913f7188e2ff"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "requests" DROP CONSTRAINT IF EXISTS "FK_f8e1fa4148511ae5a89a0a0f33d"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "users" DROP CONSTRAINT IF EXISTS "FK_0a13270cd3101fd16b8000e00d4"`,
+    );
+    await queryRunner.query(`DROP TABLE IF EXISTS "candidate_matches"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "public"."line_items_request_id_idx"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "line_items"`);
+    await queryRunner.query(`DROP TYPE IF EXISTS "public"."match_method"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "clarifications"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "dlq_jobs"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "audit_events"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "public"."quote_line_items_quote_id_idx"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "quote_line_items"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "skus"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "extractions"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "jobs"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "pricing_rules"`);
+    await queryRunner.query(`DROP TYPE IF EXISTS "public"."pricing_rule_type"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "quotes"`);
+    await queryRunner.query(`DROP TYPE IF EXISTS "public"."quote_status"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "public"."attachments_request_id_idx"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "attachments"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "public"."tool_calls_request_idx"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "tool_calls"`);
+    await queryRunner.query(`DROP TYPE IF EXISTS "public"."tool_call_status"`);
+    await queryRunner.query(`DROP TYPE IF EXISTS "public"."tool_name"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "requests"`);
+    await queryRunner.query(`DROP TYPE IF EXISTS "public"."request_routing"`);
+    await queryRunner.query(`DROP TYPE IF EXISTS "public"."current_node"`);
+    await queryRunner.query(`DROP TYPE IF EXISTS "public"."request_status"`);
+    await queryRunner.query(`DROP TYPE IF EXISTS "public"."request_type"`);
+    await queryRunner.query(`DROP TYPE IF EXISTS "public"."request_channel"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "users"`);
+    await queryRunner.query(`DROP TYPE IF EXISTS "public"."user_role"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "organizations"`);
   }
 }
