@@ -33,7 +33,8 @@ export class Sku extends BaseEntity {
   @Column({ type: 'smallint', nullable: true })
   lead_time_days: number | null;
 
-  // DB column is vector(384) — declared as text so TypeORM can read it without a custom type.
+  // DB column is vector(1024), sized for Qwen text-embedding-v4. Declared as text so TypeORM
+  // can read it without a custom type.
   // insert: false / update: false makes this ORM-read-only: save() will never attempt to write
   // a text value into a vector column, preventing a runtime type mismatch.
   // To write embeddings use a raw query or a dedicated repository method that casts to vector.
