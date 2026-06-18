@@ -13,6 +13,8 @@ export class User extends BaseEntity {
   @JoinColumn({ name: 'org_id' })
   organization: Organization;
 
+  // DB column is citext (set by migration) — TypeORM sees text; compatible at runtime.
+  // When running migration:generate, remove any ALTER COLUMN for this field.
   @Column({ type: 'text' })
   email: string;
 
