@@ -2,7 +2,7 @@
 
 The buildable plan for the 3-week MVP. Scoped to exactly what M1–M5 ships: a **modular monolith** with a Bull/Redis-backed pipeline queue, a 4-tool registry with logged invocations, crash recovery via a cron sweep, deterministic pricing/policy/scoring, and SSE live trace.
 
-> **This is not the V2 blueprint.** A separate document (`nestjs-implementation-blueprint.md`, the production target) describes a durable distributed orchestrator, a multi-queue agent-exec topology, a separate agent-runtime service, a tiered harness with a middleware chain, a transactional outbox, and Postgres role-grant boundary enforcement. **Build none of that for V1.** Where the two differ, this document wins for the MVP. The V1 design is an honest subset — same `NodeName` set, same tool names, same deterministic/agentic boundary — that grows into V2 without rework.
+> **This is not the V2 blueprint.** A separate V2 document (not yet in this repo) will describe a durable distributed orchestrator, a multi-queue agent-exec topology, a separate agent-runtime service, a tiered harness with a middleware chain, a transactional outbox, and Postgres role-grant boundary enforcement. **Build none of that for V1.** Where the two differ, this document wins for the MVP. The V1 design is an honest subset — same `NodeName` set, same tool names, same deterministic/agentic boundary — that grows into V2 without rework.
 
 ---
 
@@ -389,7 +389,7 @@ Remaining V1 endpoints, unchanged from TRD §3.2: `GET /requests`, `GET /request
 Every external dependency sits behind a port so it's swappable and demo-safe (NFR-REL-3 / NFR-OPS-4):
 
 ```ts
-export interface VectorStore { upsert(id, vec): Promise<void>; search(vec, k): Promise<Hit[]>; } // FAISS now, pgvector later
+export interface VectorStore { upsert(id, vec): Promise<void>; search(vec, k): Promise<Hit[]>; } // pgvector (extension installed by migration 0001)
 export interface ObjectStore { put(key, bytes): Promise<string>; get(key): Promise<Buffer>; }
 export interface LlmClient { structured<T>(prompt, schema): Promise<T>; }      // wraps provider structured-output
 export interface EmbeddingsClient { embed(text): Promise<number[]>; }

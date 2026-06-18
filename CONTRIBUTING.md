@@ -561,6 +561,18 @@ pnpm migration:show                                       # list applied/pending
 pnpm db:reset                                            # wipe and re-run (dev only)
 ```
 
+### Known TypeORM column-type drifts — always review generated migrations
+
+Three columns use DB-native types that TypeORM cannot express in entity decorators (TypeORM 0.3.x has no column-level `synchronize: false`). The entity declares `text` as the closest compatible type; the DB holds the real type set by migration. Every `pnpm migration:generate` will produce ALTER COLUMN statements for these three columns. **Delete those ALTER COLUMN statements from any generated migration before committing.**
+
+| Column | DB type | Entity type | Why |
+| --- | --- | --- | --- |
+| `users.email` | `citext` | `text` | Case-insensitive email lookups |
+| `requests.sender_email` | `citext` | `text` | Case-insensitive sender matching |
+| `skus.embedding` | `vector(384)` | `text` | pgvector semantic search; never written via ORM |
+
+The `audit_events` table is excluded from TypeORM sync entirely via `@Entity('audit_events', { synchronize: false })` — it uses `BIGINT GENERATED ALWAYS AS IDENTITY` and has append-only permissions applied per environment.
+
 ---
 
 ## Code Style
