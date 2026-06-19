@@ -19,7 +19,7 @@ function buildHost() {
   const json = vi.fn();
   const status = vi.fn().mockReturnValue({ json });
   const response = { headersSent: false, status } as unknown as Response;
-  const request = { method: 'GET', url: '/test' } as unknown as Request;
+  const request = { method: 'GET', url: '/test', path: '/test' } as unknown as Request;
   return {
     switchToHttp: () => ({
       getResponse: () => response,

@@ -51,7 +51,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
         const requestId = this.loggerContext.getRequestId();
         Sentry.withScope((scope) => {
           if (requestId) scope.setTag('request_id', requestId);
-          scope.setExtra('url', request.url);
+          scope.setExtra('path', request.path);
           scope.setExtra('method', request.method);
           Sentry.captureException(exception);
         });
