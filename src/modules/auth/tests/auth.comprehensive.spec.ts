@@ -203,7 +203,7 @@ describe('Auth — Comprehensive', () => {
       expect(next).toHaveBeenCalled();
     });
 
-    it('does not set app.org_id when auth is disabled', async () => {
+    it('sets app.org_id to demo-org when auth is disabled', async () => {
       mockAuthConfig.enabled = false;
 
       const dataSource = moduleRef.get(DataSource);
@@ -215,7 +215,7 @@ describe('Auth — Comprehensive', () => {
 
       await middleware.use(request as never, {} as never, next);
 
-      expect(dataSource.query).not.toHaveBeenCalled();
+      expect(dataSource.query).toHaveBeenCalledWith('SET app.org_id = $1', ['demo-org']);
       expect(next).toHaveBeenCalled();
     });
   });
@@ -287,9 +287,14 @@ describe('Auth — Comprehensive', () => {
       expect(result.expiresIn).toBe(mockAuthConfig.tokenExpiryMs);
       expect(result.tokenType).toBe('Bearer');
       expect(mockSign).toHaveBeenCalledWith(
-        { sub: 'test@example.com', email: 'test@example.com' },
+        {
+          userId: 'test_example_com',
+          orgId: 'default-org',
+          roles: ['admin', 'estimator'],
+          email: 'test@example.com',
+        },
         'test-secret',
-        expect.objectContaining({ expiresIn: 3600000 }),
+        expect.objectContaining({ expiresIn: 3600 }),
       );
     });
 

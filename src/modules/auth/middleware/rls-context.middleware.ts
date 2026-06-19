@@ -17,17 +17,23 @@ export class RlsContextMiddleware implements NestMiddleware {
     _response: unknown,
     next: () => void,
   ): Promise<void> {
-    if (!authConfig.enabled) {
-      next();
-      return;
+    // Always reset session variable to prevent leakage from pooled connections
+    try {
+      await this.dataSource.query('RESET app.org_id');
+    } catch (error) {
+      this.logger.error('Failed to reset RLS context:', error);
     }
 
     try {
-      const token = this.authService.extractToken(request);
-      if (token) {
-        const decoded = this.authService.validateToken(token);
-        await this.dataSource.query('SET app.org_id = $1', [decoded.orgId]);
+      let orgId = 'demo-org';
+      if (authConfig.enabled) {
+        const token = this.authService.extractToken(request);
+        if (token) {
+          const decoded = this.authService.validateToken(token);
+          orgId = decoded.orgId;
+        }
       }
+      await this.dataSource.query('SET app.org_id = $1', [orgId]);
     } catch (error) {
       this.logger.error('RLS context error:', error);
     }

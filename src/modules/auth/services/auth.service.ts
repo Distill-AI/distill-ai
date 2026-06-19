@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { verify, sign } from 'jsonwebtoken';
 import { authConfig } from '@config/auth.config';
 import type { DecodedToken, AuthUser } from '../interfaces/';
-import { SYS_MSG } from '@constants/system-messages';
+import * as SYS_MSG from '@constants/system-messages';
 
 @Injectable()
 export class AuthService {
@@ -17,9 +17,14 @@ export class AuthService {
         tokenType: 'Bearer',
       };
     }
-    const payload = { sub: email, email };
+    const payload = {
+      userId: email.replace(/[^a-z0-9]/gi, '_'),
+      orgId: 'default-org',
+      roles: ['admin', 'estimator'],
+      email,
+    };
     const accessToken = sign(payload, authConfig.jwtSecret, {
-      expiresIn: authConfig.tokenExpiryMs,
+      expiresIn: Math.floor(authConfig.tokenExpiryMs / 1000),
     });
     return { accessToken, expiresIn: authConfig.tokenExpiryMs, tokenType: 'Bearer' };
   }
