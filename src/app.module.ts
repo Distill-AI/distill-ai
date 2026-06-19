@@ -15,6 +15,7 @@ import { JobsModule } from '@modules/jobs/jobs.module';
 import { DlqModule } from '@modules/dlq/dlq.module';
 import { SchedulerModule } from '@modules/scheduler/scheduler.module';
 import { BenchmarkModule } from '@modules/benchmark/benchmark.module';
+import { PipelineModule } from '@modules/pipeline/pipeline.module';
 
 @Module({
   imports: [
@@ -42,11 +43,12 @@ import { BenchmarkModule } from '@modules/benchmark/benchmark.module';
     RedisModule,
     HealthModule,
 
-    // ── Feature modules — add yours here, remove the reference ones ───────
+    // ── Feature modules , add yours here, remove the reference ones ───────
     JobsModule,
     DlqModule,
     SchedulerModule,
     BenchmarkModule,
+    PipelineModule,
   ],
 })
 export class AppModule {}
