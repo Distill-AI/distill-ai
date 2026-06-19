@@ -8,6 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { AuthService } from '../services/auth.service';
 import { authConfig } from '@config/auth.config';
+import { Role } from '../enums/role.enum';
 import * as SYS_MSG from '@constants/system-messages';
 import type { AuthUser } from '../interfaces/';
 
@@ -25,7 +26,9 @@ export class AuthGuard implements CanActivate {
 
     if (!authConfig.enabled) return true;
 
-    const requiredRoles = this.reflector.get<string[]>('roles', context.getHandler());
+    // Routes that omit @Roles() are intentionally public in demo mode.
+    // When adding a protected route, always annotate it with @Roles(...).
+    const requiredRoles = this.reflector.get<Role[]>('roles', context.getHandler());
     if (!requiredRoles) return true;
 
     try {

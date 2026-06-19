@@ -95,7 +95,7 @@ describe('AuthService', () => {
       it('returns dummy token without calling verify', () => {
         const result = service.validateToken('anything');
         expect(result.userId).toBe('demo-user');
-        expect(result.orgId).toBe('demo-org');
+        expect(result.orgId).toBe('00000000-0000-0000-0000-000000000000');
         expect(result.roles).toEqual(['admin', 'estimator']);
         expect(mockVerify).not.toHaveBeenCalled();
       });
@@ -135,7 +135,7 @@ describe('AuthService', () => {
       mockAuthConfig.enabled = false;
       const result = service.getUser({});
       expect(result.userId).toBe('demo-user');
-      expect(result.orgId).toBe('demo-org');
+      expect(result.orgId).toBe('00000000-0000-0000-0000-000000000000');
     });
   });
 
@@ -148,10 +148,10 @@ describe('AuthService', () => {
       expect(result).toBe('my-org');
     });
 
-    it('returns demo-org when auth disabled', () => {
+    it('returns demo-org UUID when auth disabled', () => {
       mockAuthConfig.enabled = false;
       const result = service.getOrgId({});
-      expect(result).toBe('demo-org');
+      expect(result).toBe('00000000-0000-0000-0000-000000000000');
     });
   });
 });

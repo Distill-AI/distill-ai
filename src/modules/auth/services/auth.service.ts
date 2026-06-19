@@ -13,20 +13,24 @@ export class AuthService {
     if (!authConfig.enabled) {
       return {
         accessToken: 'demo-token',
-        expiresIn: authConfig.tokenExpiryMs,
+        expiresIn: Math.floor(authConfig.tokenExpiryMs / 1000),
         tokenType: 'Bearer',
       };
     }
     const payload = {
       userId: email.replace(/[^a-z0-9]/gi, '_'),
-      orgId: 'default-org',
+      orgId: '11111111-1111-1111-1111-111111111111',
       roles: ['admin', 'estimator'],
       email,
     };
     const accessToken = sign(payload, authConfig.jwtSecret, {
       expiresIn: Math.floor(authConfig.tokenExpiryMs / 1000),
     });
-    return { accessToken, expiresIn: authConfig.tokenExpiryMs, tokenType: 'Bearer' };
+    return {
+      accessToken,
+      expiresIn: Math.floor(authConfig.tokenExpiryMs / 1000),
+      tokenType: 'Bearer',
+    };
   }
 
   extractToken(request: {
@@ -74,7 +78,7 @@ export class AuthService {
   private dummyToken(): DecodedToken {
     return {
       userId: 'demo-user',
-      orgId: 'demo-org',
+      orgId: '00000000-0000-0000-0000-000000000000',
       roles: ['admin', 'estimator'],
       email: 'demo@example.com',
       iat: 0,
