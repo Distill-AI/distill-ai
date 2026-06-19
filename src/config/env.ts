@@ -44,6 +44,18 @@ const envSchema = z.object({
     .transform((v) => Math.max(1, v)),
   LEASE_TTL_SECONDS: z.coerce.number().int().positive().default(60),
 
+  // ── Pipeline (US-E8-4) ────────────────────────────────────────────────────
+  PIPELINE_CONCURRENCY: z.coerce
+    .number()
+    .int()
+    .default(3)
+    .transform((v) => Math.max(1, v)),
+  SWEEP_STALE_SECONDS: z.coerce
+    .number()
+    .int()
+    .default(60)
+    .transform((v) => Math.max(1, v)),
+
   // ── Reference feature: DLQ alert email (remove if not using DLQ) ─────────
   DLQ_ALERT_THRESHOLD: z.coerce.number().int().positive().default(10),
   ALERT_EMAIL: z.string().email().default('admin@example.com'),
