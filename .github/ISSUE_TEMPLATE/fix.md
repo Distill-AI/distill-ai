@@ -18,7 +18,9 @@ US-E
 
 ## Domain / Module
 
-<!-- Which module is affected? e.g. ingestion, extraction, catalog, quotes, approval, queue -->
+<!-- Which module is affected?
+     Server: ingestion, extraction, catalog, quotes, approval, queue, redis, sse, auth
+     Client: client (shell), inbox, review, clarification, analytics, settings -->
 
 ## Bug Description
 
