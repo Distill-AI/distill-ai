@@ -20,7 +20,7 @@ export function DistillMark({ size = 18, color = '#fff' }: DistillMarkProps) {
           <circle cx="37" cy="11.5" r="1.6" fill={color} />
         </>
       )}
-      {/* funnel body — wide top (x 8→44), narrows to 6-unit neck at bottom (x 23→29) */}
+      {/* funnel body: wide top (x 8 to 44), narrows to 6-unit neck at bottom (x 23 to 29) */}
       <path d="M8 18 H44 L29 38 H23 L8 18 Z" fill={color} />
       {/* droplet below the neck */}
       <path d="M26 40 C26 40 20 48 20 52 a6 6 0 0 0 12 0 C32 48 26 40 26 40 Z" fill={color} />

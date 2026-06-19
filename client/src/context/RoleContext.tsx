@@ -22,7 +22,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.setItem(STORAGE_KEY, r);
     } catch {
-      // swallow — role state still updates in memory
+      // swallow: role state still updates in memory
     }
     setRoleState(r);
   }

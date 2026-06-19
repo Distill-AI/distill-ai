@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useRole } from '../../hooks/useRole';
 import type { Role } from '../../context/RoleContext';
@@ -99,12 +100,42 @@ const NAV_ITEMS: NavItem[] = [
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { role } = useRole();
   const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(role));
+  const navRef = useRef<HTMLElement>(null);
 
   const initials = 'AR';
   const userName = 'Avery Reed';
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const nav = navRef.current;
+    if (!nav) return;
+
+    const selector = 'a[href], button, [tabindex]:not([tabindex="-1"])';
+    const getFocusable = () => Array.from(nav.querySelectorAll<HTMLElement>(selector));
+
+    getFocusable()[0]?.focus();
+
+    function onTab(e: KeyboardEvent) {
+      if (e.key !== 'Tab') return;
+      const els = getFocusable();
+      if (els.length === 0) return;
+      if (e.shiftKey && document.activeElement === els[0]) {
+        e.preventDefault();
+        els[els.length - 1].focus();
+      } else if (!e.shiftKey && document.activeElement === els[els.length - 1]) {
+        e.preventDefault();
+        els[0].focus();
+      }
+    }
+
+    document.addEventListener('keydown', onTab);
+    return () => document.removeEventListener('keydown', onTab);
+  }, [isOpen]);
+
   return (
     <nav
+      ref={navRef}
+      id="sidebar-nav"
       className={[
         'flex flex-col w-52 flex-none bg-slate-900 h-full',
         'fixed inset-y-0 left-0 z-50 transition-transform duration-200 ease-in-out',

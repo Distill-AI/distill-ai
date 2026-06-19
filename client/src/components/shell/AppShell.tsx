@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
@@ -9,19 +9,38 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+
+  function closeSidebar() {
+    setSidebarOpen(false);
+    menuButtonRef.current?.focus();
+  }
+
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') closeSidebar();
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [sidebarOpen]);
 
   return (
     <div className="flex h-screen overflow-hidden">
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 md:hidden"
-          onClick={() => setSidebarOpen(false)}
+          onClick={closeSidebar}
           aria-hidden="true"
         />
       )}
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <TopBar onMenuClick={() => setSidebarOpen(true)} />
+        <TopBar
+          isOpen={sidebarOpen}
+          menuButtonRef={menuButtonRef}
+          onMenuClick={() => setSidebarOpen(true)}
+        />
         <main className="flex-1 overflow-y-auto bg-canvas">{children}</main>
       </div>
     </div>

@@ -6,12 +6,12 @@ const ROLES: { value: Role; label: string; description: string }[] = [
   {
     value: 'RevOps',
     label: 'RevOps',
-    description: 'Full access — inbox, quotes, catalog, analytics. Demo persona: Avery Reed.',
+    description: 'Full access: inbox, quotes, catalog, analytics. Demo persona: Avery Reed.',
   },
   {
     value: 'Sales',
     label: 'Sales',
-    description: 'Inbox and quotes only — no catalog access or analytics.',
+    description: 'Inbox and quotes only, no catalog access or analytics.',
   },
   {
     value: 'Admin',
@@ -70,12 +70,12 @@ export function Settings() {
         </div>
         {ROLES.filter((r) => r.value === role).map(({ value, description }) => (
           <p key={value} className="text-sm text-body-text">
-            <span className="font-medium text-slate-900">{role}</span> — {description}
+            <span className="font-medium text-slate-900">{role}</span> - {description}
           </p>
         ))}
       </section>
 
-      {/* Confidence thresholds — read-only in V1 */}
+      {/* Confidence thresholds (read-only in V1) */}
       <section className="bg-surface border border-border rounded-card p-5">
         <h2 className="text-sm font-semibold text-slate-900 mb-1">Confidence thresholds</h2>
         <p className="text-sm text-body-text mb-4">
