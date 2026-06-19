@@ -28,6 +28,7 @@ export class ToolCallsActions {
   async insertLog(params: ToolCallLogParams): Promise<void> {
     try {
       await this.dataSource
+        .getRepository(ToolCallEntity)
         .createQueryBuilder()
         .insert()
         .into(ToolCallEntity)
