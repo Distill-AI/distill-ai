@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { useRole } from '../../context/RoleContext';
+import { useRole } from '../../hooks/useRole';
 import type { Role } from '../../context/RoleContext';
 import { DistillMark } from './DistillMark';
 

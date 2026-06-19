@@ -42,6 +42,11 @@
   /* shape tokens */
   --radius-card:   12px;
   --radius-button: 8px;
+
+  /* spacing tokens */
+  --spacing-grid-base:  8px;
+  --spacing-page-pad:  24px;
+  --spacing-control-h: 36px;
 }
 
 /* UA stylesheets do not inherit font-family on form elements — set explicitly */

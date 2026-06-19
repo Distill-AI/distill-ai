@@ -3,6 +3,10 @@ import { MemoryRouter } from 'react-router-dom';
 import App from './App';
 
 describe('App', () => {
+  afterEach(() => {
+    localStorage.removeItem('distill.role');
+  });
+
   it('renders the sidebar with brand lockup and nav links', () => {
     render(
       <MemoryRouter>
@@ -28,7 +32,5 @@ describe('App', () => {
 
     expect(screen.queryByRole('link', { name: /catalog/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /analytics/i })).not.toBeInTheDocument();
-
-    localStorage.removeItem('distill.role');
   });
 });
