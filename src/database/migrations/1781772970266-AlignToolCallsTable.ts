@@ -82,12 +82,28 @@ export class AlignToolCallsTable1781772970266 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    // Re-create tool_name enum type
+    // Re-create tool_name enum type – dynamically include all values that exist
+    // in the table to avoid cast failures for tools registered after the UP migration.
     await queryRunner.query(`
-      DO $$ BEGIN
-        CREATE TYPE "public"."tool_name" AS ENUM('extract_request', 'search_catalog', 'render_quote_pdf', 'explain_routing');
+      DO $$
+      DECLARE
+        name_list TEXT;
+      BEGIN
+        SELECT STRING_AGG(DISTINCT QUOTE_LITERAL(val), ', ' ORDER BY QUOTE_LITERAL(val))
+        INTO name_list
+        FROM (
+          SELECT tool_name AS val FROM tool_calls
+          UNION
+          SELECT unnest(
+            ARRAY['extract_request', 'search_catalog', 'render_quote_pdf', 'explain_routing']
+          )
+        ) combined;
+
+        IF name_list IS NOT NULL THEN
+          EXECUTE 'CREATE TYPE "public"."tool_name" AS ENUM(' || name_list || ')';
+        END IF;
       EXCEPTION WHEN duplicate_object THEN NULL;
-      END $$
+      END $$;
     `);
 
     // Revert tool_name back to enum type
@@ -148,6 +164,13 @@ export class AlignToolCallsTable1781772970266 implements MigrationInterface {
     `);
 
     // Revert tool_call_status enum (remove added values)
+    // Map new statuses to legacy values
+    await queryRunner.query(`
+      UPDATE "tool_calls"
+      SET "status" = 'error'
+      WHERE "status" IN ('timeout', 'validation_error')
+    `);
+
     await queryRunner.query(`
       CREATE TYPE "public"."tool_call_status_tmp" AS ENUM('ok', 'error')
     `);
