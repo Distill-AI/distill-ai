@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import * as SYS_MSG from '@constants/system-messages';
 import { ToolsService } from './tools.service';
@@ -11,6 +11,7 @@ export class ToolsController {
   constructor(private readonly toolsService: ToolsService) {}
 
   @Post('invoke')
+  @HttpCode(HttpStatus.OK)
   @InvokeToolDocs()
   async invoke(@Body() dto: InvokeRequestDto): Promise<{
     statusCode: number;

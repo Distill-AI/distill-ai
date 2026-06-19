@@ -73,20 +73,6 @@ export function InvokeToolDocs() {
       },
     }),
     ApiResponse({
-      status: HttpStatus.BAD_REQUEST,
-      description: 'Input validation failed',
-      schema: errorSchema(
-        HttpStatus.BAD_REQUEST,
-        'Bad Request',
-        SYS_MSG.TOOL_INPUT_VALIDATION_FAILED,
-      ),
-    }),
-    ApiResponse({
-      status: HttpStatus.NOT_FOUND,
-      description: 'Tool not found',
-      schema: errorSchema(HttpStatus.NOT_FOUND, 'Not Found', SYS_MSG.TOOL_NOT_FOUND('echo_tool')),
-    }),
-    ApiResponse({
       status: HttpStatus.INTERNAL_SERVER_ERROR,
       description: 'Unexpected server error',
       schema: errorSchema(

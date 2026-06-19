@@ -1,4 +1,3 @@
-/* src/modules/tools/interfaces/tool-contract.interface.ts */
 import { z, ZodTypeAny } from 'zod';
 import { ToolTier } from '../enums/tools.enums';
 

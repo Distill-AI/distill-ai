@@ -1,7 +1,12 @@
 import { ToolStatus } from '../enums/tools.enums';
+import { IsDefined, IsNotEmpty, IsString } from 'class-validator';
 
-export interface InvokeRequestDto {
+export class InvokeRequestDto {
+  @IsString()
+  @IsNotEmpty()
   toolName: string;
+
+  @IsDefined()
   args: unknown;
 }
 

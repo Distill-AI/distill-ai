@@ -45,10 +45,8 @@ export class ToolCallsActions {
         .execute();
     } catch (err) {
       // Logging only – do NOT re‑throw, because the caller already has a result.
-      this.logger.error(
-        `Failed to insert tool_calls log for ${params.toolName}: ${err}`,
-        err instanceof Error ? err.stack : undefined,
-      );
+      const safeErr = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Failed to insert tool_calls log for ${params.toolName}: ${safeErr}`);
     }
   }
 }
