@@ -1,3 +1,4 @@
+import { ToolsModule } from './modules/tools/tools.module';
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
@@ -51,6 +52,7 @@ import { PipelineModule } from '@modules/pipeline/pipeline.module';
     DlqModule,
     SchedulerModule,
     BenchmarkModule,
+    ToolsModule,
     PipelineModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: HttpExceptionFilter }],

@@ -43,3 +43,15 @@ export const DLQ_THRESHOLD_EXCEEDED = (count: number, threshold: number) =>
 export const REQUEST_NOT_FOUND = (id: string) => `Request ${id} not found`;
 export const PIPELINE_ENQUEUED = 'Request enqueued for pipeline processing';
 export const PIPELINE_RESUMED = 'Request resumed for pipeline processing';
+
+// Tool Registry (US-E8-5)
+export const TOOL_NOT_FOUND = (name: string) =>
+  `Tool "${name}" is not registered or does not exist`;
+export const TOOL_INPUT_VALIDATION_FAILED = 'Input validation failed';
+export const TOOL_OUTPUT_VALIDATION_FAILED = 'Output validation failed';
+export const TOOL_EXECUTION_TIMEOUT = 'Execution timed out';
+export const TOOL_INVOKE_SUCCESS = 'Tool invoked successfully';
+export const TOOL_LIST_SUCCESS = 'Tools retrieved successfully';
+export const TOOL_ALREADY_REGISTERED = (name: string) => `Tool "${name}" is already registered`;
+export const TOOL_NAME_RESERVED = (name: string) =>
+  `Tool name "${name}" is reserved and cannot be used`;
