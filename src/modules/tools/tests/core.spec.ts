@@ -71,6 +71,6 @@ describe('ToolRegistry – Core / Integration', () => {
   it('FR-6: returns TOOL_NOT_FOUND error for unknown tool', async () => {
     const res = await registry.invoke('nonexistent', {});
     expect(res.status).toBe(ToolStatus.ERROR);
-    expect(res.error).toContain('not found');
+    expect(res.error).toContain('not registered');
   });
 });
