@@ -7,7 +7,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { ToolCallStatus, ToolTier } from '../enums/tools.enums';
+import { ToolCallStatus } from '../enums/tools.enums';
 import { Request } from '../../requests/entities/request.entity';
 
 @Entity({ name: 'tool_calls' })
@@ -16,13 +16,16 @@ export class ToolCallEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'uuid', nullable: true })
-  request_id?: string | null;
+  @Column({ type: 'uuid' })
+  request_id: string;
 
-  @ManyToOne(() => Request, { nullable: true })
+  @ManyToOne(() => Request)
   @JoinColumn({ name: 'request_id' })
-  request?: Request | null;
+  request?: Request;
 
+  // varchar (not enum) so the dynamic registry pattern can register tools
+  // at startup.  The type-level ToolName boundary in pipeline/types.ts
+  // excludes reserved identifiers (price/policy/score) at compile time.
   @Column({ type: 'varchar', length: 100 })
   @Index()
   tool_name: string;
@@ -39,21 +42,11 @@ export class ToolCallEntity {
   @Column({ type: 'int' })
   latency_ms: number;
 
-  @Column({ type: 'jsonb', nullable: true })
-  input_args: unknown;
+  @Column({ type: 'jsonb' })
+  args: unknown;
 
   @Column({ type: 'jsonb', nullable: true })
-  output_result: unknown;
-
-  @Column({ type: 'text', nullable: true })
-  error_message: string | null;
-
-  @Column({
-    type: 'enum',
-    enum: ToolTier,
-    enumName: 'tool_tier',
-  })
-  tier: ToolTier;
+  error_detail: unknown;
 
   @CreateDateColumn({ type: 'timestamptz' })
   @Index()

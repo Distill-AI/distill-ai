@@ -2,17 +2,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { ToolCallEntity } from '../entities/tool-calls.entity';
-import { ToolCallStatus, ToolTier } from '../enums/tools.enums';
+import { ToolCallStatus } from '../enums/tools.enums';
 
 export interface ToolCallLogParams {
   toolName: string;
   status: ToolCallStatus;
   latencyMs: number;
-  input: unknown;
-  output?: unknown;
-  errorMessage?: string;
-  tier: ToolTier;
-  requestId?: string;
+  args: unknown;
+  errorDetail?: unknown;
+  requestId: string;
 }
 
 /**
@@ -36,11 +34,9 @@ export class ToolCallsActions {
           tool_name: params.toolName,
           status: params.status,
           latency_ms: params.latencyMs,
-          input_args: params.input,
-          output_result: params.output ?? null,
-          error_message: params.errorMessage ?? null,
-          tier: params.tier,
-          request_id: params.requestId ?? null,
+          args: params.args,
+          error_detail: params.errorDetail ?? null,
+          request_id: params.requestId,
         } as Record<string, unknown>)
         .execute();
     } catch (err) {
