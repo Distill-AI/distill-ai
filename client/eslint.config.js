@@ -5,9 +5,6 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 import prettierPlugin from 'eslint-plugin-prettier/recommended'
-import { createRequire } from 'module';
-
-const require = createRequire(import.meta.url);
 
 export default defineConfig([
   globalIgnores(['dist']),
@@ -24,4 +21,4 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
-]);
+])
