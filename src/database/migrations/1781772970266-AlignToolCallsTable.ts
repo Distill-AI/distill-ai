@@ -12,7 +12,7 @@ export class AlignToolCallsTable1781772970266 implements MigrationInterface {
       ALTER TYPE "public"."tool_call_status" ADD VALUE IF NOT EXISTS 'validation_error'
     `);
 
-    // 2. Create tool_tier enum type
+    // 2. Create tool_tier enum type (idempotent)
     await queryRunner.query(`
       DO $$ BEGIN
         CREATE TYPE "public"."tool_tier" AS ENUM('free', 'pro', 'enterprise', 'internal');
@@ -59,7 +59,7 @@ export class AlignToolCallsTable1781772970266 implements MigrationInterface {
         ALTER COLUMN "latency_ms" SET NOT NULL
     `);
 
-    // 8. Set a default tier for existing rows
+    // 8. Set a default tier for existing rows, then make NOT NULL
     await queryRunner.query(`
       UPDATE "tool_calls" SET "tier" = 'internal' WHERE "tier" IS NULL
     `);
@@ -67,9 +67,53 @@ export class AlignToolCallsTable1781772970266 implements MigrationInterface {
       ALTER TABLE "tool_calls"
         ALTER COLUMN "tier" SET NOT NULL
     `);
+
+    // 9. Drop old columns no longer used by the entity
+    await queryRunner.query(`
+      ALTER TABLE "tool_calls"
+        DROP COLUMN IF EXISTS "args",
+        DROP COLUMN IF EXISTS "error_detail"
+    `);
+
+    // 10. Drop old tool_name enum type (no longer referenced)
+    await queryRunner.query(`
+      DROP TYPE IF EXISTS "public"."tool_name"
+    `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    // Re-create tool_name enum type
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "public"."tool_name" AS ENUM('extract_request', 'search_catalog', 'render_quote_pdf', 'explain_routing');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
+    `);
+
+    // Revert tool_name back to enum type
+    await queryRunner.query(`
+      ALTER TABLE "tool_calls"
+        ALTER COLUMN "tool_name" TYPE "public"."tool_name"
+        USING "tool_name"::text::"public"."tool_name"
+    `);
+
+    // Re-create old columns (nullable so data can be migrated back)
+    await queryRunner.query(`
+      ALTER TABLE "tool_calls"
+        ADD COLUMN IF NOT EXISTS "args" jsonb,
+        ADD COLUMN IF NOT EXISTS "error_detail" jsonb
+    `);
+    await queryRunner.query(`
+      UPDATE "tool_calls" SET
+        "args" = "input_args",
+        "error_detail" = to_jsonb("error_message")
+      WHERE "args" IS NULL
+    `);
+    await queryRunner.query(`
+      ALTER TABLE "tool_calls"
+        ALTER COLUMN "args" SET NOT NULL
+    `);
+
     // Revert tier to nullable
     await queryRunner.query(`
       ALTER TABLE "tool_calls" ALTER COLUMN "tier" DROP NOT NULL
@@ -82,26 +126,11 @@ export class AlignToolCallsTable1781772970266 implements MigrationInterface {
 
     // Revert request_id back to NOT NULL
     await queryRunner.query(`
-      UPDATE "tool_calls" SET "request_id" = '00000000-0000-0000-0000-000000000000' WHERE "request_id" IS NULL
+      UPDATE "tool_calls" SET "request_id" = '00000000-0000-0000-0000-000000000000'
+        WHERE "request_id" IS NULL
     `);
     await queryRunner.query(`
       ALTER TABLE "tool_calls" ALTER COLUMN "request_id" SET NOT NULL
-    `);
-
-    // Revert tool_name back to enum type
-    await queryRunner.query(`
-      CREATE TYPE "public"."tool_name_tmp" AS ENUM('extract_request', 'search_catalog', 'render_quote_pdf', 'explain_routing')
-    `);
-    await queryRunner.query(`
-      ALTER TABLE "tool_calls"
-        ALTER COLUMN "tool_name" TYPE "public"."tool_name_tmp"
-        USING "tool_name"::text::"public"."tool_name_tmp"
-    `);
-    await queryRunner.query(`
-      DROP TYPE IF EXISTS "public"."tool_name"
-    `);
-    await queryRunner.query(`
-      ALTER TYPE "public"."tool_name_tmp" RENAME TO "tool_name"
     `);
 
     // Drop new columns
@@ -119,8 +148,6 @@ export class AlignToolCallsTable1781772970266 implements MigrationInterface {
     `);
 
     // Revert tool_call_status enum (remove added values)
-    // PostgreSQL doesn't support removing values from enums directly,
-    // so we recreate the type
     await queryRunner.query(`
       CREATE TYPE "public"."tool_call_status_tmp" AS ENUM('ok', 'error')
     `);
