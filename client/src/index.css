@@ -1,8 +1,67 @@
 @import "tailwindcss";
 
+@theme {
+  /* brand fonts */
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* brand colours */
+  --color-brand-ink:  #1E1B4B;
+  --color-slate-900:  #0F172A;
+  --color-slate-800:  #1E293B;
+  --color-indigo-50:  #EEF2FF;
+  --color-indigo-100: #E0E7FF;
+  --color-indigo-200: #C7D2FE;
+  --color-indigo-400: #818CF8;
+  --color-indigo-600: #4F46E5;
+  --color-indigo-700: #4338CA;
+  --color-accent:     #6366F1;
+  --color-canvas:     #F6F7F9;
+  --color-surface:    #FFFFFF;
+  --color-body-text:  #475569;
+  --color-muted:      #94A3B8;
+  --color-border:     #E5E7EB;
+
+  /* confidence system: sacred, never repurpose for decoration */
+  --color-hi-bg:  #DCFCE7;
+  --color-hi-tx:  #15803D;
+  --color-hi-dot: #22C55E;
+  --color-md-bg:  #FEF3C7;
+  --color-md-tx:  #B45309;
+  --color-md-dot: #F59E0B;
+  --color-lo-bg:  #FEE2E2;
+  --color-lo-tx:  #B91C1C;
+  --color-lo-dot: #EF4444;
+
+  /* request status badge colours */
+  --color-parse-bg: #DBEAFE;
+  --color-parse-tx: #1D4ED8;
+  --color-sent-bg:  #F1F5F9;
+  --color-sent-tx:  #475569;
+
+  /* shape tokens */
+  --radius-card:   12px;
+  --radius-button: 8px;
+
+  /* spacing tokens */
+  --spacing-grid-base:  8px;
+  --spacing-page-pad:  24px;
+  --spacing-control-h: 36px;
+}
+
+/* UA stylesheets do not inherit font-family on form elements: set explicitly */
+button,
+input,
+textarea,
+select {
+  font-family: var(--font-sans);
+}
+
 body {
   margin: 0;
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
-  background-color: #f9fafb;
-  color: #111827;
+  font-family: var(--font-sans);
+  background-color: var(--color-canvas);
+  color: var(--color-slate-900);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.6;
 }
