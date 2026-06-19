@@ -46,7 +46,9 @@ export class PipelineGraphEngine {
         attributes: { resumed_from_node: req.current_node, reason: 'crash_recovery' },
       });
     }
-    await this.requests.setStatus(requestId, RequestStatus.PARSING);
+    // Stamp processing_started_at (not just status): the recovery sweep keys off that timestamp,
+    // so a bare setStatus(PARSING) would leave crashed runs undetectable.
+    await this.requests.markProcessing(requestId);
 
     let node = req.current_node;
     let steps = 0;
