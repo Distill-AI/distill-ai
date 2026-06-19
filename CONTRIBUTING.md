@@ -679,6 +679,23 @@ The `audit_events` table is excluded from TypeORM sync entirely via `@Entity('au
 
 ---
 
+## Environment Variables
+
+All env vars must be declared in `src/config/env.ts` and accessed via the exported `env` object — never via `process.env` directly. The Zod schema there validates values at boot and fails fast on missing or malformed config, so a direct `process.env` read silently bypasses that safety net and loses type information.
+
+```ts
+// Bad
+const dsn = process.env.SENTRY_DSN;
+
+// Good
+import { env } from '@config/env';
+const dsn = env.SENTRY_DSN;
+```
+
+`src/config/env.ts` only imports `dotenv` and `zod` — it is safe to import before `reflect-metadata` and before NestJS bootstraps, which means it can also be used in process-level init files like `src/instrument.ts`.
+
+---
+
 ## Code Style
 
 ```sh
