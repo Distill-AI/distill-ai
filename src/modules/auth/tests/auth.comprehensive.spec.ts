@@ -176,13 +176,37 @@ describe('Auth — Comprehensive', () => {
   describe('RLS middleware integration', () => {
     let moduleRef: TestingModule;
 
+    function makeResponse() {
+      return {
+        statusCode: 200,
+        on: vi.fn(),
+      };
+    }
+
+    function makeQueryRunner() {
+      return {
+        connect: vi.fn().mockResolvedValue(undefined),
+        startTransaction: vi.fn().mockResolvedValue(undefined),
+        query: vi.fn().mockResolvedValue(undefined),
+        commitTransaction: vi.fn().mockResolvedValue(undefined),
+        rollbackTransaction: vi.fn().mockResolvedValue(undefined),
+        release: vi.fn().mockResolvedValue(undefined),
+        isReleased: false,
+        manager: {},
+      };
+    }
+
     beforeEach(async () => {
+      const queryRunner = makeQueryRunner();
       moduleRef = await Test.createTestingModule({
         imports: [AuthModule],
         providers: [
           {
             provide: DataSource,
-            useValue: { query: vi.fn().mockResolvedValue(undefined) },
+            useValue: {
+              query: vi.fn().mockResolvedValue(undefined),
+              createQueryRunner: vi.fn().mockReturnValue(queryRunner),
+            },
           },
         ],
       }).compile();
@@ -206,50 +230,55 @@ describe('Auth — Comprehensive', () => {
       const authSvc = moduleRef.get(AuthService);
       const middleware = new RlsContextMiddleware(dataSource, authSvc);
 
-      const request = { headers: { authorization: 'Bearer rls-token' } };
+      const request: Record<string, unknown> = { headers: { authorization: 'Bearer rls-token' } };
+      const response = makeResponse();
       const next = vi.fn();
 
-      await middleware.use(request as never, {} as never, next);
+      await middleware.use(request as never, response as never, next);
 
-      expect(dataSource.query).toHaveBeenCalledWith('SELECT set_config($1, $2, false)', [
+      const qr = (dataSource.createQueryRunner as ReturnType<typeof vi.fn>).mock.results[0].value;
+      expect(qr.query).toHaveBeenCalledWith('SELECT set_config($1, $2, true)', [
         'app.org_id',
         'org-rls',
       ]);
       expect(next).toHaveBeenCalled();
     });
 
-    it('sets app.org_id to demo-org when auth is disabled', async () => {
+    it('sets app.org_id to demo-org UUID when auth is disabled', async () => {
       mockAuthConfig.enabled = false;
 
       const dataSource = moduleRef.get(DataSource);
       const authSvc = moduleRef.get(AuthService);
       const middleware = new RlsContextMiddleware(dataSource, authSvc);
 
-      const request = { headers: { authorization: 'Bearer some-token' } };
+      const request: Record<string, unknown> = { headers: { authorization: 'Bearer some-token' } };
+      const response = makeResponse();
       const next = vi.fn();
 
-      await middleware.use(request as never, {} as never, next);
+      await middleware.use(request as never, response as never, next);
 
-      expect(dataSource.query).toHaveBeenCalledWith('SELECT set_config($1, $2, false)', [
+      const qr = (dataSource.createQueryRunner as ReturnType<typeof vi.fn>).mock.results[0].value;
+      expect(qr.query).toHaveBeenCalledWith('SELECT set_config($1, $2, true)', [
         'app.org_id',
-        'demo-org',
+        '00000000-0000-0000-0000-000000000000',
       ]);
       expect(next).toHaveBeenCalled();
     });
 
     it('propagates error when set_config fails', async () => {
       const dataSource = moduleRef.get(DataSource);
-      (dataSource.query as ReturnType<typeof vi.fn>)
-        .mockResolvedValueOnce(undefined)
-        .mockRejectedValueOnce(new Error('connection lost'));
+      const errorQr = makeQueryRunner();
+      errorQr.query.mockRejectedValueOnce(new Error('connection lost'));
+      (dataSource.createQueryRunner as ReturnType<typeof vi.fn>).mockReturnValue(errorQr);
 
       const authSvc = moduleRef.get(AuthService);
       const middleware = new RlsContextMiddleware(dataSource, authSvc);
 
-      const request = { headers: { authorization: 'Bearer fail-token' } };
+      const request: Record<string, unknown> = { headers: { authorization: 'Bearer fail-token' } };
+      const response = makeResponse();
       const next = vi.fn();
 
-      await middleware.use(request as never, {} as never, next);
+      await middleware.use(request as never, response as never, next);
 
       expect(next).toHaveBeenCalledWith(expect.any(Error));
     });
@@ -319,12 +348,12 @@ describe('Auth — Comprehensive', () => {
 
       const result = await service.login('test@example.com', 'password');
       expect(result.accessToken).toBe('mock-jwt-token');
-      expect(result.expiresIn).toBe(mockAuthConfig.tokenExpiryMs);
+      expect(result.expiresIn).toBe(Math.floor(mockAuthConfig.tokenExpiryMs / 1000));
       expect(result.tokenType).toBe('Bearer');
       expect(mockSign).toHaveBeenCalledWith(
         {
           userId: 'test_example_com',
-          orgId: 'default-org',
+          orgId: '11111111-1111-1111-1111-111111111111',
           roles: ['admin', 'estimator'],
           email: 'test@example.com',
         },

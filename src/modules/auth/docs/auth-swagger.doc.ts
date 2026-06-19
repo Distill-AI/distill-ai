@@ -42,7 +42,7 @@ export function LoginDocs() {
     }),
     ApiResponse({
       status: HttpStatus.UNAUTHORIZED,
-      description: 'Invalid credentials',
+      description: SYS_MSG.AUTH_INVALID_CREDENTIALS,
       schema: errorSchema(HttpStatus.UNAUTHORIZED, 'Unauthorized', 'Invalid credentials'),
     }),
   );
@@ -66,7 +66,7 @@ export function ProfileDocs() {
     }),
     ApiResponse({
       status: HttpStatus.UNAUTHORIZED,
-      description: 'Missing or invalid token',
+      description: SYS_MSG.AUTH_TOKEN_MISSING_OR_INVALID,
       schema: errorSchema(HttpStatus.UNAUTHORIZED, 'Unauthorized', SYS_MSG.AUTH_UNAUTHORIZED),
     }),
     ApiResponse({
