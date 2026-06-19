@@ -117,6 +117,44 @@ describe('graph-resume', () => {
     expect(requests.record.current_node).toBe(CurrentNode.DONE);
   });
 
+  it('on a logical node error: escalates to needs_review, keeps current_node, emits node.exited', async () => {
+    const requests = makeFakeRequests(CurrentNode.CLASSIFY);
+    const events = makeEvents();
+    const registry = new NodeRegistry();
+    registry.register({
+      name: CurrentNode.CLASSIFY,
+      run: (): Promise<NodeResult> => Promise.reject(new Error('boom')),
+    });
+    const engine = new PipelineGraphEngine(
+      registry,
+      requests as unknown as RequestModelAction,
+      events as unknown as EventsService,
+    );
+
+    await engine.run('req-1');
+
+    // Logical (non-infra) error escalates for human review and leaves the node in place for resume.
+    expect(requests.record.status).toBe(RequestStatus.NEEDS_REVIEW);
+    expect(requests.record.current_node).toBe(CurrentNode.CLASSIFY);
+    expect(requests.setCurrentNode).not.toHaveBeenCalled();
+    // SSE must still see a clean close: both the error and the node.exited for the failing node.
+    expect(events.emit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventName: 'stage.error',
+        attributes: expect.objectContaining({
+          node: CurrentNode.CLASSIFY,
+          escalated_to_human: true,
+        }),
+      }),
+    );
+    expect(events.emit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventName: 'node.exited',
+        attributes: expect.objectContaining({ node: CurrentNode.CLASSIFY, next: 'needs_review' }),
+      }),
+    );
+  });
+
   it('writes the current_node checkpoint before the next node runs', async () => {
     const requests = makeFakeRequests(CurrentNode.PARSE);
     const events = makeEvents();

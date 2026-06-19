@@ -5,15 +5,8 @@ import { RequestRouting } from '@modules/requests/enums/request-routing.enum';
 import { RequestModelAction } from '@modules/requests/requests.model-action';
 import { EventsService } from '@modules/events/events.service';
 import { NodeRegistry } from './node-registry';
+import { isInfraError } from './pipeline.errors';
 import type { NodeResult } from './types';
-
-/** Marker for infrastructure failures (DB/queue/network). Anything else is a recoverable logical error. */
-export class PipelineInfraError extends Error {}
-
-/** Infra errors fail the run; every other error escalates the request to human review. */
-function isInfraError(err: unknown): boolean {
-  return err instanceof PipelineInfraError;
-}
 
 /** Safety cap on node transitions per run, guards against a buggy node creating a cycle. */
 const MAX_NODE_TRANSITIONS = 50;
@@ -100,6 +93,14 @@ export class PipelineGraphEngine {
           await this.checkpoint(requestId, CurrentNode.FAILED, node, orgId);
           return this.finalize(orgId, requestId, RequestStatus.FAILED);
         }
+        // Logical error: leave current_node on the throwing node so resume re-enters there, but
+        // still emit node.exited so SSE clients see a clean close instead of a hung node.
+        await this.events.emit({
+          eventName: 'node.exited',
+          orgId,
+          requestId,
+          attributes: { node, next: 'needs_review' },
+        });
         return this.finalize(orgId, requestId, RequestStatus.NEEDS_REVIEW);
       }
 
@@ -157,6 +158,9 @@ export class PipelineGraphEngine {
     if (endNode === CurrentNode.FAILED) {
       return RequestStatus.FAILED;
     }
+    // Deliberate re-fetch (NOT the req from run()): the `score` node is the deterministic routing
+    // source and writes `routing` during this run, so the value read at run() entry is still null
+    // here. Reusing it would resolve every request to NEEDS_REVIEW once the real score node lands.
     const req = await this.requests.get({ identifierOptions: { id: requestId } });
     return req?.routing === RequestRouting.AUTO_ELIGIBLE
       ? RequestStatus.PRICED
