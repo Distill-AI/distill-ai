@@ -22,6 +22,10 @@ export class AuthController {
   @Roles(Role.ADMIN, Role.ESTIMATOR, Role.VIEWER)
   @ProfileDocs()
   profile(@Req() req: { user?: AuthUser }) {
-    return { statusCode: HttpStatus.OK, message: SYS_MSG.AUTH_PROFILE_FETCHED, data: req.user! };
+    return {
+      statusCode: HttpStatus.OK,
+      message: SYS_MSG.AUTH_PROFILE_FETCHED,
+      data: this.authService.getUser(req),
+    };
   }
 }

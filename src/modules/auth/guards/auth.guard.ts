@@ -8,7 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { AuthService } from '../services/auth.service';
 import { authConfig } from '@config/auth.config';
-import { SYS_MSG } from '@constants/system-messages';
+import * as SYS_MSG from '@constants/system-messages';
 import type { AuthUser } from '../interfaces/';
 
 @Injectable()

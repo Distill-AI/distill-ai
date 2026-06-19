@@ -6,12 +6,30 @@ export class CreateRlsPolicies1781771970267 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     const orgIdTables = ['users', 'requests', 'quotes', 'pricing_rules', 'skus', 'audit_events'];
 
+    // Validate all tables have org_id column
+    for (const table of orgIdTables) {
+      const result = await queryRunner.query(
+        `
+        SELECT column_name, data_type 
+        FROM information_schema.columns 
+        WHERE table_name = $1 AND column_name = 'org_id'
+      `,
+        [table],
+      );
+      if (result.length === 0) {
+        throw new Error(`Table "${table}" missing required org_id column for RLS`);
+      }
+      if (result[0].data_type !== 'uuid') {
+        throw new Error(`Table "${table}" org_id column must be uuid, got ${result[0].data_type}`);
+      }
+    }
+
     for (const table of orgIdTables) {
       await queryRunner.query(`
-        DO $$ BEGIN
+        DO $ BEGIN
           ALTER TABLE "${table}" ENABLE ROW LEVEL SECURITY;
         EXCEPTION WHEN duplicate_object THEN NULL;
-        END $$;
+        END $;
       `);
 
       await queryRunner.query(`

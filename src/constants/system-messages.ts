@@ -45,10 +45,8 @@ export const PIPELINE_ENQUEUED = 'Request enqueued for pipeline processing';
 export const PIPELINE_RESUMED = 'Request resumed for pipeline processing';
 
 // Auth (NFR-SEC-5)
-export const SYS_MSG = {
-  AUTH_UNAUTHORIZED: 'Unauthorized. Valid token required.',
-  AUTH_FORBIDDEN: 'Forbidden. Insufficient permissions.',
-  AUTH_INVALID_TOKEN: 'Invalid or expired token.',
-  AUTH_LOGIN_SUCCESS: 'Login successful',
-  AUTH_PROFILE_FETCHED: 'Profile fetched successfully',
-};
+export const AUTH_PROFILE_FETCHED = 'Profile fetched successfully';
+export const AUTH_LOGIN_SUCCESS = 'Login successful';
+export const AUTH_UNAUTHORIZED = 'Unauthorized. Valid token required.';
+export const AUTH_FORBIDDEN = 'Forbidden. Insufficient permissions.';
+export const AUTH_INVALID_TOKEN = 'Invalid or expired token.';
