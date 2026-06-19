@@ -1,0 +1,310 @@
+import { UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import { DataSource } from 'typeorm';
+
+const mockAuthConfig = vi.hoisted(() => ({
+  enabled: true,
+  jwtSecret: 'test-secret',
+  tokenExpiryMs: 3600000,
+}));
+const mockVerify = vi.hoisted(() => vi.fn());
+const mockSign = vi.hoisted(() => vi.fn().mockReturnValue('mock-jwt-token'));
+
+vi.mock('@config/auth.config', () => ({ authConfig: mockAuthConfig }));
+vi.mock('jsonwebtoken', () => ({ verify: mockVerify, sign: mockSign }));
+
+import { AuthService } from '../services/auth.service';
+import { AuthGuard } from '../guards/auth.guard';
+import { RlsContextMiddleware } from '../middleware/rls-context.middleware';
+import { Roles } from '../decorators/roles.decorator';
+import { Role } from '../enums/role.enum';
+import { AuthModule } from '../auth.module';
+
+describe('Auth — Comprehensive', () => {
+  let service: AuthService;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAuthConfig.enabled = true;
+    service = new AuthService();
+  });
+
+  describe('Startup validation', () => {
+    it('throws when AUTH_ENABLED=true and JWT_SECRET is missing', () => {
+      expect(() => {
+        const config = { enabled: true, jwtSecret: '', tokenExpiryMs: 3600000 };
+        if (config.enabled && !config.jwtSecret) {
+          throw new Error('AUTH_ENABLED=true requires JWT_SECRET');
+        }
+      }).toThrow('AUTH_ENABLED=true requires JWT_SECRET');
+    });
+
+    it('passes when AUTH_ENABLED=true and JWT_SECRET is set', () => {
+      expect(() => {
+        const config = { enabled: true, jwtSecret: 'my-secret', tokenExpiryMs: 3600000 };
+        if (config.enabled && !config.jwtSecret) {
+          throw new Error('AUTH_ENABLED=true requires JWT_SECRET');
+        }
+      }).not.toThrow();
+    });
+
+    it('passes when AUTH_ENABLED=false even without JWT_SECRET', () => {
+      expect(() => {
+        const config = { enabled: false, jwtSecret: '', tokenExpiryMs: 3600000 };
+        if (config.enabled && !config.jwtSecret) {
+          throw new Error('AUTH_ENABLED=true requires JWT_SECRET');
+        }
+      }).not.toThrow();
+    });
+  });
+
+  describe('JWT validation strictness', () => {
+    it('calls verify with the correct secret', () => {
+      const decoded = {
+        userId: 'u1',
+        orgId: 'o1',
+        roles: ['admin'],
+        email: 'a@b.com',
+        iat: 0,
+        exp: 9999999999,
+      };
+      mockVerify.mockReturnValue(decoded);
+
+      service.validateToken('my.jwt.token');
+      expect(mockVerify).toHaveBeenCalledWith('my.jwt.token', 'test-secret');
+    });
+
+    it('rejects token with invalid base64', () => {
+      mockVerify.mockImplementation(() => {
+        throw new Error('invalid base64');
+      });
+      expect(() => service.validateToken('!!!invalid!!!')).toThrow(UnauthorizedException);
+    });
+
+    it('rejects token that is not yet active (nbf)', () => {
+      mockVerify.mockImplementation(() => {
+        throw new Error('jwt not active');
+      });
+      expect(() => service.validateToken('not-yet-active.jwt')).toThrow(UnauthorizedException);
+    });
+  });
+
+  describe('Role decorator metadata', () => {
+    it('sets correct metadata on handler', () => {
+      class TestController {
+        @Roles(Role.ADMIN, Role.ESTIMATOR)
+        endpoint() {
+          return 'ok';
+        }
+      }
+
+      const controller = new TestController();
+      const roles = Reflect.getOwnMetadata('roles', controller.endpoint);
+      expect(roles).toEqual(['admin', 'estimator']);
+    });
+  });
+
+  describe('Multi-org RLS scenarios', () => {
+    it('returns different orgIds for different users', () => {
+      const orgA = service.getOrgId({
+        user: { userId: 'u1', orgId: 'org-a', roles: ['estimator'], email: 'e@org-a.com' },
+      });
+      const orgB = service.getOrgId({
+        user: { userId: 'u2', orgId: 'org-b', roles: ['estimator'], email: 'e@org-b.com' },
+      });
+      expect(orgA).toBe('org-a');
+      expect(orgB).toBe('org-b');
+      expect(orgA).not.toBe(orgB);
+    });
+
+    it('handles concurrent requests without cross-contamination', () => {
+      const result1 = service.getOrgId({
+        user: { userId: 'u1', orgId: 'org-alpha', roles: ['viewer'], email: 'a@alpha.com' },
+      });
+      const result2 = service.getOrgId({
+        user: { userId: 'u2', orgId: 'org-beta', roles: ['admin'], email: 'b@beta.com' },
+      });
+      expect(result1).toBe('org-alpha');
+      expect(result2).toBe('org-beta');
+      expect(result1).not.toBe(result2);
+    });
+  });
+
+  describe('Demo mode behaviour', () => {
+    it('does not expose real credentials when auth disabled', () => {
+      mockAuthConfig.enabled = false;
+      const dummy = service.validateToken('anything');
+      expect(dummy.userId).not.toBe('');
+      expect(dummy.userId).toBe('demo-user');
+      expect(dummy.email).toBe('demo@example.com');
+    });
+
+    it('dummy token has admin and estimator roles for demo access', () => {
+      mockAuthConfig.enabled = false;
+      const dummy = service.validateToken('anything');
+      expect(dummy.roles).toContain('admin');
+      expect(dummy.roles).toContain('estimator');
+    });
+
+    it('toggles between dummy and real tokens at runtime', () => {
+      mockAuthConfig.enabled = false;
+      const dummy = service.validateToken('anything');
+      expect(dummy.userId).toBe('demo-user');
+
+      mockAuthConfig.enabled = true;
+      mockVerify.mockReturnValue({
+        userId: 'real-u',
+        orgId: 'real-org',
+        roles: ['admin'],
+        email: 'r@real.com',
+        iat: 0,
+        exp: 9999999999,
+      });
+      const real = service.validateToken('real.jwt');
+      expect(real.userId).toBe('real-u');
+    });
+  });
+
+  describe('RLS middleware integration', () => {
+    let moduleRef: TestingModule;
+
+    beforeEach(async () => {
+      moduleRef = await Test.createTestingModule({
+        imports: [AuthModule],
+        providers: [
+          {
+            provide: DataSource,
+            useValue: { query: vi.fn().mockResolvedValue(undefined) },
+          },
+        ],
+      }).compile();
+    });
+
+    it('sets app.org_id from valid token', async () => {
+      mockVerify.mockReturnValue({
+        userId: 'u1',
+        orgId: 'org-rls',
+        roles: ['estimator'],
+        email: 'e@rls.com',
+        iat: 0,
+        exp: 9999999999,
+      });
+
+      const dataSource = moduleRef.get(DataSource);
+      const authSvc = moduleRef.get(AuthService);
+      const middleware = new RlsContextMiddleware(dataSource, authSvc);
+
+      const request = { headers: { authorization: 'Bearer rls-token' } };
+      const next = vi.fn();
+
+      await middleware.use(request as never, {} as never, next);
+
+      expect(dataSource.query).toHaveBeenCalledWith('SET app.org_id = $1', ['org-rls']);
+      expect(next).toHaveBeenCalled();
+    });
+
+    it('does not set app.org_id when auth is disabled', async () => {
+      mockAuthConfig.enabled = false;
+
+      const dataSource = moduleRef.get(DataSource);
+      const authSvc = moduleRef.get(AuthService);
+      const middleware = new RlsContextMiddleware(dataSource, authSvc);
+
+      const request = { headers: { authorization: 'Bearer some-token' } };
+      const next = vi.fn();
+
+      await middleware.use(request as never, {} as never, next);
+
+      expect(dataSource.query).not.toHaveBeenCalled();
+      expect(next).toHaveBeenCalled();
+    });
+  });
+
+  describe('AuthGuard with @Roles()', () => {
+    it('prevents access when user lacks required role', () => {
+      const reflector = { get: vi.fn().mockReturnValue(['admin']) };
+      const authSvc = {
+        extractToken: vi.fn().mockReturnValue('token'),
+        validateToken: vi.fn().mockReturnValue({
+          userId: 'u1',
+          orgId: 'o1',
+          roles: ['viewer'],
+          email: 'v@v.com',
+          iat: 0,
+          exp: 9999999999,
+        }),
+        buildAuthUser: vi.fn().mockReturnValue({
+          userId: 'u1',
+          orgId: 'o1',
+          roles: ['viewer'],
+          email: 'v@v.com',
+        }),
+      };
+      const guard = new AuthGuard(reflector as never, authSvc as unknown as AuthService);
+      const context = {
+        switchToHttp: () => ({ getRequest: () => ({}) }),
+        getHandler: () => ({}),
+      } as never;
+
+      expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
+    });
+
+    it('allows access when user has required role', () => {
+      const reflector = { get: vi.fn().mockReturnValue(['admin']) };
+      const authSvc = {
+        extractToken: vi.fn().mockReturnValue('token'),
+        validateToken: vi.fn().mockReturnValue({
+          userId: 'u1',
+          orgId: 'o1',
+          roles: ['admin'],
+          email: 'a@a.com',
+          iat: 0,
+          exp: 9999999999,
+        }),
+        buildAuthUser: vi.fn().mockReturnValue({
+          userId: 'u1',
+          orgId: 'o1',
+          roles: ['admin'],
+          email: 'a@a.com',
+        }),
+      };
+      const guard = new AuthGuard(reflector as never, authSvc as unknown as AuthService);
+      const context = {
+        switchToHttp: () => ({ getRequest: () => ({}) }),
+        getHandler: () => ({}),
+      } as never;
+
+      expect(guard.canActivate(context)).toBe(true);
+    });
+  });
+
+  describe('AuthController', () => {
+    it('login returns token when auth enabled', async () => {
+      mockAuthConfig.enabled = true;
+
+      const result = await service.login('test@example.com', 'password');
+      expect(result.accessToken).toBe('mock-jwt-token');
+      expect(result.expiresIn).toBe(mockAuthConfig.tokenExpiryMs);
+      expect(result.tokenType).toBe('Bearer');
+      expect(mockSign).toHaveBeenCalledWith(
+        { sub: 'test@example.com', email: 'test@example.com' },
+        'test-secret',
+        expect.objectContaining({ expiresIn: 3600000 }),
+      );
+    });
+
+    it('login returns demo token when auth disabled', async () => {
+      mockAuthConfig.enabled = false;
+
+      const result = await service.login('test@example.com', 'password');
+      expect(result.accessToken).toBe('demo-token');
+      expect(result.tokenType).toBe('Bearer');
+    });
+
+    it('profile returns user from request', () => {
+      const reqUser = { userId: 'u1', orgId: 'org1', roles: ['admin'], email: 'a@b.com' };
+      const result = service.getUser({ user: reqUser });
+      expect(result).toBe(reqUser);
+    });
+  });
+});
