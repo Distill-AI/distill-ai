@@ -379,6 +379,36 @@ Private helpers don't need JSDoc.
 
 Code is self-explanatory via naming. Only comment when there is a hidden constraint or non-obvious invariant.
 
+### 12. No em-dashes
+
+Em-dashes (`—`) are banned in all code, comments, and user-facing strings. Use a colon or a plain hyphen instead.
+
+```ts
+// Bad
+message: 'Full access — inbox and quotes'
+// Good
+message: 'Full access: inbox and quotes'
+```
+
+---
+
+## Client Coding Standards
+
+These rules apply to all work in `client/src/`. Apply them with the same rigour as the server standards above.
+
+### Accessibility (a11y)
+
+Every interactive component must be keyboard-operable and screen-reader-friendly:
+
+- All `<button>` elements must have `type="button"` (or `type="submit"` inside a `<form>`).
+- Overlay / off-canvas drawers require:
+  - `aria-expanded` and `aria-controls` on the trigger button
+  - Escape key closes the drawer and returns focus to the trigger
+  - Focus trap: Tab/Shift+Tab cycle within the open drawer; focus does not escape to content behind the overlay
+  - First focusable element inside the drawer receives focus on open
+- Decorative SVG icons must carry `aria-hidden="true"`.
+- Landmark elements (`<nav>`, `<header>`, `<main>`) must have an `aria-label` when more than one of the same type appears on the page.
+
 ---
 
 ## Client Coding Standards
