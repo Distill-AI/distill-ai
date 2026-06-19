@@ -7,10 +7,11 @@ import { ToolsService } from './tools.service';
 import { ToolsController } from './tools.controller';
 import { ToolCallEntity } from './entities/tool-calls.entity';
 import { RequestsModule } from '../requests/requests.module';
+import { EventsModule } from '../events/events.module';
 import { EchoTool } from './tools/echo-tool';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ToolCallEntity]), RequestsModule],
+  imports: [TypeOrmModule.forFeature([ToolCallEntity]), RequestsModule, EventsModule],
   controllers: [ToolsController],
   providers: [ToolRegistry, ToolCallsActions, ToolsService],
   exports: [ToolRegistry, ToolsService],

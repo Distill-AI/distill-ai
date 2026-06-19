@@ -1,16 +1,13 @@
 import { Injectable, Logger, OnModuleInit, Optional, Inject } from '@nestjs/common';
 import { performance } from 'perf_hooks';
 import { z } from 'zod';
+import { EventsService } from '@modules/events/events.service';
 import * as SYS_MSG from '@constants/system-messages';
 import { ToolContract } from './interfaces/tool-contract.interface';
-import { ToolStatus, ToolTier } from './enums/tools.enums';
+import { ToolStatus } from './enums/tools.enums';
 import { DuplicateToolError, ReservedToolNameError } from './errors/tools.errors';
 import { ToolCallsActions, ToolCallLogParams } from './actions/tool-calls.actions';
-
-/* -----------------------------------------------------------------
- *  Reserved identifiers that must never be used as a tool name.
- * ----------------------------------------------------------------- */
-const RESERVED_NAMES = new Set(['price', 'policy', 'score']);
+import { ToolName, RESERVED_NAMES } from '../pipeline/types';
 
 /**
  * Optional data‑scrubbing hook.  It is provided by the app (via the
@@ -31,6 +28,7 @@ export class ToolRegistry implements OnModuleInit {
 
   constructor(
     private readonly callsActions: ToolCallsActions,
+    private readonly events: EventsService,
     @Optional()
     @Inject('TOOL_SANITIZER')
     sanitizer?: Sanitizer,
@@ -69,9 +67,9 @@ export class ToolRegistry implements OnModuleInit {
    *  Invocation
    * ----------------------------------------------------------------- */
   async invoke<O extends z.ZodTypeAny>(
-    toolName: string,
+    toolName: ToolName,
     rawArgs: unknown,
-    requestId?: string,
+    requestId: string | null = null,
   ): Promise<{
     status: ToolStatus;
     latency: number;
@@ -80,6 +78,7 @@ export class ToolRegistry implements OnModuleInit {
   }> {
     const start = performance.now();
     const name = toolName.toLowerCase();
+    const rid = requestId ?? '00000000-0000-0000-0000-000000000000';
 
     // ---------------------------------------------------------------
     // 1️⃣ look up contract
@@ -91,10 +90,9 @@ export class ToolRegistry implements OnModuleInit {
         toolName: name,
         status: ToolStatus.ERROR,
         latencyMs: latency,
-        input: this.sanitize(rawArgs),
-        tier: ToolTier.INTERNAL,
-        errorMessage: SYS_MSG.TOOL_NOT_FOUND(name),
-        requestId,
+        args: this.sanitize(rawArgs),
+        errorDetail: SYS_MSG.TOOL_NOT_FOUND(name),
+        requestId: rid,
       });
       return { status: ToolStatus.ERROR, latency, error: SYS_MSG.TOOL_NOT_FOUND(name) };
     }
@@ -109,10 +107,9 @@ export class ToolRegistry implements OnModuleInit {
         toolName: name,
         status: ToolStatus.VALIDATION_ERROR,
         latencyMs: latency,
-        input: this.sanitize(rawArgs),
-        tier: contract.tier,
-        errorMessage: `${SYS_MSG.TOOL_INPUT_VALIDATION_FAILED}: ${inputParse.error.message}`,
-        requestId,
+        args: this.sanitize(rawArgs),
+        errorDetail: `${SYS_MSG.TOOL_INPUT_VALIDATION_FAILED}: ${inputParse.error.message}`,
+        requestId: rid,
       });
       return {
         status: ToolStatus.VALIDATION_ERROR,
@@ -122,45 +119,14 @@ export class ToolRegistry implements OnModuleInit {
     }
 
     // ---------------------------------------------------------------
-    // 3️⃣ execution with timeout handling
+    // 3️⃣ execution
     // ---------------------------------------------------------------
-    const timeoutMs = contract.timeout ?? 30_000;
-    const abortCtrl = new AbortController();
-
-    const execPromise = (async () => {
-      try {
-        const result = await contract.execute(inputParse.data, abortCtrl.signal);
-        return { ok: true as const, value: result };
-      } catch (e) {
-        return { ok: false as const, error: e };
-      }
-    })();
-
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      const id = setTimeout(() => {
-        abortCtrl.abort();
-        reject(new Error('Execution timed out'));
-      }, timeoutMs);
-      // clear timer if exec finishes first
-      execPromise.finally(() => clearTimeout(id));
-    });
-
     let execResult: { ok: true; value: unknown } | { ok: false; error: unknown };
     try {
-      execResult = await Promise.race([execPromise, timeoutPromise]);
-    } catch {
-      // Timeout branch
-      const latency = Math.round(performance.now() - start);
-      await this.log({
-        toolName: name,
-        status: ToolStatus.TIMEOUT,
-        latencyMs: latency,
-        input: this.sanitize(rawArgs),
-        tier: contract.tier,
-        errorMessage: SYS_MSG.TOOL_EXECUTION_TIMEOUT,
-        requestId,
-      });
-      return { status: ToolStatus.TIMEOUT, latency, error: SYS_MSG.TOOL_EXECUTION_TIMEOUT };
+      const result = await contract.execute(inputParse.data);
+      execResult = { ok: true as const, value: result };
+    } catch (e) {
+      execResult = { ok: false as const, error: e };
     }
 
     // ---------------------------------------------------------------
@@ -175,10 +141,9 @@ export class ToolRegistry implements OnModuleInit {
         toolName: name,
         status: ToolStatus.ERROR,
         latencyMs: latency,
-        input: this.sanitize(rawArgs),
-        tier: contract.tier,
-        errorMessage: msg,
-        requestId,
+        args: this.sanitize(rawArgs),
+        errorDetail: msg,
+        requestId: rid,
       });
       return { status: ToolStatus.ERROR, latency, error: msg };
     }
@@ -190,11 +155,9 @@ export class ToolRegistry implements OnModuleInit {
         toolName: name,
         status: ToolStatus.VALIDATION_ERROR,
         latencyMs: latency,
-        input: this.sanitize(rawArgs),
-        output: this.sanitize(execResult.value),
-        tier: contract.tier,
-        errorMessage: `${SYS_MSG.TOOL_OUTPUT_VALIDATION_FAILED}: ${outputParse.error.message}`,
-        requestId,
+        args: this.sanitize(rawArgs),
+        errorDetail: `${SYS_MSG.TOOL_OUTPUT_VALIDATION_FAILED}: ${outputParse.error.message}`,
+        requestId: rid,
       });
       return {
         status: ToolStatus.VALIDATION_ERROR,
@@ -204,18 +167,27 @@ export class ToolRegistry implements OnModuleInit {
     }
 
     // Successful path – scrub only persisted log payloads
-    const safeInput = this.sanitize(rawArgs);
-    const safeOutput = this.sanitize(outputParse.data);
+    const safeArgs = this.sanitize(rawArgs);
 
     await this.log({
       toolName: name,
       status: ToolStatus.OK,
       latencyMs: latency,
-      input: safeInput,
-      output: safeOutput,
-      tier: contract.tier,
-      requestId,
+      args: safeArgs,
+      requestId: rid,
     });
+
+    if (requestId) {
+      await this.events.emit({
+        eventName: 'tool.invoked',
+        requestId,
+        attributes: {
+          tool_name: name,
+          status: ToolStatus.OK,
+          latency_ms: latency,
+        },
+      });
+    }
 
     return { status: ToolStatus.OK, latency, result: outputParse.data };
   }

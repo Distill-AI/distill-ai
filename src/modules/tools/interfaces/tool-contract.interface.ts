@@ -1,5 +1,4 @@
 import { z, ZodTypeAny } from 'zod';
-import { ToolTier } from '../enums/tools.enums';
 
 /**
  * Generic contract that every tool must implement.
@@ -22,15 +21,6 @@ export interface ToolContract<I extends ZodTypeAny, O extends ZodTypeAny> {
 
   /** Zod schema that validates the result returned by `execute()` */
   readonly outputSchema: O;
-
-  /** Access tier – inferred by the registry, never mutable after registration */
-  readonly tier: ToolTier;
-
-  /** Optional per‑tool execution timeout (ms) – defaults to 30 000 */
-  readonly timeout?: number;
-
-  /** Whether the tool is safe to retry after a failure – defaults to true */
-  readonly retryable?: boolean;
 
   /**
    * Core implementation. The method receives the **parsed** input (`I`) and
