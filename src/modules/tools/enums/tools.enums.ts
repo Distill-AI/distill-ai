@@ -6,3 +6,10 @@ export enum ToolCallStatus {
 }
 
 export { ToolCallStatus as ToolStatus };
+
+export enum ToolTier {
+  FREE = 'free',
+  PRO = 'pro',
+  ENTERPRISE = 'enterprise',
+  INTERNAL = 'internal',
+}

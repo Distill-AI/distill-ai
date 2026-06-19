@@ -7,8 +7,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { ToolCallStatus } from '../enums/tool-call-status.enum';
-import { ToolTier } from '../enums/tool-tier.enum';
+import { ToolCallStatus, ToolTier } from '../enums/tools.enums';
 import { Request } from '../../requests/entities/request.entity';
 
 @Entity({ name: 'tool_calls' })

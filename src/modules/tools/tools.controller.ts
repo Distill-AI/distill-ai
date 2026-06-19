@@ -2,8 +2,7 @@ import { Body, Controller, Get, HttpStatus, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import * as SYS_MSG from '@constants/system-messages';
 import { ToolsService } from './tools.service';
-import { InvokeRequestDto } from './dto/invoke.request.dto';
-import { InvokeResponseDto } from './dto/invoke.response.dto';
+import { InvokeRequestDto, InvokeResponseDto } from './dto/tools.dtos';
 import { InvokeToolDocs, ListToolsDocs } from './docs/tools-swagger.doc';
 
 @ApiTags('Tools')
