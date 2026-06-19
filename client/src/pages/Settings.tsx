@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useRole } from '../context/RoleContext';
+import { useRole } from '../hooks/useRole';
 import type { Role } from '../context/RoleContext';
 
 const ROLES: { value: Role; label: string; description: string }[] = [
