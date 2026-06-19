@@ -2,6 +2,7 @@ import { Process, Processor } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
 import type { Job as BullJob } from 'bull';
 import { PIPELINE_JOBS, QUEUES } from '@common/constants/queue.constants';
+import { env } from '@config/env';
 import { PipelineGraphEngine } from '@modules/pipeline/graph.engine';
 
 interface PipelineJobData {
@@ -18,7 +19,7 @@ export class PipelineProcessor {
 
   constructor(private readonly engine: PipelineGraphEngine) {}
 
-  @Process({ name: PIPELINE_JOBS.RUN, concurrency: Number(process.env.PIPELINE_CONCURRENCY ?? 3) })
+  @Process({ name: PIPELINE_JOBS.RUN, concurrency: env.PIPELINE_CONCURRENCY })
   async handle(job: BullJob<PipelineJobData>): Promise<void> {
     const { requestId } = job.data;
     this.logger.log({ event: 'pipeline_job_received', requestId, bullJobId: job.id });
