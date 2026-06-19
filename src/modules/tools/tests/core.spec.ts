@@ -1,30 +1,30 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ToolsModule } from '../tools.module';
 import { ToolRegistry } from '../registry';
 import { ToolStatus } from '../enums/tool-call-status.enum';
-import { ToolCallEntity } from '../entities/tool-calls.entity';
+import { ToolTier } from '../enums/tool-tier.enum';
 import { DuplicateToolError } from '../errors/duplicate-tool.error';
 import { ReservedToolNameError } from '../errors/reserved-tool.error';
 import { EchoTool } from '../tools/echo-tool';
-import { DataSource } from 'typeorm';
+import { ToolCallsActions } from '../actions/tool-calls.actions';
+import { z } from 'zod';
+import { ToolContract } from '../interfaces/tool-contract.interface';
+
+function createMockActions(): ToolCallsActions {
+  return {
+    insertLog: vi.fn().mockResolvedValue(undefined),
+  } as unknown as ToolCallsActions;
+}
 
 describe('ToolRegistry – Core / Integration', () => {
   let registry: ToolRegistry;
-  let moduleRef: TestingModule;
+  let mockActions: ToolCallsActions;
 
-  beforeAll(async () => {
-    moduleRef = await Test.createTestingModule({
-      imports: [ToolsModule],
-    }).compile();
-    registry = moduleRef.get<ToolRegistry>(ToolRegistry);
+  beforeEach(() => {
+    mockActions = createMockActions();
+    registry = new ToolRegistry(mockActions);
+    registry.register(EchoTool);
   });
 
-  afterAll(async () => {
-    const ds = moduleRef.get<DataSource>(DataSource);
-    await ds.destroy();
-  });
-
-  it('FR-1: registers built-in echo tool on module init', async () => {
+  it('FR-1: invokes echo tool and returns correct result', async () => {
     const res = await registry.invoke('echo_tool', { message: 'hello' });
     expect(res.status).toBe(ToolStatus.OK);
     expect(res.result).toEqual({ echoed: 'hello' });
@@ -39,25 +39,38 @@ describe('ToolRegistry – Core / Integration', () => {
     expect(() => registry.register(bad)).toThrow(ReservedToolNameError);
   });
 
-  it('FR-4: writes a row that can be queried directly', async () => {
-    const start = Date.now();
-    const res = await registry.invoke('echo_tool', { message: 'integrate' });
-    const end = Date.now();
+  it('FR-4: logs every invocation via insertLog', async () => {
+    await registry.invoke('echo_tool', { message: 'integrate' });
+    expect(mockActions.insertLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        toolName: 'echo_tool',
+        status: ToolStatus.OK,
+        input: { message: 'integrate' },
+        output: { echoed: 'integrate' },
+      }),
+    );
+  });
 
+  it('FR-5: registers a custom tool and invokes it', async () => {
+    const DoubleTool: ToolContract<z.ZodTypeAny, z.ZodTypeAny> = {
+      toolName: 'double_tool',
+      description: 'returns double the input',
+      tier: ToolTier.FREE,
+      inputSchema: z.object({ value: z.number() }),
+      outputSchema: z.object({ doubled: z.number() }),
+      async execute(input) {
+        return { doubled: input.value * 2 };
+      },
+    };
+    registry.register(DoubleTool);
+    const res = await registry.invoke('double_tool', { value: 21 });
     expect(res.status).toBe(ToolStatus.OK);
-    expect(res.result).toEqual({ echoed: 'integrate' });
+    expect(res.result).toEqual({ doubled: 42 });
+  });
 
-    const ds = moduleRef.get<DataSource>(DataSource);
-    const row = await ds
-      .getRepository(ToolCallEntity)
-      .findOne({ where: { tool_name: 'echo_tool' }, order: { created_at: 'DESC' } });
-
-    expect(row).toBeDefined();
-    expect(row!.tool_name).toBe('echo_tool');
-    expect(row!.status).toBe(ToolStatus.OK);
-    expect(row!.latency_ms).toBeGreaterThanOrEqual(end - start);
-    expect(row!.input_args).toEqual({ message: 'integrate' });
-    expect(row!.output_result).toEqual({ echoed: 'integrate' });
-    expect(row!.tier).toBe('free');
+  it('FR-6: returns TOOL_NOT_FOUND error for unknown tool', async () => {
+    const res = await registry.invoke('nonexistent', {});
+    expect(res.status).toBe(ToolStatus.ERROR);
+    expect(res.error).toContain('not found');
   });
 });

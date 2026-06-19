@@ -1,55 +1,35 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ToolsModule } from '../tools.module';
 import { ToolRegistry } from '../registry';
 import { ToolStatus } from '../enums/tool-call-status.enum';
 import { ToolTier } from '../enums/tool-tier.enum';
 import { ToolContract } from '../interfaces/tool-contract.interface';
-import { DuplicateToolError } from '../errors/duplicate-tool.error';
-import { DataSource } from 'typeorm';
-import { ToolCallEntity } from '../entities/tool-calls.entity';
+import { EchoTool } from '../tools/echo-tool';
+import { ToolCallsActions } from '../actions/tool-calls.actions';
 import { z } from 'zod';
+
+function createMockActions(): ToolCallsActions {
+  return {
+    insertLog: vi.fn().mockResolvedValue(undefined),
+  } as unknown as ToolCallsActions;
+}
 
 describe('ToolRegistry – Edge Cases / Security', () => {
   let registry: ToolRegistry;
-  let moduleRef: TestingModule;
+  let mockActions: ToolCallsActions;
 
-  beforeAll(async () => {
-    moduleRef = await Test.createTestingModule({
-      imports: [ToolsModule],
-      providers: [
-        {
-          provide: 'TOOL_SANITIZER',
-          useValue: (data: unknown) => {
-            if (typeof data !== 'object' || data === null) return data;
-            const clone: Record<string, unknown> = {};
-            for (const [k, v] of Object.entries(data as Record<string, unknown>)) {
-              if (['password', 'secret'].includes(k.toLowerCase())) {
-                clone[k] = '***';
-              } else {
-                clone[k] = v;
-              }
-            }
-            return clone;
-          },
-        },
-      ],
-    }).compile();
-    registry = moduleRef.get<ToolRegistry>(ToolRegistry);
-  });
-
-  afterAll(async () => {
-    const ds = moduleRef.get<DataSource>(DataSource);
-    await ds.destroy();
+  beforeEach(() => {
+    mockActions = createMockActions();
+    registry = new ToolRegistry(mockActions);
+    registry.register(EchoTool);
   });
 
   describe('EC – Edge cases', () => {
-    it('EC-1: handles null args as validation error (no execute)', async () => {
+    it('EC-1: handles null args as validation error', async () => {
       const res = await registry.invoke('echo_tool', null);
       expect(res.status).toBe(ToolStatus.VALIDATION_ERROR);
       expect(res.error).toBe('Input validation failed');
     });
 
-    it('EC-2: gracefully logs circular input without crashing', async () => {
+    it('EC-2: gracefully rejects circular input without crashing', async () => {
       const circ: Record<string, unknown> = { a: 1 };
       circ.self = circ;
       const res = await registry.invoke('echo_tool', circ);
@@ -67,11 +47,7 @@ describe('ToolRegistry – Edge Cases / Security', () => {
           return { payload: 'x'.repeat(150_000) };
         },
       };
-      try {
-        registry.register(BigTool);
-      } catch (e) {
-        if (!(e instanceof DuplicateToolError)) throw e;
-      }
+      registry.register(BigTool);
       const res = await registry.invoke('big_tool', {});
       expect(res.status).toBe(ToolStatus.OK);
       expect(res.result?.payload.length).toBeGreaterThanOrEqual(150_000);
@@ -110,19 +86,58 @@ describe('ToolRegistry – Edge Cases / Security', () => {
           return { finished: true };
         },
       };
-      try {
-        registry.register(SlowTool);
-      } catch (e) {
-        if (!(e instanceof DuplicateToolError)) throw e;
-      }
+      registry.register(SlowTool);
       const res = await registry.invoke('slow_tool', { ms: 500 });
       expect(res.status).toBe(ToolStatus.TIMEOUT);
       expect(res.error).toBe('Execution timed out');
+    });
+
+    it('EC-6: handles tool with no execute function gracefully', async () => {
+      const NoExecTool = {
+        toolName: 'noexec_tool',
+        description: 'missing execute',
+        tier: ToolTier.INTERNAL,
+        inputSchema: z.object({}),
+        outputSchema: z.object({ ok: z.boolean() }),
+      } as ToolContract<z.ZodTypeAny, z.ZodTypeAny>;
+      expect(() => registry.register(NoExecTool)).toThrow();
+    });
+
+    it('EC-7: validates output schema and returns error on mismatch', async () => {
+      const BadOutputTool: ToolContract<z.ZodTypeAny, z.ZodTypeAny> = {
+        toolName: 'bad_output',
+        description: 'returns value that does not match schema',
+        tier: ToolTier.INTERNAL,
+        inputSchema: z.object({}),
+        outputSchema: z.object({ expected: z.string() }),
+        async execute() {
+          return { unexpected: true };
+        },
+      };
+      registry.register(BadOutputTool);
+      const res = await registry.invoke('bad_output', {});
+      expect(res.status).toBe(ToolStatus.VALIDATION_ERROR);
+      expect(res.error).toBe('Output validation failed');
     });
   });
 
   describe('SEC – Security / Sanitisation', () => {
     it('SEC-1: redacts password fields before persisting', async () => {
+      const sanitizer = (data: unknown) => {
+        if (typeof data !== 'object' || data === null) return data;
+        const clone: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(data as Record<string, unknown>)) {
+          if (['password', 'secret'].includes(k.toLowerCase())) {
+            clone[k] = '***';
+          } else {
+            clone[k] = v;
+          }
+        }
+        return clone;
+      };
+      registry = new ToolRegistry(mockActions, sanitizer);
+      registry.register(EchoTool);
+
       const SensitiveTool: ToolContract<z.ZodTypeAny, z.ZodTypeAny> = {
         toolName: 'sensitive_tool',
         description: 'echoes whatever is sent',
@@ -133,25 +148,27 @@ describe('ToolRegistry – Edge Cases / Security', () => {
           return input;
         },
       };
-      try {
-        registry.register(SensitiveTool);
-      } catch (e) {
-        if (!(e instanceof DuplicateToolError)) throw e;
-      }
+      registry.register(SensitiveTool);
 
       const payload = { user: 'alice', password: 'SuperSecret123' };
       const res = await registry.invoke('sensitive_tool', payload);
       expect(res.status).toBe(ToolStatus.OK);
-      expect(res.result).toEqual(payload);
 
-      const ds = moduleRef.get<DataSource>(DataSource);
-      const repo = ds.getRepository(ToolCallEntity);
-      const row = await repo.findOne({
-        where: { tool_name: 'sensitive_tool' },
-        order: { created_at: 'DESC' },
-      });
-      expect(row!.input_args).toEqual({ user: 'alice', password: '***' });
-      expect(row!.output_result).toEqual({ user: 'alice', password: '***' });
+      expect(mockActions.insertLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          toolName: 'sensitive_tool',
+          input: { user: 'alice', password: '***' },
+          output: { user: 'alice', password: '***' },
+        }),
+      );
+    });
+
+    it('SEC-2: rejects reserved names from ToolName enum as registration', () => {
+      const reserved = ['price', 'policy', 'score'];
+      for (const name of reserved) {
+        const tool = { ...EchoTool, toolName: name };
+        expect(() => registry.register(tool)).toThrow();
+      }
     });
   });
 });

@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit, Optional, Inject } from '@nestjs/common';
 import { performance } from 'perf_hooks';
 import { z } from 'zod';
+import * as SYS_MSG from '@constants/system-messages';
 import { ToolContract } from './interfaces/tool-contract.interface';
 import { ToolStatus } from './enums/tool-call-status.enum';
 import { ToolTier } from './enums/tool-tier.enum';
@@ -93,10 +94,10 @@ export class ToolRegistry implements OnModuleInit {
         latencyMs: latency,
         input: rawArgs,
         tier: ToolTier.INTERNAL,
-        errorMessage: `Tool "${name}" not found`,
+        errorMessage: SYS_MSG.TOOL_NOT_FOUND(name),
         requestId,
       });
-      return { status: ToolStatus.ERROR, latency, error: `Tool "${name}" not found` };
+      return { status: ToolStatus.ERROR, latency, error: SYS_MSG.TOOL_NOT_FOUND(name) };
     }
 
     // ---------------------------------------------------------------
@@ -111,13 +112,13 @@ export class ToolRegistry implements OnModuleInit {
         latencyMs: latency,
         input: rawArgs,
         tier: contract.tier,
-        errorMessage: `Input validation failed: ${inputParse.error.message}`,
+        errorMessage: `${SYS_MSG.TOOL_INPUT_VALIDATION_FAILED}: ${inputParse.error.message}`,
         requestId,
       });
       return {
         status: ToolStatus.VALIDATION_ERROR,
         latency,
-        error: 'Input validation failed',
+        error: SYS_MSG.TOOL_INPUT_VALIDATION_FAILED,
       };
     }
 
@@ -157,10 +158,10 @@ export class ToolRegistry implements OnModuleInit {
         latencyMs: latency,
         input: rawArgs,
         tier: contract.tier,
-        errorMessage: 'Execution timed out',
+        errorMessage: SYS_MSG.TOOL_EXECUTION_TIMEOUT,
         requestId,
       });
-      return { status: ToolStatus.TIMEOUT, latency, error: 'Execution timed out' };
+      return { status: ToolStatus.TIMEOUT, latency, error: SYS_MSG.TOOL_EXECUTION_TIMEOUT };
     }
 
     // ---------------------------------------------------------------
@@ -193,13 +194,13 @@ export class ToolRegistry implements OnModuleInit {
         input: rawArgs,
         output: execResult.value,
         tier: contract.tier,
-        errorMessage: `Output validation failed: ${outputParse.error.message}`,
+        errorMessage: `${SYS_MSG.TOOL_OUTPUT_VALIDATION_FAILED}: ${outputParse.error.message}`,
         requestId,
       });
       return {
         status: ToolStatus.VALIDATION_ERROR,
         latency,
-        error: 'Output validation failed',
+        error: SYS_MSG.TOOL_OUTPUT_VALIDATION_FAILED,
       };
     }
 

@@ -4,6 +4,8 @@ export * from './interfaces/tool-contract.interface';
 export * from './dto/invoke.request.dto';
 export * from './dto/invoke.response.dto';
 export * from './registry';
+export * from './tools.service';
+export * from './tools.controller';
 export * from './actions/tool-calls.actions';
 export * from './errors';
 export * from './tools/echo-tool';
