@@ -142,11 +142,22 @@ export class AlignToolCallsTable1781772970266 implements MigrationInterface {
 
     // Revert request_id back to NOT NULL
     await queryRunner.query(`
+      ALTER TABLE "tool_calls" DROP CONSTRAINT IF EXISTS "FK_1dbd228ff9c2eaa913f7188e2ff"
+    `);
+    await queryRunner.query(`
+      DELETE FROM "tool_calls" WHERE "request_id" IS NULL
+    `);
+    await queryRunner.query(`
       UPDATE "tool_calls" SET "request_id" = '00000000-0000-0000-0000-000000000000'
         WHERE "request_id" IS NULL
     `);
     await queryRunner.query(`
       ALTER TABLE "tool_calls" ALTER COLUMN "request_id" SET NOT NULL
+    `);
+    await queryRunner.query(`
+      ALTER TABLE "tool_calls"
+        ADD CONSTRAINT "FK_1dbd228ff9c2eaa913f7188e2ff"
+        FOREIGN KEY ("request_id") REFERENCES "requests"("id")
     `);
 
     // Drop new columns
@@ -172,7 +183,10 @@ export class AlignToolCallsTable1781772970266 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      CREATE TYPE "public"."tool_call_status_tmp" AS ENUM('ok', 'error')
+      DO $$ BEGIN
+        CREATE TYPE "public"."tool_call_status_tmp" AS ENUM('ok', 'error');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
     `);
     await queryRunner.query(`
       ALTER TABLE "tool_calls"

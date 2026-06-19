@@ -221,6 +221,16 @@ export class ToolRegistry implements OnModuleInit {
   }
 
   /* -----------------------------------------------------------------
+   *  Listing
+   * ----------------------------------------------------------------- */
+  list(): Array<{ toolName: string; description: string }> {
+    return Array.from(this.registry.values()).map((c) => ({
+      toolName: c.toolName,
+      description: c.description,
+    }));
+  }
+
+  /* -----------------------------------------------------------------
    *  Private helpers
    * ----------------------------------------------------------------- */
 
