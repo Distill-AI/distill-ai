@@ -6,8 +6,10 @@ import { WorkerModule } from './worker.module';
 import { PinoLoggerService } from './common/logger/pino-logger.service';
 
 async function bootstrap() {
-  process.on('unhandledRejection', (reason) => {
+  process.on('unhandledRejection', async (reason) => {
     Sentry.captureException(reason);
+    await Sentry.flush(2000);
+    process.exit(1);
   });
 
   const app = await NestFactory.createApplicationContext(WorkerModule, {
