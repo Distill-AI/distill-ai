@@ -60,6 +60,9 @@ const envSchema = z.object({
   DLQ_ALERT_THRESHOLD: z.coerce.number().int().positive().default(10),
   ALERT_EMAIL: z.string().email().default('admin@example.com'),
   EMAIL_FROM: z.string().default('App <noreply@example.com>'),
+
+  // ── Observability ─────────────────────────────────────────────────────────
+  SENTRY_DSN: z.string().url().optional(),
 });
 
 const result = envSchema.safeParse(process.env);
