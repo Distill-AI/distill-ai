@@ -199,7 +199,10 @@ describe('Auth — Comprehensive', () => {
 
       await middleware.use(request as never, {} as never, next);
 
-      expect(dataSource.query).toHaveBeenCalledWith('SET app.org_id = $1', ['org-rls']);
+      expect(dataSource.query).toHaveBeenCalledWith('SELECT set_config($1, $2, false)', [
+        'app.org_id',
+        'org-rls',
+      ]);
       expect(next).toHaveBeenCalled();
     });
 
@@ -215,7 +218,10 @@ describe('Auth — Comprehensive', () => {
 
       await middleware.use(request as never, {} as never, next);
 
-      expect(dataSource.query).toHaveBeenCalledWith('SET app.org_id = $1', ['demo-org']);
+      expect(dataSource.query).toHaveBeenCalledWith('SELECT set_config($1, $2, false)', [
+        'app.org_id',
+        'demo-org',
+      ]);
       expect(next).toHaveBeenCalled();
     });
   });

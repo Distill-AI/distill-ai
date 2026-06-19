@@ -33,7 +33,7 @@ export class RlsContextMiddleware implements NestMiddleware {
           orgId = decoded.orgId;
         }
       }
-      await this.dataSource.query('SET app.org_id = $1', [orgId]);
+      await this.dataSource.query('SELECT set_config($1, $2, false)', ['app.org_id', orgId]);
     } catch (error) {
       this.logger.error('RLS context error:', error);
     }
