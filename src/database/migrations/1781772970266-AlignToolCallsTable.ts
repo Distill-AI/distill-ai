@@ -121,7 +121,7 @@ export class AlignToolCallsTable1781772970266 implements MigrationInterface {
     `);
     await queryRunner.query(`
       UPDATE "tool_calls" SET
-        "args" = "input_args",
+        "args" = COALESCE("input_args", 'null'::jsonb),
         "error_detail" = to_jsonb("error_message")
       WHERE "args" IS NULL
     `);

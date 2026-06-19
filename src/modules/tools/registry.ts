@@ -203,7 +203,7 @@ export class ToolRegistry implements OnModuleInit {
       };
     }
 
-    // Successful path – optionally scrub PII before persisting
+    // Successful path – scrub only persisted log payloads
     const safeInput = this.sanitize(rawArgs);
     const safeOutput = this.sanitize(outputParse.data);
 
@@ -217,7 +217,7 @@ export class ToolRegistry implements OnModuleInit {
       requestId,
     });
 
-    return { status: ToolStatus.OK, latency, result: safeOutput };
+    return { status: ToolStatus.OK, latency, result: outputParse.data };
   }
 
   /* -----------------------------------------------------------------
@@ -226,7 +226,17 @@ export class ToolRegistry implements OnModuleInit {
 
   /** Optionally scrub PII from log data before persisting. */
   private sanitize(data: unknown): unknown {
-    return this.sanitizer ? this.sanitizer(data) : data;
+    if (!this.sanitizer) return data;
+    try {
+      return this.sanitizer(data);
+    } catch (err) {
+      this.logger.warn(
+        `Sanitizer failed; falling back to raw payload: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      return data;
+    }
   }
 
   /** Inserts a row into `tool_calls`. */
