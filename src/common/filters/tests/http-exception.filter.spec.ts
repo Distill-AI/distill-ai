@@ -1,4 +1,3 @@
-import type { MockInstance } from 'vitest';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { HttpExceptionFilter } from '../http-exception.filter';
 import { LoggerContextService } from '@common/logger/logger-context.service';
@@ -39,7 +38,7 @@ describe('HttpExceptionFilter', () => {
 
   describe('Sentry capture', () => {
     it('calls withScope for a non-HttpException (500 path)', () => {
-      (mockLoggerContext.getRequestId as MockInstance).mockReturnValue('req-abc-123');
+      vi.mocked(mockLoggerContext.getRequestId).mockReturnValue('req-abc-123');
 
       filter.catch(new Error('boom'), buildHost() as never);
 
@@ -47,7 +46,7 @@ describe('HttpExceptionFilter', () => {
     });
 
     it('attaches request_id tag when one is available', () => {
-      (mockLoggerContext.getRequestId as MockInstance).mockReturnValue('req-abc-123');
+      vi.mocked(mockLoggerContext.getRequestId).mockReturnValue('req-abc-123');
 
       filter.catch(new Error('boom'), buildHost() as never);
 
@@ -55,7 +54,7 @@ describe('HttpExceptionFilter', () => {
     });
 
     it('does not set request_id tag when none is available', () => {
-      (mockLoggerContext.getRequestId as MockInstance).mockReturnValue(null);
+      vi.mocked(mockLoggerContext.getRequestId).mockReturnValue(null);
 
       filter.catch(new Error('boom'), buildHost() as never);
 
@@ -63,7 +62,7 @@ describe('HttpExceptionFilter', () => {
     });
 
     it('does NOT call withScope for a 404 HttpException', () => {
-      (mockLoggerContext.getRequestId as MockInstance).mockReturnValue('req-abc-123');
+      vi.mocked(mockLoggerContext.getRequestId).mockReturnValue('req-abc-123');
 
       filter.catch(new HttpException('Not found', HttpStatus.NOT_FOUND), buildHost() as never);
 
@@ -71,9 +70,20 @@ describe('HttpExceptionFilter', () => {
     });
 
     it('does NOT call withScope for a 400 HttpException', () => {
-      (mockLoggerContext.getRequestId as MockInstance).mockReturnValue('req-abc-123');
+      vi.mocked(mockLoggerContext.getRequestId).mockReturnValue('req-abc-123');
 
       filter.catch(new HttpException('Bad request', HttpStatus.BAD_REQUEST), buildHost() as never);
+
+      expect(Sentry.withScope).not.toHaveBeenCalled();
+    });
+
+    it('does NOT call withScope for a deliberate 503 HttpException (e.g. health check degradation)', () => {
+      vi.mocked(mockLoggerContext.getRequestId).mockReturnValue('req-abc-123');
+
+      filter.catch(
+        new HttpException('Service Unavailable', HttpStatus.SERVICE_UNAVAILABLE),
+        buildHost() as never,
+      );
 
       expect(Sentry.withScope).not.toHaveBeenCalled();
     });
