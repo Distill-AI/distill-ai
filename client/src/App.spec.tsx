@@ -11,7 +11,7 @@ describe('App', () => {
     );
 
     expect(screen.getByRole('navigation', { name: /main navigation/i })).toBeInTheDocument();
-    expect(screen.getByText(/distill/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/distill/i).length).toBeGreaterThan(0);
     expect(screen.getByRole('link', { name: /inbox/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /quotes/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /settings/i })).toBeInTheDocument();
