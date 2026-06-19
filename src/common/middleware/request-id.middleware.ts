@@ -7,10 +7,11 @@ import { PinoLoggerService } from '@common/logger/pino-logger.service';
 export class RequestIdMiddleware implements NestMiddleware {
   constructor(private readonly logger: PinoLoggerService) {}
 
-  use(req: Request, res: Response, next: NextFunction): void {
+  /** Reads or generates X-Request-Id, echoes it in the response, and seeds the request context for structured logging. */
+  async use(req: Request, res: Response, next: NextFunction): Promise<void> {
     const requestId = (req.headers['x-request-id'] as string | undefined) ?? randomUUID();
     req.headers['x-request-id'] = requestId;
     res.setHeader('X-Request-Id', requestId);
-    this.logger.runWithContext({ requestId }, () => next());
+    await this.logger.runWithContext({ requestId }, () => next());
   }
 }

@@ -1,4 +1,4 @@
-import './instrument';
+import './instrument'; // must be first — Sentry patches Node internals at init; instrument.ts must never transitively import @Injectable/@Module classes (reflect-metadata not yet loaded)
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';

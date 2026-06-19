@@ -31,7 +31,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
   constructor(private readonly loggerContext: LoggerContextService) {}
 
-  catch(exception: unknown, host: ArgumentsHost) {
+  /** Normalises all thrown exceptions into a structured error response and captures genuine faults in Sentry. */
+  catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
@@ -42,13 +43,19 @@ export class HttpExceptionFilter implements ExceptionFilter {
     if (payload.statusCode >= INTERNAL_SERVER_ERROR_THRESHOLD) {
       this.logger.error(logMessage, exception instanceof Error ? exception.stack : undefined);
 
-      const requestId = this.loggerContext.getRequestId();
-      Sentry.withScope((scope) => {
-        if (requestId) scope.setTag('request_id', requestId);
-        scope.setExtra('url', request.url);
-        scope.setExtra('method', request.method);
-        Sentry.captureException(exception);
-      });
+      // Only send genuine faults to Sentry — skip deliberate 5xx HttpExceptions (e.g. 503 from health checks).
+      if (
+        !(exception instanceof HttpException) ||
+        payload.statusCode === HttpStatus.INTERNAL_SERVER_ERROR
+      ) {
+        const requestId = this.loggerContext.getRequestId();
+        Sentry.withScope((scope) => {
+          if (requestId) scope.setTag('request_id', requestId);
+          scope.setExtra('url', request.url);
+          scope.setExtra('method', request.method);
+          Sentry.captureException(exception);
+        });
+      }
     } else {
       this.logger.warn(logMessage);
     }
