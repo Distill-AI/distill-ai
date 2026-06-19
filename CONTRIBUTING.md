@@ -203,7 +203,9 @@ git push origin feat/US-E8-4-pdf-confidence-scoring
 
 ## Module Structure
 
-Every feature lives in `src/modules/<name>/` and follows this layout:
+### Server (`src/modules/<name>/`)
+
+Every server feature follows this layout:
 
 ```text
 <feature>/
@@ -220,7 +222,7 @@ Every feature lives in `src/modules/<name>/` and follows this layout:
     └── <feature>.service.spec.ts
 ```
 
-Current domain modules and where they live:
+Current server domain modules:
 
 | Domain | Module path | Owns |
 | --- | --- | --- |
@@ -231,6 +233,26 @@ Current domain modules and where they live:
 | HITL approval | `src/modules/approval/` | Review queue, correction capture, audit trail |
 | Jobs / queue | `src/modules/jobs/`, `src/queue/` | Async pipeline orchestration |
 | Redis | `src/modules/redis/` | Caching, distributed locks, rate limiting |
+
+### Client (`client/src/`)
+
+```text
+client/src/
+├── api/              # TanStack Query hooks, axios client, query key factories
+├── components/
+│   ├── shell/        # Persistent layout — AppShell, Sidebar, DistillMark
+│   └── ui/           # Reusable primitives — ConfidenceChip, StatusBadge, etc.
+├── context/          # React contexts — RoleContext, etc.
+├── hooks/            # Custom hooks (use* prefix, one hook per file)
+├── lib/              # Pure utilities — logger, formatters (no React imports)
+├── pages/            # Route-level components (one file per route)
+├── tokens.json       # Brand token source of truth
+├── index.css         # Tailwind @theme block + global resets
+├── App.tsx           # Router + top-level providers
+└── main.tsx          # Entry point — mounts providers, no logic
+```
+
+File naming: `PascalCase.tsx` for components and pages, `camelCase.ts` for hooks, utilities, and API modules.
 
 ---
 
@@ -359,6 +381,85 @@ Code is self-explanatory via naming. Only comment when there is a hidden constra
 
 ---
 
+## Client Coding Standards
+
+These apply to every `.tsx` / `.ts` file under `client/src/`. They sit alongside the server standards above — a PR touching both packages must satisfy both sets.
+
+### 1. Component structure
+
+One component per file. Props interface directly above the component. Use named exports.
+
+```tsx
+interface RequestRowProps {
+  company: string;
+  confidence: number;
+  status: RequestStatus;
+}
+
+export function RequestRow({ company, confidence, status }: RequestRowProps) {
+  // ...
+}
+```
+
+### 2. No `any` — same rule as the server
+
+Use `unknown` and narrow, or define the exact shape.
+
+### 3. Token-first styling
+
+All colours, fonts, and radii come from the `@theme` tokens in `client/src/index.css`. Never hardcode hex values in `className` or `style` props. If a value isn't in the token set, add it to `tokens.json` and `index.css` first, then use the generated utility class.
+
+```tsx
+// Bad
+<div className="bg-[#4F46E5] text-[#0F172A]">
+
+// Good
+<div className="bg-indigo-600 text-slate-900">
+```
+
+### 4. State management boundaries
+
+| State type | Tool |
+| --- | --- |
+| Server data (requests, quotes, SKUs) | TanStack Query (`useQuery`, `useMutation`) |
+| Shared UI / demo state (role, theme) | React Context |
+| Ephemeral local state (form, toggle) | `useState` / `useReducer` |
+
+Never use context for server data — TanStack Query owns the cache.
+
+### 5. Query key factories
+
+Query keys live in `client/src/api/` beside their fetcher. Never hardcode key strings inline.
+
+```ts
+// client/src/api/requests.ts
+export const requestKeys = {
+  all: ['requests'] as const,
+  list: () => [...requestKeys.all, 'list'] as const,
+  detail: (id: string) => [...requestKeys.all, id] as const,
+};
+```
+
+### 6. Testing
+
+Use Testing Library queries in priority order: `getByRole` > `getByLabelText` > `getByText` > `getByTestId`. Avoid `getByTestId` unless the element has no accessible role or label.
+
+Test behaviour, not implementation — assert what a user sees, not which internal function was called.
+
+```tsx
+// Good
+expect(screen.getByRole('button', { name: /approve/i })).toBeInTheDocument();
+
+// Bad — tests implementation detail
+expect(mockOnApprove).toHaveBeenCalled();
+```
+
+### 7. No inline comments
+
+Same rule as the server. Name things clearly; only comment hidden constraints or non-obvious invariants.
+
+---
+
 ## Swagger Documentation
 
 Each endpoint gets its own decorator factory in `docs/<feature>-swagger.doc.ts`:
@@ -415,12 +516,12 @@ Unit test conventions:
 
 ### Test evidence in every PR
 
-Every PR must include at least one:
+Every PR must include at least one of:
 
-- Screenshot of Swagger UI showing the tested endpoint and response
-- OR a Postman/HTTP client screenshot showing request + response
+- Screenshot of Swagger UI or Postman/HTTP client showing the endpoint request and response (server changes)
+- Browser screenshot of the rendered UI at the relevant breakpoint (client changes)
 
-PRs without test evidence will not be reviewed.
+Both are required when a PR touches server and client. PRs without test evidence will not be reviewed.
 
 ---
 
@@ -466,7 +567,7 @@ type(scope): short summary in imperative mood
 
 **Allowed types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`
 
-**Scopes** map to domains: `ingestion`, `extraction`, `catalog`, `quotes`, `approval`, `queue`, `redis`, `sse`, `auth`
+**Scopes** map to domains. Server scopes: `ingestion`, `extraction`, `catalog`, `quotes`, `approval`, `queue`, `redis`, `sse`, `auth`. Client scopes: `client` (shell / cross-cutting), `inbox`, `review`, `clarification`, `analytics`, `settings`.
 
 **Examples:**
 
@@ -476,6 +577,9 @@ fix(extraction): handle empty line items from malformed PDFs
 refactor(quotes): extract margin-rule logic into sub-service
 test(approval): add unit tests for HITL review state machine
 chore(deps): upgrade vitest to v4
+feat(client): add AppShell sidebar layout with brand tokens
+feat(inbox): add request list table with confidence chips
+feat(settings): add role switcher with localStorage persistence
 ```
 
 Rules:
@@ -572,6 +676,23 @@ Three columns use DB-native types that TypeORM cannot express in entity decorato
 | `skus.embedding` | `vector(384)` | `text` | pgvector semantic search; never written via ORM |
 
 The `audit_events` table is excluded from TypeORM sync entirely via `@Entity('audit_events', { synchronize: false })` — it uses `BIGINT GENERATED ALWAYS AS IDENTITY` and has append-only permissions applied per environment.
+
+---
+
+## Environment Variables
+
+All env vars must be declared in `src/config/env.ts` and accessed via the exported `env` object — never via `process.env` directly. The Zod schema there validates values at boot and fails fast on missing or malformed config, so a direct `process.env` read silently bypasses that safety net and loses type information.
+
+```ts
+// Bad
+const dsn = process.env.SENTRY_DSN;
+
+// Good
+import { env } from '@config/env';
+const dsn = env.SENTRY_DSN;
+```
+
+`src/config/env.ts` only imports `dotenv` and `zod` — it is safe to import before `reflect-metadata` and before NestJS bootstraps, which means it can also be used in process-level init files like `src/instrument.ts`.
 
 ---
 
