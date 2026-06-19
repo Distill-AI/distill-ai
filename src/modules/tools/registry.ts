@@ -4,11 +4,7 @@ import { z } from 'zod';
 import * as SYS_MSG from '@constants/system-messages';
 import { ToolContract } from './interfaces/tool-contract.interface';
 import { ToolStatus, ToolTier } from './enums/tools.enums';
-import {
-  DuplicateToolError,
-  ReservedToolNameError,
-  ToolNotFoundError,
-} from './errors/tools.errors';
+import { DuplicateToolError, ReservedToolNameError } from './errors/tools.errors';
 import { ToolCallsActions, ToolCallLogParams } from './actions/tool-calls.actions';
 
 /* -----------------------------------------------------------------
@@ -60,7 +56,7 @@ export class ToolRegistry implements OnModuleInit {
       throw new DuplicateToolError(name);
     }
     if (!contract.execute || typeof contract.execute !== 'function') {
-      throw new ToolNotFoundError(name);
+      throw new Error(`Invalid tool contract for "${name}": execute must be a function`);
     }
 
     // Freeze the contract – after registration nothing may be mutated.
@@ -95,7 +91,7 @@ export class ToolRegistry implements OnModuleInit {
         toolName: name,
         status: ToolStatus.ERROR,
         latencyMs: latency,
-        input: rawArgs,
+        input: this.sanitize(rawArgs),
         tier: ToolTier.INTERNAL,
         errorMessage: SYS_MSG.TOOL_NOT_FOUND(name),
         requestId,
@@ -113,7 +109,7 @@ export class ToolRegistry implements OnModuleInit {
         toolName: name,
         status: ToolStatus.VALIDATION_ERROR,
         latencyMs: latency,
-        input: rawArgs,
+        input: this.sanitize(rawArgs),
         tier: contract.tier,
         errorMessage: `${SYS_MSG.TOOL_INPUT_VALIDATION_FAILED}: ${inputParse.error.message}`,
         requestId,
@@ -159,7 +155,7 @@ export class ToolRegistry implements OnModuleInit {
         toolName: name,
         status: ToolStatus.TIMEOUT,
         latencyMs: latency,
-        input: rawArgs,
+        input: this.sanitize(rawArgs),
         tier: contract.tier,
         errorMessage: SYS_MSG.TOOL_EXECUTION_TIMEOUT,
         requestId,
@@ -179,7 +175,7 @@ export class ToolRegistry implements OnModuleInit {
         toolName: name,
         status: ToolStatus.ERROR,
         latencyMs: latency,
-        input: rawArgs,
+        input: this.sanitize(rawArgs),
         tier: contract.tier,
         errorMessage: msg,
         requestId,
@@ -194,8 +190,8 @@ export class ToolRegistry implements OnModuleInit {
         toolName: name,
         status: ToolStatus.VALIDATION_ERROR,
         latencyMs: latency,
-        input: rawArgs,
-        output: execResult.value,
+        input: this.sanitize(rawArgs),
+        output: this.sanitize(execResult.value),
         tier: contract.tier,
         errorMessage: `${SYS_MSG.TOOL_OUTPUT_VALIDATION_FAILED}: ${outputParse.error.message}`,
         requestId,
@@ -208,8 +204,8 @@ export class ToolRegistry implements OnModuleInit {
     }
 
     // Successful path – optionally scrub PII before persisting
-    const safeInput = this.sanitizer ? this.sanitizer(rawArgs) : rawArgs;
-    const safeOutput = this.sanitizer ? this.sanitizer(outputParse.data) : outputParse.data;
+    const safeInput = this.sanitize(rawArgs);
+    const safeOutput = this.sanitize(outputParse.data);
 
     await this.log({
       toolName: name,
@@ -225,8 +221,15 @@ export class ToolRegistry implements OnModuleInit {
   }
 
   /* -----------------------------------------------------------------
-   *  Private helper – inserts a row into `tool_calls`
+   *  Private helpers
    * ----------------------------------------------------------------- */
+
+  /** Optionally scrub PII from log data before persisting. */
+  private sanitize(data: unknown): unknown {
+    return this.sanitizer ? this.sanitizer(data) : data;
+  }
+
+  /** Inserts a row into `tool_calls`. */
   private async log(params: ToolCallLogParams): Promise<void> {
     await this.callsActions.insertLog(params);
   }
