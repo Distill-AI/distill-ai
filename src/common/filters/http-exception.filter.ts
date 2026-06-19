@@ -4,10 +4,13 @@ import {
   ExceptionFilter,
   HttpException,
   HttpStatus,
+  Injectable,
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import * as Sentry from '@sentry/nestjs';
 import * as SYS_MSG from '@constants/system-messages';
+import { LoggerContextService } from '@common/logger/logger-context.service';
 
 type ErrorBody = {
   success: false;
@@ -21,9 +24,12 @@ type ErrorBody = {
 
 const INTERNAL_SERVER_ERROR_THRESHOLD = 500;
 
+@Injectable()
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(HttpExceptionFilter.name);
+
+  constructor(private readonly loggerContext: LoggerContextService) {}
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
@@ -35,6 +41,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const logMessage = `${request.method} ${request.url} → ${payload.statusCode}`;
     if (payload.statusCode >= INTERNAL_SERVER_ERROR_THRESHOLD) {
       this.logger.error(logMessage, exception instanceof Error ? exception.stack : undefined);
+
+      const requestId = this.loggerContext.getRequestId();
+      Sentry.withScope((scope) => {
+        if (requestId) scope.setTag('request_id', requestId);
+        scope.setExtra('url', request.url);
+        scope.setExtra('method', request.method);
+        Sentry.captureException(exception);
+      });
     } else {
       this.logger.warn(logMessage);
     }

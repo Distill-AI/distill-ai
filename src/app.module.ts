@@ -1,10 +1,12 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { redisConfig } from '@config/redis.config';
 import { env } from '@config/env';
 import { LoggerModule } from '@common/logger/logger.module';
+import { HttpExceptionFilter } from '@common/filters/http-exception.filter';
 import { RequestIdMiddleware } from '@common/middleware/request-id.middleware';
 
 // ── Core infrastructure ────────────────────────────────────────────────────
@@ -49,6 +51,7 @@ import { BenchmarkModule } from '@modules/benchmark/benchmark.module';
     SchedulerModule,
     BenchmarkModule,
   ],
+  providers: [{ provide: APP_FILTER, useClass: HttpExceptionFilter }],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
