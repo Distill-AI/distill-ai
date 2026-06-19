@@ -30,30 +30,38 @@ describe('Auth — Comprehensive', () => {
   });
 
   describe('Startup validation', () => {
-    it('throws when AUTH_ENABLED=true and JWT_SECRET is missing', () => {
-      expect(() => {
-        const config = { enabled: true, jwtSecret: '', tokenExpiryMs: 3600000 };
-        if (config.enabled && !config.jwtSecret) {
-          throw new Error('AUTH_ENABLED=true requires JWT_SECRET');
-        }
-      }).toThrow('AUTH_ENABLED=true requires JWT_SECRET');
+    const OLD_ENV = process.env;
+
+    beforeEach(() => {
+      vi.resetModules();
+      process.env = { ...OLD_ENV };
     });
 
-    it('passes when AUTH_ENABLED=true and JWT_SECRET is set', () => {
-      expect(() => {
-        const config = { enabled: true, jwtSecret: 'my-secret', tokenExpiryMs: 3600000 };
-        if (config.enabled && !config.jwtSecret) {
-          throw new Error('AUTH_ENABLED=true requires JWT_SECRET');
-        }
+    afterAll(() => {
+      process.env = OLD_ENV;
+    });
+
+    it('throws when AUTH_ENABLED=true and JWT_SECRET is missing', async () => {
+      process.env.AUTH_ENABLED = 'true';
+      delete process.env.JWT_SECRET;
+      await expect(async () => {
+        await vi.importActual('@config/auth.config');
+      }).rejects.toThrow('AUTH_ENABLED=true requires JWT_SECRET');
+    });
+
+    it('passes when AUTH_ENABLED=true and JWT_SECRET is set', async () => {
+      process.env.AUTH_ENABLED = 'true';
+      process.env.JWT_SECRET = 'my-secret';
+      await expect(async () => {
+        await vi.importActual('@config/auth.config');
       }).not.toThrow();
     });
 
-    it('passes when AUTH_ENABLED=false even without JWT_SECRET', () => {
-      expect(() => {
-        const config = { enabled: false, jwtSecret: '', tokenExpiryMs: 3600000 };
-        if (config.enabled && !config.jwtSecret) {
-          throw new Error('AUTH_ENABLED=true requires JWT_SECRET');
-        }
+    it('passes when AUTH_ENABLED=false even without JWT_SECRET', async () => {
+      process.env.AUTH_ENABLED = 'false';
+      delete process.env.JWT_SECRET;
+      await expect(async () => {
+        await vi.importActual('@config/auth.config');
       }).not.toThrow();
     });
   });
@@ -180,6 +188,10 @@ describe('Auth — Comprehensive', () => {
       }).compile();
     });
 
+    afterEach(async () => {
+      await moduleRef?.close();
+    });
+
     it('sets app.org_id from valid token', async () => {
       mockVerify.mockReturnValue({
         userId: 'u1',
@@ -223,6 +235,23 @@ describe('Auth — Comprehensive', () => {
         'demo-org',
       ]);
       expect(next).toHaveBeenCalled();
+    });
+
+    it('propagates error when set_config fails', async () => {
+      const dataSource = moduleRef.get(DataSource);
+      (dataSource.query as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error('connection lost'));
+
+      const authSvc = moduleRef.get(AuthService);
+      const middleware = new RlsContextMiddleware(dataSource, authSvc);
+
+      const request = { headers: { authorization: 'Bearer fail-token' } };
+      const next = vi.fn();
+
+      await middleware.use(request as never, {} as never, next);
+
+      expect(next).toHaveBeenCalledWith(expect.any(Error));
     });
   });
 
@@ -284,7 +313,7 @@ describe('Auth — Comprehensive', () => {
     });
   });
 
-  describe('AuthController', () => {
+  describe('AuthService', () => {
     it('login returns token when auth enabled', async () => {
       mockAuthConfig.enabled = true;
 

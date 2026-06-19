@@ -33,7 +33,9 @@ export class AuthService {
     headers?: Record<string, string | string[] | undefined>;
   }): string | null {
     const header = request.headers?.authorization;
-    return typeof header === 'string' && header.startsWith('Bearer ') ? header.slice(7) : null;
+    if (typeof header !== 'string') return null;
+    const match = header.match(/^Bearer\s+(.+)$/i);
+    return match?.[1]?.trim() || null;
   }
 
   validateToken(token: string): DecodedToken {
@@ -60,7 +62,9 @@ export class AuthService {
   }
 
   getUser(request: { user?: AuthUser }): AuthUser {
-    return authConfig.enabled ? request.user! : this.dummyUser();
+    if (!authConfig.enabled) return this.dummyUser();
+    if (!request.user) throw new UnauthorizedException(SYS_MSG.AUTH_UNAUTHORIZED);
+    return request.user;
   }
 
   getOrgId(request: { user?: AuthUser }): string {

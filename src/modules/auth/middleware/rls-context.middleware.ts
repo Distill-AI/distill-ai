@@ -15,7 +15,7 @@ export class RlsContextMiddleware implements NestMiddleware {
   async use(
     request: { headers?: Record<string, string | string[] | undefined> },
     _response: unknown,
-    next: () => void,
+    next: (error?: unknown) => void,
   ): Promise<void> {
     // Always reset session variable to prevent leakage from pooled connections
     try {
@@ -36,6 +36,8 @@ export class RlsContextMiddleware implements NestMiddleware {
       await this.dataSource.query('SELECT set_config($1, $2, false)', ['app.org_id', orgId]);
     } catch (error) {
       this.logger.error('RLS context error:', error);
+      next(error);
+      return;
     }
 
     next();

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpStatus, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, HttpStatus, HttpCode, Post, Req } from '@nestjs/common';
 import { AuthService } from './services/auth.service';
 import { LoginRequestDto } from './dtos/login.request.dto';
 import * as SYS_MSG from '@constants/system-messages';
@@ -12,6 +12,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
+  @HttpCode(HttpStatus.OK)
   @LoginDocs()
   async login(@Body() dto: LoginRequestDto) {
     const result = await this.authService.login(dto.email, dto.password);
