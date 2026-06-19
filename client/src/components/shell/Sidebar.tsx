@@ -3,6 +3,11 @@ import { useRole } from '../../context/RoleContext';
 import type { Role } from '../../context/RoleContext';
 import { DistillMark } from './DistillMark';
 
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
 interface NavItem {
   label: string;
   to: string;
@@ -91,7 +96,7 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-export function Sidebar() {
+export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { role } = useRole();
   const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(role));
 
@@ -99,7 +104,15 @@ export function Sidebar() {
   const userName = 'Avery Reed';
 
   return (
-    <nav className="flex flex-col w-52 flex-none bg-slate-900 h-full" aria-label="Main navigation">
+    <nav
+      className={[
+        'flex flex-col w-52 flex-none bg-slate-900 h-full',
+        'fixed inset-y-0 left-0 z-50 transition-transform duration-200 ease-in-out',
+        isOpen ? 'translate-x-0' : '-translate-x-full',
+        'md:static md:translate-x-0 md:transition-none',
+      ].join(' ')}
+      aria-label="Main navigation"
+    >
       <div className="flex items-center gap-3 px-4 py-5">
         <DistillMark size={18} color="#fff" />
         <span className="text-white text-[15px] font-semibold tracking-tight">
@@ -113,6 +126,7 @@ export function Sidebar() {
             <NavLink
               to={item.to}
               end={item.to === '/'}
+              onClick={onClose}
               className={({ isActive }) =>
                 [
                   'flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] transition-colors',
