@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ToolRegistry } from './registry';
-import { InvokeRequestDto } from './dto/invoke.request.dto';
-import { InvokeResponseDto } from './dto/invoke.response.dto';
+import { InvokeRequestDto, InvokeResponseDto } from './dto/tools.dtos';
 import { ToolContract } from './interfaces/tool-contract.interface';
 import { z } from 'zod';
 

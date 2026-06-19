@@ -1,6 +1,6 @@
 /* src/modules/tools/interfaces/tool-contract.interface.ts */
 import { z, ZodTypeAny } from 'zod';
-import { ToolTier } from '../enums/tool-tier.enum';
+import { ToolTier } from '../enums/tools.enums';
 
 /**
  * Generic contract that every tool must implement.

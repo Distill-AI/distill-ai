@@ -2,8 +2,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { ToolCallEntity } from '../entities/tool-calls.entity';
-import { ToolCallStatus } from '../enums/tool-call-status.enum';
-import { ToolTier } from '../enums/tool-tier.enum';
+import { ToolCallStatus, ToolTier } from '../enums/tools.enums';
 
 export interface ToolCallLogParams {
   toolName: string;

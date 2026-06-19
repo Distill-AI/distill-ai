@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { ToolContract } from '../interfaces/tool-contract.interface';
-import { ToolTier } from '../enums/tool-tier.enum';
+import { ToolTier } from '../enums/tools.enums';
 
 export const EchoToolInputSchema = z.object({
   message: z.string(),
