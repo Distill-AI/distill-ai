@@ -27,6 +27,19 @@ export class RequestModelAction extends AbstractModelAction<Request> {
   }
 
   /**
+   * Mark a request as actively processing: set status to 'parsing' and stamp
+   * `processing_started_at = now`. The stamp is what `findStaleParsing` checks, so without it the
+   * recovery sweep can never detect a crashed run. Re-stamped on every run/resume so an actively
+   * processing request is not swept while it is still making progress.
+   */
+  async markProcessing(requestId: string): Promise<void> {
+    await this.requestRepository.update(
+      { id: requestId },
+      { status: RequestStatus.PARSING, processing_started_at: new Date() },
+    );
+  }
+
+  /**
    * Requests stuck in 'parsing' whose processing started more than `staleSeconds` ago.
    * Backs the RecoverySweep; matches the `(status, processing_started_at) WHERE status='parsing'`
    * partial index.
