@@ -5,7 +5,7 @@ import { AuditEventModelAction } from './audit-event.model-action';
 /** Parameters for a single audit event. `attributes` must be non-sensitive metadata only. */
 export interface EmitEventParams {
   eventName: string;
-  orgId: string;
+  orgId?: string;
   requestId?: string | null;
   quoteId?: string | null;
   userId?: string | null;
@@ -28,17 +28,19 @@ export class EventsService {
   async emit(params: EmitEventParams): Promise<void> {
     const attributes = params.attributes ?? {};
 
-    await this.auditEvents.create({
-      createPayload: {
-        org_id: params.orgId,
-        request_id: params.requestId ?? null,
-        quote_id: params.quoteId ?? null,
-        user_id: params.userId ?? null,
-        event_name: params.eventName,
-        attributes,
-      },
-      transactionOptions: { useTransaction: false },
-    });
+    if (params.orgId) {
+      await this.auditEvents.create({
+        createPayload: {
+          org_id: params.orgId,
+          request_id: params.requestId ?? null,
+          quote_id: params.quoteId ?? null,
+          user_id: params.userId ?? null,
+          event_name: params.eventName,
+          attributes,
+        },
+        transactionOptions: { useTransaction: false },
+      });
+    }
 
     this.sse.emit(params.eventName, { request_id: params.requestId ?? null, ...attributes });
   }
