@@ -2,8 +2,8 @@ import { z } from 'zod';
 
 const schema = z.object({
   AUTH_ENABLED: z.enum(['true', 'false']).default('false'),
-  JWT_SECRET: z.string().optional(),
-  JWT_EXPIRY_MS: z.coerce.number().int().positive().default(3600000),
+  JWT_SECRET: z.string().trim().min(1).optional(),
+  JWT_EXPIRY_MS: z.coerce.number().int().min(1000).default(3600000),
 });
 
 const result = schema.safeParse(process.env);

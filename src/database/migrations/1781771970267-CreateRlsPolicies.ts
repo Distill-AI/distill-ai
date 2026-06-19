@@ -26,10 +26,7 @@ export class CreateRlsPolicies1781771970267 implements MigrationInterface {
 
     for (const table of orgIdTables) {
       await queryRunner.query(`
-        DO $ BEGIN
-          ALTER TABLE "${table}" ENABLE ROW LEVEL SECURITY;
-        EXCEPTION WHEN duplicate_object THEN NULL;
-        END $;
+        ALTER TABLE "${table}" ENABLE ROW LEVEL SECURITY;
       `);
 
       await queryRunner.query(`
