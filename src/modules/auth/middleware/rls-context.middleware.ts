@@ -1,5 +1,5 @@
 import { Injectable, NestMiddleware, Logger } from '@nestjs/common';
-import type { DataSource } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { AuthService } from '../services/auth.service';
 import { authConfig } from '@config/auth.config';
 
