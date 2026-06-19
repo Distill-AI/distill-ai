@@ -18,7 +18,9 @@ US-E
 
 ## Domain / Module
 
-<!-- Which module(s) does this touch? e.g. ingestion, extraction, catalog, quotes, approval, queue -->
+<!-- Which module(s) does this touch?
+     Server: ingestion, extraction, catalog, quotes, approval, queue, redis, sse, auth
+     Client: client (shell), inbox, review, clarification, analytics, settings -->
 
 ## Description
 

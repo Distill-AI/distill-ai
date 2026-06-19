@@ -16,9 +16,9 @@ export const REDIS_CONNECTION_ESTABLISHED = 'Redis connection established';
 export const REDIS_CLIENT_READY = 'Redis client ready';
 export const REDIS_CONNECTION_CLOSED = 'Redis connection closed';
 export const REDIS_CLIENT_ERROR = 'Redis client error';
-export const REDIS_CRITICAL_OOM = 'Redis OOM — server is out of memory';
+export const REDIS_CRITICAL_OOM = 'Redis OOM, server is out of memory';
 export const REDIS_INITIAL_CONNECTION_FAILED = 'Redis initial connection failed';
-export const REDIS_RETRY_LIMIT_REACHED = 'Redis retry limit reached — giving up';
+export const REDIS_RETRY_LIMIT_REACHED = 'Redis retry limit reached, giving up';
 export const REDIS_RECONNECT_ATTEMPT = (times: number, delay: number) =>
   `Redis reconnect attempt ${times}, next retry in ${delay}ms`;
 export const REDIS_PATTERN_DELETE_SUCCESS = (count: number, pattern: string) =>
@@ -38,3 +38,8 @@ export const DLQ_JOB_NOT_FOUND = (id: string) => `DLQ job ${id} not found`;
 export const DLQ_RETRY_QUEUED = 'Job re-queued from DLQ for retry';
 export const DLQ_THRESHOLD_EXCEEDED = (count: number, threshold: number) =>
   `DLQ alert: ${count} jobs have failed (threshold: ${threshold})`;
+
+// Pipeline (US-E8-4)
+export const REQUEST_NOT_FOUND = (id: string) => `Request ${id} not found`;
+export const PIPELINE_ENQUEUED = 'Request enqueued for pipeline processing';
+export const PIPELINE_RESUMED = 'Request resumed for pipeline processing';
