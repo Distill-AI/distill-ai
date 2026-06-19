@@ -38,6 +38,7 @@ function makeFakeRequests(startNode: CurrentNode) {
     current_node: startNode,
     status: RequestStatus.PARSING,
     routing: null,
+    processing_started_at: null,
   } as Request;
   return {
     record,
@@ -48,6 +49,11 @@ function makeFakeRequests(startNode: CurrentNode) {
     }),
     setStatus: vi.fn().mockImplementation((_id: string, status: RequestStatus) => {
       record.status = status;
+      return Promise.resolve();
+    }),
+    markProcessing: vi.fn().mockImplementation((_id: string) => {
+      record.status = RequestStatus.PARSING;
+      record.processing_started_at = new Date(0);
       return Promise.resolve();
     }),
   };
@@ -96,6 +102,10 @@ describe('graph-resume', () => {
     expect(requests.record.current_node).toBe(CurrentNode.DONE);
     // routing is null, so the deterministic terminal status is needs_review.
     expect(requests.record.status).toBe(RequestStatus.NEEDS_REVIEW);
+    // processing_started_at must be stamped on run start, or the recovery sweep can never find a
+    // crashed run (findStaleParsing keys off this timestamp).
+    expect(requests.markProcessing).toHaveBeenCalledWith('req-1');
+    expect(requests.record.processing_started_at).not.toBeNull();
   });
 
   it('resumes at classify after a simulated crash mid-extract', async () => {
