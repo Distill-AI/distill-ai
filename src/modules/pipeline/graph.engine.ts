@@ -15,6 +15,9 @@ function isInfraError(err: unknown): boolean {
   return err instanceof PipelineInfraError;
 }
 
+/** Safety cap on node transitions per run, guards against a buggy node creating a cycle. */
+const MAX_NODE_TRANSITIONS = 50;
+
 /**
  * The in-process graph orchestrator (US-E8-4). Drives a request through the node graph from its
  * persisted `current_node`. Routing is deterministic (a pure function of node result + state),
@@ -53,7 +56,32 @@ export class PipelineGraphEngine {
     await this.requests.setStatus(requestId, RequestStatus.PARSING);
 
     let node = req.current_node;
+    let steps = 0;
     while (node !== CurrentNode.DONE && node !== CurrentNode.FAILED) {
+      // Guard against a buggy node returning a cycle/self-loop that never terminates.
+      if (++steps > MAX_NODE_TRANSITIONS) {
+        this.logger.error({ event: 'pipeline_max_transitions_exceeded', requestId, node, steps });
+        await this.checkpoint(requestId, CurrentNode.FAILED, node, orgId);
+        return this.finalize(orgId, requestId, RequestStatus.FAILED);
+      }
+
+      // Resolve the node defensively: an unregistered node is a terminal engine error, not an
+      // unhandled throw that would leave the request stuck in 'parsing' and re-enqueued forever.
+      if (!this.nodes.has(node)) {
+        this.logger.error({ event: 'pipeline_node_unregistered', requestId, node });
+        await this.events.emit({
+          eventName: 'stage.error',
+          orgId,
+          requestId,
+          attributes: {
+            node,
+            escalated_to_human: false,
+            error: `No node registered for "${node}"`,
+          },
+        });
+        await this.checkpoint(requestId, CurrentNode.FAILED, node, orgId);
+        return this.finalize(orgId, requestId, RequestStatus.FAILED);
+      }
       const impl = this.nodes.get(node);
       await this.events.emit({ eventName: 'node.entered', orgId, requestId, attributes: { node } });
 
@@ -61,13 +89,14 @@ export class PipelineGraphEngine {
       try {
         result = await impl.run({ requestId, orgId });
       } catch (err) {
+        const infra = isInfraError(err);
         await this.events.emit({
           eventName: 'stage.error',
           orgId,
           requestId,
-          attributes: { node, escalated_to_human: true, error: (err as Error).message },
+          attributes: { node, escalated_to_human: !infra, error: (err as Error).message },
         });
-        if (isInfraError(err)) {
+        if (infra) {
           await this.checkpoint(requestId, CurrentNode.FAILED, node, orgId);
           return this.finalize(orgId, requestId, RequestStatus.FAILED);
         }

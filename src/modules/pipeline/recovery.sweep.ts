@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { env } from '@config/env';
 import { RequestModelAction } from '@modules/requests/requests.model-action';
 import { PipelineRunner } from './pipeline.runner';
 
@@ -10,7 +11,7 @@ import { PipelineRunner } from './pipeline.runner';
 @Injectable()
 export class RecoverySweep implements OnApplicationBootstrap {
   private readonly logger = new Logger(RecoverySweep.name);
-  private readonly staleSeconds = Number(process.env.SWEEP_STALE_SECONDS ?? 60);
+  private readonly staleSeconds = env.SWEEP_STALE_SECONDS;
 
   constructor(
     private readonly requests: RequestModelAction,
@@ -21,11 +22,22 @@ export class RecoverySweep implements OnApplicationBootstrap {
   @Cron(CronExpression.EVERY_30_SECONDS)
   async sweep(): Promise<void> {
     const stale = await this.requests.findStaleParsing(this.staleSeconds);
+    let enqueued = 0;
     for (const req of stale) {
-      await this.runner.enqueue(req.id);
+      // Per-request isolation: one failed enqueue must not abort recovery of the rest.
+      try {
+        await this.runner.enqueue(req.id);
+        enqueued += 1;
+      } catch (err) {
+        this.logger.error({
+          event: 'pipeline_recovery_enqueue_failed',
+          requestId: req.id,
+          error: (err as Error).message,
+        });
+      }
     }
     if (stale.length > 0) {
-      this.logger.log({ event: 'pipeline_recovery_sweep', recovered: stale.length });
+      this.logger.log({ event: 'pipeline_recovery_sweep', stale: stale.length, enqueued });
     }
   }
 
