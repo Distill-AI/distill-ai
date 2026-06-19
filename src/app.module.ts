@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ToolsModule } from './modules/tools/tools.module';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EventEmitterModule } from '@nestjs/event-emitter';
@@ -47,6 +48,7 @@ import { BenchmarkModule } from '@modules/benchmark/benchmark.module';
     DlqModule,
     SchedulerModule,
     BenchmarkModule,
+    ToolsModule,
   ],
 })
 export class AppModule {}
