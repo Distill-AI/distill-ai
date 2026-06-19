@@ -1,37 +1,39 @@
-import { Routes, Route, NavLink } from 'react-router-dom';
-import { Home } from './pages/Home';
-import { Benchmark } from './pages/Benchmark';
-
-const navClass = ({ isActive }: { isActive: boolean }) =>
-  `px-3 py-2 rounded text-sm font-medium transition-colors ${
-    isActive ? 'bg-indigo-700 text-white' : 'text-indigo-100 hover:bg-indigo-600 hover:text-white'
-  }`;
+import { Routes, Route } from 'react-router-dom';
+import { RoleProvider } from './context/RoleContext';
+import { AppShell } from './components/shell/AppShell';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { Inbox } from './pages/Inbox';
+import { Quotes } from './pages/Quotes';
+import { Catalog } from './pages/Catalog';
+import { Analytics } from './pages/Analytics';
+import { Settings } from './pages/Settings';
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-indigo-800 shadow">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-14 items-center gap-6">
-            <span className="text-white font-semibold tracking-tight">NestJS Starter</span>
-            <div className="flex gap-1">
-              <NavLink to="/" end className={navClass}>
-                Home
-              </NavLink>
-              <NavLink to="/benchmark" className={navClass}>
-                Benchmark
-              </NavLink>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <RoleProvider>
+      <AppShell>
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/benchmark" element={<Benchmark />} />
+          <Route path="/" element={<Inbox />} />
+          <Route path="/quotes" element={<Quotes />} />
+          <Route
+            path="/catalog"
+            element={
+              <ProtectedRoute roles={['RevOps', 'Admin']}>
+                <Catalog />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/analytics"
+            element={
+              <ProtectedRoute roles={['RevOps', 'Admin']}>
+                <Analytics />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/settings" element={<Settings />} />
         </Routes>
-      </main>
-    </div>
+      </AppShell>
+    </RoleProvider>
   );
 }
