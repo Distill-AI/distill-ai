@@ -1,5 +1,5 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { APP_FILTER } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EventEmitterModule } from '@nestjs/event-emitter';
@@ -18,6 +18,11 @@ import { JobsModule } from '@modules/jobs/jobs.module';
 import { DlqModule } from '@modules/dlq/dlq.module';
 import { SchedulerModule } from '@modules/scheduler/scheduler.module';
 import { BenchmarkModule } from '@modules/benchmark/benchmark.module';
+
+// ── Auth (NFR-SEC-5) ───────────────────────────────────────────────────────
+import { AuthModule } from '@modules/auth';
+import { AuthGuard } from '@modules/auth';
+import { RlsContextMiddleware } from '@modules/auth/middleware/rls-context.middleware';
 
 @Module({
   imports: [
@@ -46,15 +51,19 @@ import { BenchmarkModule } from '@modules/benchmark/benchmark.module';
     HealthModule,
 
     // ── Feature modules — add yours here, remove the reference ones ───────
+    AuthModule,
     JobsModule,
     DlqModule,
     SchedulerModule,
     BenchmarkModule,
   ],
-  providers: [{ provide: APP_FILTER, useClass: HttpExceptionFilter }],
+  providers: [
+    { provide: APP_FILTER, useClass: HttpExceptionFilter },
+    { provide: APP_GUARD, useClass: AuthGuard },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(RequestIdMiddleware).forRoutes('*');
+    consumer.apply(RequestIdMiddleware, RlsContextMiddleware).forRoutes('*');
   }
 }
