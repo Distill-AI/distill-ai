@@ -1,9 +1,16 @@
 export const QUEUES = {
   JOBS: 'jobs',
+  PIPELINE: 'pipeline',
 } as const;
 
 export const JOBS = {
   PROCESS_JOB: 'process-job',
+} as const;
+
+// Pipeline graph-engine job (US-E8-4). One job per request run; jobId is
+// `pipeline:<requestId>` so Bull deduplicates safe re-enqueues on crash recovery.
+export const PIPELINE_JOBS = {
+  RUN: 'pipeline:run',
 } as const;
 
 export const JOB_RETENTION = {
