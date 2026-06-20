@@ -93,6 +93,19 @@ export class ToolRegistry implements OnModuleInit {
     // Emit running status
     if (requestId && node) {
       await this.emitToolEvent(rid, node, name, 'running', attempt, 'Invoking tool');
+    } else if (requestId) {
+      await this.events.emit({
+        eventName: 'tool.invoked',
+        requestId,
+        attributes: {
+          type: 'tool.invoked',
+          timestamp: getTimestamp(),
+          tool_name: name,
+          status: 'running',
+          attempt,
+          result_summary: 'Invoking tool',
+        },
+      });
     }
 
     // 1: look up contract
@@ -109,6 +122,19 @@ export class ToolRegistry implements OnModuleInit {
       });
       if (requestId && node) {
         await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Tool not found');
+      } else if (requestId) {
+        await this.events.emit({
+          eventName: 'tool.invoked',
+          requestId,
+          attributes: {
+            type: 'tool.invoked',
+            timestamp: getTimestamp(),
+            tool_name: name,
+            status: 'failed',
+            attempt,
+            result_summary: 'Tool not found',
+          },
+        });
       }
       return { status: ToolStatus.ERROR, latency, error: SYS_MSG.TOOL_NOT_FOUND(name) };
     }
@@ -127,6 +153,19 @@ export class ToolRegistry implements OnModuleInit {
       });
       if (requestId && node) {
         await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Input validation failed');
+      } else if (requestId) {
+        await this.events.emit({
+          eventName: 'tool.invoked',
+          requestId,
+          attributes: {
+            type: 'tool.invoked',
+            timestamp: getTimestamp(),
+            tool_name: name,
+            status: 'failed',
+            attempt,
+            result_summary: 'Input validation failed',
+          },
+        });
       }
       return {
         status: ToolStatus.VALIDATION_ERROR,
@@ -159,6 +198,19 @@ export class ToolRegistry implements OnModuleInit {
       });
       if (requestId && node) {
         await this.emitToolEvent(rid, node, name, 'failed', attempt, msg);
+      } else if (requestId) {
+        await this.events.emit({
+          eventName: 'tool.invoked',
+          requestId,
+          attributes: {
+            type: 'tool.invoked',
+            timestamp: getTimestamp(),
+            tool_name: name,
+            status: 'failed',
+            attempt,
+            result_summary: msg,
+          },
+        });
       }
       return { status: ToolStatus.ERROR, latency, error: msg };
     }
@@ -176,6 +228,19 @@ export class ToolRegistry implements OnModuleInit {
       });
       if (requestId && node) {
         await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Output validation failed');
+      } else if (requestId) {
+        await this.events.emit({
+          eventName: 'tool.invoked',
+          requestId,
+          attributes: {
+            type: 'tool.invoked',
+            timestamp: getTimestamp(),
+            tool_name: name,
+            status: 'failed',
+            attempt,
+            result_summary: 'Output validation failed',
+          },
+        });
       }
       return {
         status: ToolStatus.VALIDATION_ERROR,
