@@ -8,17 +8,29 @@ import { NodeRegistry } from './node-registry';
 import { isInfraError } from './pipeline.errors';
 import type { NodeResult } from './types';
 
-/** Safety cap on node transitions per run, guards against a buggy node creating a cycle. */
 const MAX_NODE_TRANSITIONS = 50;
 
-/**
- * The in-process graph orchestrator (US-E8-4). Drives a request through the node graph from its
- * persisted `current_node`. Routing is deterministic (a pure function of node result + state),
- * never the LLM.
- *
- * Resumability is node-level: the next node is checkpointed BEFORE it runs, so a crash between
- * nodes loses nothing, and a crash mid-node simply re-runs that node on the next attempt.
- */
+function getTimestamp(): string {
+  return new Date().toISOString();
+}
+
+function elapsedMs(start: number): number {
+  return Math.round(performance.now() - start);
+}
+
+function nodeSummary(node: CurrentNode): string {
+  const summaries: Partial<Record<CurrentNode, string>> = {
+    [CurrentNode.PARSE]: 'Parsed email + attachments',
+    [CurrentNode.EXTRACT]: 'Extraction completed',
+    [CurrentNode.CLASSIFY]: 'Request classified',
+    [CurrentNode.MATCH]: 'Catalog matching completed',
+    [CurrentNode.PRICE]: 'Pricing rules applied',
+    [CurrentNode.POLICY]: 'Policy rules applied',
+    [CurrentNode.SCORE]: 'Confidence scored',
+  };
+  return summaries[node] ?? `Node ${node} completed`;
+}
+
 @Injectable()
 export class PipelineGraphEngine {
   private readonly logger = new Logger(PipelineGraphEngine.name);
@@ -29,8 +41,8 @@ export class PipelineGraphEngine {
     private readonly events: EventsService,
   ) {}
 
-  /** Run (or resume) the pipeline for a request until it reaches a terminal state. */
   async run(requestId: string): Promise<void> {
+    const startedAt = performance.now();
     const req = await this.requests.get({ identifierOptions: { id: requestId } });
     if (!req) {
       this.logger.warn({ event: 'pipeline_request_not_found', requestId });
@@ -46,113 +58,191 @@ export class PipelineGraphEngine {
         attributes: { resumed_from_node: req.current_node, reason: 'crash_recovery' },
       });
     }
-    // Stamp processing_started_at (not just status): the recovery sweep keys off that timestamp,
-    // so a bare setStatus(PARSING) would leave crashed runs undetectable.
     await this.requests.markProcessing(requestId);
 
     let node = req.current_node;
     let steps = 0;
+    let overallStatus: 'success' | 'failed' = 'success';
+
     while (node !== CurrentNode.DONE && node !== CurrentNode.FAILED) {
-      // Guard against a buggy node returning a cycle/self-loop that never terminates.
       if (++steps > MAX_NODE_TRANSITIONS) {
         this.logger.error({ event: 'pipeline_max_transitions_exceeded', requestId, node, steps });
         await this.checkpoint(requestId, CurrentNode.FAILED, node, orgId);
-        return this.finalize(orgId, requestId, RequestStatus.FAILED);
+        overallStatus = 'failed';
+        return this.finalize(orgId, requestId, RequestStatus.FAILED, overallStatus, startedAt);
       }
 
-      // Resolve the node defensively: an unregistered node is a terminal engine error, not an
-      // unhandled throw that would leave the request stuck in 'parsing' and re-enqueued forever.
       if (!this.nodes.has(node)) {
         this.logger.error({ event: 'pipeline_node_unregistered', requestId, node });
-        await this.events.emit({
-          eventName: 'stage.error',
-          orgId,
-          requestId,
-          attributes: {
-            node,
-            escalated_to_human: false,
-            error: `No node registered for "${node}"`,
-          },
-        });
+        overallStatus = 'failed';
         await this.checkpoint(requestId, CurrentNode.FAILED, node, orgId);
-        return this.finalize(orgId, requestId, RequestStatus.FAILED);
+        return this.finalize(orgId, requestId, RequestStatus.FAILED, overallStatus, startedAt);
       }
       const impl = this.nodes.get(node);
-      await this.events.emit({ eventName: 'node.entered', orgId, requestId, attributes: { node } });
+
+      await this.emitNodeEntered(requestId, node, orgId);
+      const nodeStartedAt = performance.now();
 
       let result: NodeResult;
       try {
         result = await impl.run({ requestId, orgId });
       } catch (err) {
         const infra = isInfraError(err);
+        const nodeDuration = elapsedMs(nodeStartedAt);
+        const errorMsg = (err as Error).message;
+
         await this.events.emit({
           eventName: 'stage.error',
           orgId,
           requestId,
-          attributes: { node, escalated_to_human: !infra, error: (err as Error).message },
+          attributes: { node, escalated_to_human: !infra, error: errorMsg },
         });
+        await this.emitNodeExited(requestId, node, 'failed', nodeDuration, errorMsg, orgId);
+
         if (infra) {
+          overallStatus = 'failed';
           await this.checkpoint(requestId, CurrentNode.FAILED, node, orgId);
-          return this.finalize(orgId, requestId, RequestStatus.FAILED);
+          return this.finalize(orgId, requestId, RequestStatus.FAILED, overallStatus, startedAt);
         }
-        // Logical error: leave current_node on the throwing node so resume re-enters there, but
-        // still emit node.exited so SSE clients see a clean close instead of a hung node.
-        await this.events.emit({
-          eventName: 'node.exited',
+
+        overallStatus = 'failed';
+        return this.finalize(
           orgId,
           requestId,
-          attributes: { node, next: 'needs_review' },
-        });
-        return this.finalize(orgId, requestId, RequestStatus.NEEDS_REVIEW);
+          RequestStatus.NEEDS_REVIEW,
+          overallStatus,
+          startedAt,
+        );
       }
+
+      const nodeDuration = elapsedMs(nodeStartedAt);
+      const summary = nodeSummary(node);
 
       if (result.kind === 'clarify') {
-        await this.events.emit({
-          eventName: 'node.exited',
+        await this.emitNodeExited(
+          requestId,
+          node,
+          'failed',
+          nodeDuration,
+          'Clarification requested',
+          orgId,
+        );
+        overallStatus = 'failed';
+        return this.finalize(
           orgId,
           requestId,
-          attributes: { node, next: 'needs_clarification' },
-        });
-        return this.finalize(orgId, requestId, RequestStatus.NEEDS_CLARIFICATION);
+          RequestStatus.NEEDS_CLARIFICATION,
+          overallStatus,
+          startedAt,
+        );
       }
 
-      const next = result.kind === 'failed' ? CurrentNode.FAILED : result.next;
-      // Checkpoint the next node BEFORE it runs: this is the node-level resumability guarantee.
-      await this.checkpoint(requestId, next, node, orgId);
-      node = next;
+      if (result.kind === 'failed') {
+        await this.emitNodeExited(
+          requestId,
+          node,
+          'failed',
+          nodeDuration,
+          result.error.message,
+          orgId,
+        );
+        overallStatus = 'failed';
+        await this.checkpoint(requestId, CurrentNode.FAILED, node, orgId);
+        return this.finalize(orgId, requestId, RequestStatus.FAILED, overallStatus, startedAt);
+      }
+
+      await this.emitNodeExited(requestId, node, 'success', nodeDuration, summary, orgId);
+      await this.checkpoint(requestId, result.next, node, orgId);
+      node = result.next;
     }
 
-    await this.finalize(orgId, requestId, await this.computeTerminalStatus(requestId, node));
+    const terminalStatus = await this.computeTerminalStatus(requestId, node);
+    await this.finalize(orgId, requestId, terminalStatus, overallStatus, startedAt);
   }
 
-  /** Persist the next node and emit the exit event (the checkpoint between nodes). */
-  private async checkpoint(
+  private async emitNodeEntered(
     requestId: string,
-    next: CurrentNode,
-    from: CurrentNode,
+    node: CurrentNode,
     orgId: string,
   ): Promise<void> {
-    await this.requests.setCurrentNode(requestId, next);
+    await this.events.emit({
+      eventName: 'node.entered',
+      orgId,
+      requestId,
+      attributes: {
+        type: 'node.entered',
+        timestamp: getTimestamp(),
+        node,
+        status: 'processing',
+      },
+    });
+  }
+
+  private async emitNodeExited(
+    requestId: string,
+    node: CurrentNode,
+    status: 'success' | 'failed',
+    durationMs: number,
+    summary: string,
+    orgId: string,
+  ): Promise<void> {
     await this.events.emit({
       eventName: 'node.exited',
       orgId,
       requestId,
-      attributes: { node: from, next },
+      attributes: {
+        type: 'node.exited',
+        timestamp: getTimestamp(),
+        node,
+        status,
+        duration_ms: durationMs,
+        summary,
+      },
     });
   }
 
-  private async finalize(orgId: string, requestId: string, status: RequestStatus): Promise<void> {
+  private async checkpoint(
+    requestId: string,
+    next: CurrentNode,
+    _from: CurrentNode,
+    _orgId: string,
+  ): Promise<void> {
+    await this.requests.setCurrentNode(requestId, next);
+  }
+
+  private async finalize(
+    orgId: string,
+    requestId: string,
+    status: RequestStatus,
+    overallStatus: 'success' | 'failed',
+    startedAt: number,
+  ): Promise<void> {
     await this.requests.setStatus(requestId, status);
+
+    const totalDurationMs = elapsedMs(startedAt);
+
+    await this.events.emit({
+      eventName: 'processing.complete',
+      orgId,
+      requestId,
+      attributes: {
+        type: 'processing.complete',
+        timestamp: getTimestamp(),
+        status: overallStatus,
+        total_duration_ms: totalDurationMs,
+      },
+    });
+
     await this.events.emit({
       eventName: 'request.finalized',
       orgId,
       requestId,
       attributes: { status },
     });
+
     this.logger.log({ event: 'pipeline_finalized', requestId, status });
   }
 
-  /** Terminal status from the end node + persisted routing. Deterministic, no LLM. */
   private async computeTerminalStatus(
     requestId: string,
     endNode: CurrentNode,
@@ -160,9 +250,6 @@ export class PipelineGraphEngine {
     if (endNode === CurrentNode.FAILED) {
       return RequestStatus.FAILED;
     }
-    // Deliberate re-fetch (NOT the req from run()): the `score` node is the deterministic routing
-    // source and writes `routing` during this run, so the value read at run() entry is still null
-    // here. Reusing it would resolve every request to NEEDS_REVIEW once the real score node lands.
     const req = await this.requests.get({ identifierOptions: { id: requestId } });
     return req?.routing === RequestRouting.AUTO_ELIGIBLE
       ? RequestStatus.PRICED

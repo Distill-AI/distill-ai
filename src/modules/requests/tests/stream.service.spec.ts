@@ -219,8 +219,8 @@ describe('StreamService', () => {
       );
       await new Promise<void>((resolve) => setImmediate(resolve));
 
-      const call = emitSpy.mock.calls[0][0] as Record<string, unknown>;
-      const attrs = call.attributes as Record<string, unknown>;
+      const call = emitSpy.mock.calls[0][0] as unknown as Record<string, unknown>;
+      const attrs = call.attributes as unknown as Record<string, unknown>;
       expect(attrs.summary).toBe(SYS_MSG.SANITIZED_SUMMARY_PLACEHOLDER);
     });
 
@@ -238,8 +238,8 @@ describe('StreamService', () => {
       );
       await new Promise<void>((resolve) => setImmediate(resolve));
 
-      const call = emitSpy.mock.calls[0][0] as Record<string, unknown>;
-      const attrs = call.attributes as Record<string, unknown>;
+      const call = emitSpy.mock.calls[0][0] as unknown as Record<string, unknown>;
+      const attrs = call.attributes as unknown as Record<string, unknown>;
       expect(attrs.summary).toBe('Parsed email + 1 attachment');
     });
 
@@ -258,8 +258,8 @@ describe('StreamService', () => {
       );
       await new Promise<void>((resolve) => setImmediate(resolve));
 
-      const call = emitSpy.mock.calls[0][0] as Record<string, unknown>;
-      const attrs = call.attributes as Record<string, unknown>;
+      const call = emitSpy.mock.calls[0][0] as unknown as Record<string, unknown>;
+      const attrs = call.attributes as unknown as Record<string, unknown>;
       expect(attrs.result_summary).toBe('Error: something broke');
     });
   });
