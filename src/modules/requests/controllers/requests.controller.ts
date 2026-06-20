@@ -1,6 +1,7 @@
 import { Controller, Logger, NotFoundException, Param, Req, Sse } from '@nestjs/common';
 import type { MessageEvent } from '@nestjs/common';
 import { Observable } from 'rxjs';
+import { authConfig } from '@config/auth.config';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Role } from '../../auth/enums/role.enum';
 import * as SYS_MSG from '@constants/system-messages';
@@ -27,12 +28,13 @@ export class RequestsController {
   ): Promise<Observable<MessageEvent>> {
     const request = await this.requestsService.findByIdOrFail(requestId);
 
-    const user = req.user;
-    if (!user || request.org_id !== user.orgId) {
-      throw new NotFoundException(SYS_MSG.REQUEST_NOT_FOUND(requestId));
+    if (authConfig.enabled) {
+      const user = req.user;
+      if (!user || request.org_id !== user.orgId) {
+        throw new NotFoundException(SYS_MSG.REQUEST_NOT_FOUND(requestId));
+      }
+      this.logger.log({ event: SYS_MSG.STREAM_SUBSCRIBED, requestId, orgId: user.orgId });
     }
-
-    this.logger.log({ event: SYS_MSG.STREAM_SUBSCRIBED, requestId, orgId: user.orgId });
 
     return this.streamService.subscribe(requestId);
   }
