@@ -14,7 +14,6 @@ function send(entry: LogEntry) {
     // Production: swap this block for your logging service (Sentry, Datadog, etc.)
     // Example: Sentry.captureMessage(entry.message, { level: entry.level, extra: entry.data });
     if (entry.level === 'error' || entry.level === 'warn') {
-      // eslint-disable-next-line no-console
       console[entry.level](`[${entry.context ?? 'app'}]`, entry.message, entry.data ?? '');
     }
     return;
@@ -23,7 +22,6 @@ function send(entry: LogEntry) {
   const prefix = entry.context ? `[${entry.context}]` : '[app]';
   const args = entry.data !== undefined ? [entry.message, entry.data] : [entry.message];
 
-  // eslint-disable-next-line no-console
   console[entry.level](prefix, ...args);
 }
 

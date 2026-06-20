@@ -4,7 +4,22 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>client</title>
+    <title>Distill.ai</title>
+
+    <!-- preconnect: open TLS to Google Fonts before CSS is parsed -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- brand fonts: Inter (UI) + JetBrains Mono (data/code) -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- FOUC guard: paint canvas background before the JS bundle loads -->
+    <style>
+      html { background: #F6F7F9; color: #0F172A; }
+    </style>
   </head>
   <body>
     <div id="root"></div>

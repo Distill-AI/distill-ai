@@ -52,3 +52,15 @@ export const AUTH_FORBIDDEN = 'Forbidden. Insufficient permissions.';
 export const AUTH_INVALID_TOKEN = 'Invalid or expired token.';
 export const AUTH_INVALID_CREDENTIALS = 'Invalid credentials';
 export const AUTH_TOKEN_MISSING_OR_INVALID = 'Missing or invalid token';
+
+// Tool Registry (US-E8-5)
+export const TOOL_NOT_FOUND = (name: string) =>
+  `Tool "${name}" is not registered or does not exist`;
+export const TOOL_INPUT_VALIDATION_FAILED = 'Input validation failed';
+export const TOOL_OUTPUT_VALIDATION_FAILED = 'Output validation failed';
+export const TOOL_EXECUTION_TIMEOUT = 'Execution timed out';
+export const TOOL_INVOKE_SUCCESS = 'Tool invoked successfully';
+export const TOOL_LIST_SUCCESS = 'Tools retrieved successfully';
+export const TOOL_ALREADY_REGISTERED = (name: string) => `Tool "${name}" is already registered`;
+export const TOOL_NAME_RESERVED = (name: string) =>
+  `Tool name "${name}" is reserved and cannot be used`;
