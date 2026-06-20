@@ -35,9 +35,7 @@ export function ProcessingTrace({ requestId }: ProcessingTraceProps) {
         )}
 
         {connection.status === 'connecting' && (
-          <div className="mt-4 text-center text-sm text-gray-400">
-            Connecting to live trace...
-          </div>
+          <div className="mt-4 text-center text-sm text-gray-400">Connecting to live trace...</div>
         )}
       </div>
 

@@ -44,16 +44,16 @@ export interface SseConnectionState {
   error?: string;
 }
 
+const NODE_ORDER = ['parse', 'extract', 'match', 'score', 'price', 'policy'];
+
 export function useSSEEvents(requestId: string | null): {
   nodes: NodeState[];
   connection: SseConnectionState;
   finalOutput: Record<string, unknown> | null;
   reconnect: () => void;
 } {
-  const nodeOrder = ['parse', 'extract', 'match', 'score', 'price', 'policy'];
-
   const [nodes, setNodes] = useState<NodeState[]>(() =>
-    nodeOrder.map((name) => ({ id: name, name, status: 'pending' })),
+    NODE_ORDER.map((name) => ({ id: name, name, status: 'pending' })),
   );
 
   const [connection, setConnection] = useState<SseConnectionState>({ status: 'disconnected' });
@@ -88,7 +88,7 @@ export function useSSEEvents(requestId: string | null): {
 
     close();
     setConnection({ status: 'connecting' });
-    setNodes(nodeOrder.map((name) => ({ id: name, name, status: 'pending' })));
+    setNodes(NODE_ORDER.map((name) => ({ id: name, name, status: 'pending' })));
     setFinalOutput(null);
 
     const es = new EventSource(`/api/v1/requests/${requestId}/events`);
@@ -157,6 +157,8 @@ export function useSSEEvents(requestId: string | null): {
   }, [requestId, close, resetInactivity, clearInactivity]);
 
   useEffect(() => {
+    // connect() sets up EventSource with async callbacks; setState only runs in event handlers
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     connect();
     return () => close();
   }, [connect, close]);

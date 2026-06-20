@@ -5,10 +5,11 @@ type EventListenerMap = Record<string, ((e: MessageEvent) => void) | null>;
 
 let listeners: EventListenerMap = {};
 let onOpen: (() => void) | null = null;
-let onError: ((() => void) | null) = null;
+let onError: (() => void) | null = null;
 let closeCount = 0;
 
 function createMockEventSource(_url: string) {
+  void _url;
   listeners = {};
   onOpen = null;
   onError = null;
@@ -17,9 +18,15 @@ function createMockEventSource(_url: string) {
     addEventListener: (event: string, handler: (e: MessageEvent) => void) => {
       listeners[event] = handler;
     },
-    set onopen(fn: (() => void) | null) { onOpen = fn; },
-    set onerror(fn: (() => void) | null) { onError = fn; },
-    close: () => { closeCount++; },
+    set onopen(fn: (() => void) | null) {
+      onOpen = fn;
+    },
+    set onerror(fn: (() => void) | null) {
+      onError = fn;
+    },
+    close: () => {
+      closeCount++;
+    },
   };
   return es;
 }
@@ -65,13 +72,17 @@ describe('useSSEEvents', () => {
 
   it('sets connected status on open', () => {
     const { result } = renderHook(() => useSSEEvents('req-1'));
-    act(() => { onOpen?.(); });
+    act(() => {
+      onOpen?.();
+    });
     expect(result.current.connection.status).toBe('connected');
   });
 
   it('updates node to in-progress on node.entered', () => {
     const { result } = renderHook(() => useSSEEvents('req-1'));
-    act(() => { onOpen?.(); });
+    act(() => {
+      onOpen?.();
+    });
     act(() => {
       emitSSEEvent('node.entered', {
         type: 'node.entered',
@@ -86,7 +97,9 @@ describe('useSSEEvents', () => {
 
   it('updates node to success on node.exited with success status', () => {
     const { result } = renderHook(() => useSSEEvents('req-1'));
-    act(() => { onOpen?.(); });
+    act(() => {
+      onOpen?.();
+    });
     act(() => {
       emitSSEEvent('node.exited', {
         type: 'node.exited',
@@ -104,7 +117,9 @@ describe('useSSEEvents', () => {
 
   it('updates node to failed on node.exited with failed status', () => {
     const { result } = renderHook(() => useSSEEvents('req-1'));
-    act(() => { onOpen?.(); });
+    act(() => {
+      onOpen?.();
+    });
     act(() => {
       emitSSEEvent('node.exited', {
         type: 'node.exited',
@@ -119,7 +134,9 @@ describe('useSSEEvents', () => {
 
   it('sets tool_name and attempt on tool.invoked', () => {
     const { result } = renderHook(() => useSSEEvents('req-1'));
-    act(() => { onOpen?.(); });
+    act(() => {
+      onOpen?.();
+    });
     act(() => {
       emitSSEEvent('tool.invoked', {
         type: 'tool.invoked',
@@ -136,7 +153,9 @@ describe('useSSEEvents', () => {
 
   it('sets finalOutput on processing.complete and closes connection', () => {
     const { result } = renderHook(() => useSSEEvents('req-1'));
-    act(() => { onOpen?.(); });
+    act(() => {
+      onOpen?.();
+    });
     act(() => {
       emitSSEEvent('processing.complete', {
         type: 'processing.complete',
@@ -154,8 +173,12 @@ describe('useSSEEvents', () => {
 
   it('sets error state on EventSource onerror', () => {
     const { result } = renderHook(() => useSSEEvents('req-1'));
-    act(() => { onOpen?.(); });
-    act(() => { onError?.(); });
+    act(() => {
+      onOpen?.();
+    });
+    act(() => {
+      onError?.();
+    });
     expect(result.current.connection.status).toBe('error');
     expect(result.current.connection.error).toBe('SSE connection lost');
   });

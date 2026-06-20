@@ -28,11 +28,21 @@ const statusBg: Record<TraceNodeProps['status'], string> = {
   failed: 'bg-red-50',
 };
 
-export function TraceNode({ name, status, tool_name, attempt, duration_ms, summary }: TraceNodeProps) {
-  const showTool = status === 'in-progress' && tool_name && (name === 'extract' || name === 'match');
+export function TraceNode({
+  name,
+  status,
+  tool_name,
+  attempt,
+  duration_ms,
+  summary,
+}: TraceNodeProps) {
+  const showTool =
+    status === 'in-progress' && tool_name && (name === 'extract' || name === 'match');
 
   return (
-    <div className={`flex items-center gap-3 rounded-lg px-4 py-3 transition-colors ${statusBg[status]}`}>
+    <div
+      className={`flex items-center gap-3 rounded-lg px-4 py-3 transition-colors ${statusBg[status]}`}
+    >
       <span
         className={`inline-flex h-6 w-6 items-center justify-center text-sm font-bold ${statusColors[status]} ${status === 'in-progress' ? 'animate-spin' : ''}`}
         aria-label={status}
@@ -40,7 +50,9 @@ export function TraceNode({ name, status, tool_name, attempt, duration_ms, summa
         {statusIcons[status]}
       </span>
       <div className="flex flex-1 items-center gap-2 min-w-0">
-        <span className={`text-sm font-medium capitalize ${status === 'pending' ? 'text-gray-400' : 'text-slate-900'}`}>
+        <span
+          className={`text-sm font-medium capitalize ${status === 'pending' ? 'text-gray-400' : 'text-slate-900'}`}
+        >
           {name}
         </span>
         {showTool && (
@@ -51,9 +63,7 @@ export function TraceNode({ name, status, tool_name, attempt, duration_ms, summa
         )}
       </div>
       {duration_ms !== undefined && (
-        <span className="text-xs text-gray-400 whitespace-nowrap">
-          {duration_ms}ms
-        </span>
+        <span className="text-xs text-gray-400 whitespace-nowrap">{duration_ms}ms</span>
       )}
       {summary && status === 'success' && (
         <span className="hidden text-xs text-gray-500 truncate max-w-[200px] lg:inline">

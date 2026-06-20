@@ -16,9 +16,7 @@ export function StructuredOutput({ data }: StructuredOutputProps) {
 
   if (!data) {
     return (
-      <div className="rounded-lg bg-gray-50 p-6 text-center text-sm text-gray-400">
-        No output
-      </div>
+      <div className="rounded-lg bg-gray-50 p-6 text-center text-sm text-gray-400">No output</div>
     );
   }
 

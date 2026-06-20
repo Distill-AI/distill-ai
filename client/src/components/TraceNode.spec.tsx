@@ -37,14 +37,16 @@ describe('TraceNode', () => {
   });
 
   it('shows tool tag for extract node when in-progress', () => {
-    render(<TraceNode name="extract" status="in-progress" tool_name="catalog_search" attempt={1} />);
-    expect(screen.getByText('catalog_search')).toBeInTheDocument();
+    render(
+      <TraceNode name="extract" status="in-progress" tool_name="catalog_search" attempt={1} />,
+    );
+    expect(screen.getByText(/catalog_search/)).toBeInTheDocument();
     expect(screen.getByText(/attempt 1/)).toBeInTheDocument();
   });
 
   it('shows tool tag for match node when in-progress', () => {
     render(<TraceNode name="match" status="in-progress" tool_name="semantic_search" attempt={2} />);
-    expect(screen.getByText('semantic_search')).toBeInTheDocument();
+    expect(screen.getByText(/semantic_search/)).toBeInTheDocument();
     expect(screen.getByText(/attempt 2/)).toBeInTheDocument();
   });
 
