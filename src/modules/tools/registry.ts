@@ -9,17 +9,33 @@ import { DuplicateToolError, ReservedToolNameError } from './errors/tools.errors
 import { ToolCallsActions, ToolCallLogParams } from './actions/tool-calls.actions';
 import { ToolName, RESERVED_NAMES } from '../pipeline/types';
 
-/**
- * Optional data‑scrubbing hook.  It is provided by the app (via the
- * `TOOL_SANITIZER` token) and should return a copy of the object with
- * any PII redacted.  If not supplied, data is logged unchanged.
- */
 type Sanitizer = (data: unknown) => unknown;
 
-/**
- * Centralised registry that validates, executes and logs every tool call.
- * It is a NestJS `@Injectable()` provider and therefore a singleton.
- */
+const TOOL_NODE_MAP: Record<string, string> = {
+  extract_request: 'extract',
+  search_catalog: 'match',
+};
+
+function getTimestamp(): string {
+  return new Date().toISOString();
+}
+
+function makeResultSummary(result: unknown): string {
+  if (result === null || result === undefined) return 'Completed';
+  if (typeof result === 'string') return result.length > 100 ? result.slice(0, 97) + '...' : result;
+  if (typeof result === 'object') {
+    const obj = result as Record<string, unknown>;
+    if (Array.isArray(obj)) return `Found ${obj.length} results`;
+    if (obj.total !== undefined) return `Found ${obj.total} results`;
+    if (obj.count !== undefined) return `Found ${obj.count} results`;
+    if (obj.message && typeof obj.message === 'string') return obj.message;
+    if (obj.summary && typeof obj.summary === 'string') return obj.summary;
+    const keys = Object.keys(obj);
+    return keys.length > 0 ? `Completed with ${keys.length} fields` : 'Completed';
+  }
+  return 'Completed';
+}
+
 @Injectable()
 export class ToolRegistry implements OnModuleInit {
   private readonly logger = new Logger(ToolRegistry.name);
@@ -36,14 +52,10 @@ export class ToolRegistry implements OnModuleInit {
     this.sanitizer = sanitizer;
   }
 
-  /** Lifecycle hook – just logs that the provider started */
   onModuleInit() {
     this.logger.log('ToolRegistry initialized');
   }
 
-  /* -----------------------------------------------------------------
-   *  Registration
-   * ----------------------------------------------------------------- */
   register<I extends z.ZodTypeAny, O extends z.ZodTypeAny>(contract: ToolContract<I, O>): void {
     const name = contract.toolName.toLowerCase();
 
@@ -57,19 +69,16 @@ export class ToolRegistry implements OnModuleInit {
       throw new Error(`Invalid tool contract for "${name}": execute must be a function`);
     }
 
-    // Freeze the contract – after registration nothing may be mutated.
     Object.freeze(contract);
     this.registry.set(name, contract);
     this.logger.verbose(`Registered tool "${name}"`);
   }
 
-  /* -----------------------------------------------------------------
-   *  Invocation
-   * ----------------------------------------------------------------- */
   async invoke<O extends z.ZodTypeAny>(
     toolName: ToolName,
     rawArgs: unknown,
     requestId: string | null = null,
+    attempt: number = 1,
   ): Promise<{
     status: ToolStatus;
     latency: number;
@@ -79,10 +88,14 @@ export class ToolRegistry implements OnModuleInit {
     const start = performance.now();
     const name = toolName.toLowerCase();
     const rid = requestId ?? '00000000-0000-0000-0000-000000000000';
+    const node = TOOL_NODE_MAP[name] ?? null;
 
-    // ---------------------------------------------------------------
-    // 1️⃣ look up contract
-    // ---------------------------------------------------------------
+    // Emit running status
+    if (requestId && node) {
+      await this.emitToolEvent(rid, node, name, 'running', attempt, 'Invoking tool');
+    }
+
+    // 1: look up contract
     const contract = this.registry.get(name);
     if (!contract) {
       const latency = Math.round(performance.now() - start);
@@ -94,12 +107,13 @@ export class ToolRegistry implements OnModuleInit {
         errorDetail: SYS_MSG.TOOL_NOT_FOUND(name),
         requestId: rid,
       });
+      if (requestId && node) {
+        await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Tool not found');
+      }
       return { status: ToolStatus.ERROR, latency, error: SYS_MSG.TOOL_NOT_FOUND(name) };
     }
 
-    // ---------------------------------------------------------------
-    // 2️⃣ input validation
-    // ---------------------------------------------------------------
+    // 2: input validation
     const inputParse = contract.inputSchema.safeParse(rawArgs);
     if (!inputParse.success) {
       const latency = Math.round(performance.now() - start);
@@ -111,6 +125,9 @@ export class ToolRegistry implements OnModuleInit {
         errorDetail: `${SYS_MSG.TOOL_INPUT_VALIDATION_FAILED}: ${inputParse.error.message}`,
         requestId: rid,
       });
+      if (requestId && node) {
+        await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Input validation failed');
+      }
       return {
         status: ToolStatus.VALIDATION_ERROR,
         latency,
@@ -118,9 +135,7 @@ export class ToolRegistry implements OnModuleInit {
       };
     }
 
-    // ---------------------------------------------------------------
-    // 3️⃣ execution
-    // ---------------------------------------------------------------
+    // 3: execution
     let execResult: { ok: true; value: unknown } | { ok: false; error: unknown };
     try {
       const result = await contract.execute(inputParse.data);
@@ -129,9 +144,6 @@ export class ToolRegistry implements OnModuleInit {
       execResult = { ok: false as const, error: e };
     }
 
-    // ---------------------------------------------------------------
-    // 4️⃣ post‑execution handling
-    // ---------------------------------------------------------------
     const latency = Math.round(performance.now() - start);
 
     if (!execResult.ok) {
@@ -145,10 +157,13 @@ export class ToolRegistry implements OnModuleInit {
         errorDetail: msg,
         requestId: rid,
       });
+      if (requestId && node) {
+        await this.emitToolEvent(rid, node, name, 'failed', attempt, msg);
+      }
       return { status: ToolStatus.ERROR, latency, error: msg };
     }
 
-    // Validate output
+    // 4: output validation
     const outputParse = contract.outputSchema.safeParse(execResult.value);
     if (!outputParse.success) {
       await this.log({
@@ -159,6 +174,9 @@ export class ToolRegistry implements OnModuleInit {
         errorDetail: `${SYS_MSG.TOOL_OUTPUT_VALIDATION_FAILED}: ${outputParse.error.message}`,
         requestId: rid,
       });
+      if (requestId && node) {
+        await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Output validation failed');
+      }
       return {
         status: ToolStatus.VALIDATION_ERROR,
         latency,
@@ -166,8 +184,9 @@ export class ToolRegistry implements OnModuleInit {
       };
     }
 
-    // Successful path – scrub only persisted log payloads
+    // 5: success
     const safeArgs = this.sanitize(rawArgs);
+    const resultSummary = makeResultSummary(outputParse.data);
 
     await this.log({
       toolName: name,
@@ -177,14 +196,19 @@ export class ToolRegistry implements OnModuleInit {
       requestId: rid,
     });
 
-    if (requestId) {
+    if (requestId && node) {
+      await this.emitToolEvent(rid, node, name, 'success', attempt, resultSummary);
+    } else if (requestId) {
       await this.events.emit({
         eventName: 'tool.invoked',
         requestId,
         attributes: {
+          type: 'tool.invoked',
+          timestamp: getTimestamp(),
           tool_name: name,
-          status: ToolStatus.OK,
-          latency_ms: latency,
+          status: 'success',
+          attempt,
+          result_summary: resultSummary,
         },
       });
     }
@@ -192,9 +216,6 @@ export class ToolRegistry implements OnModuleInit {
     return { status: ToolStatus.OK, latency, result: outputParse.data };
   }
 
-  /* -----------------------------------------------------------------
-   *  Listing
-   * ----------------------------------------------------------------- */
   list(): Array<{ toolName: string; description: string }> {
     return Array.from(this.registry.values()).map((c) => ({
       toolName: c.toolName,
@@ -202,11 +223,29 @@ export class ToolRegistry implements OnModuleInit {
     }));
   }
 
-  /* -----------------------------------------------------------------
-   *  Private helpers
-   * ----------------------------------------------------------------- */
+  private async emitToolEvent(
+    requestId: string,
+    node: string,
+    toolName: string,
+    status: string,
+    attempt: number,
+    resultSummary: string,
+  ): Promise<void> {
+    await this.events.emit({
+      eventName: 'tool.invoked',
+      requestId,
+      attributes: {
+        type: 'tool.invoked',
+        timestamp: getTimestamp(),
+        node,
+        tool_name: toolName,
+        status,
+        attempt,
+        result_summary: resultSummary,
+      },
+    });
+  }
 
-  /** Optionally scrub PII from log data before persisting. */
   private sanitize(data: unknown): unknown {
     if (!this.sanitizer) return data;
     try {
@@ -221,7 +260,6 @@ export class ToolRegistry implements OnModuleInit {
     }
   }
 
-  /** Inserts a row into `tool_calls`. */
   private async log(params: ToolCallLogParams): Promise<void> {
     await this.callsActions.insertLog(params);
   }

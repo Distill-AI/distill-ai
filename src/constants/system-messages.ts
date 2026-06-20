@@ -44,6 +44,14 @@ export const REQUEST_NOT_FOUND = (id: string) => `Request ${id} not found`;
 export const PIPELINE_ENQUEUED = 'Request enqueued for pipeline processing';
 export const PIPELINE_RESUMED = 'Request resumed for pipeline processing';
 
+// Stream / SSE (US-E2-5)
+export const STREAM_SUBSCRIBED = 'SSE stream subscribed';
+export const STREAM_UNSUBSCRIBED = 'SSE stream unsubscribed';
+export const STREAM_COMPLETE = 'SSE stream complete';
+export const STREAM_TIMEOUT = 'SSE stream timed out';
+export const SANITIZED_SUMMARY_PLACEHOLDER = 'Processing step completed';
+export const REDACTED_FIELD_PLACEHOLDER = '[redacted]';
+
 // Auth (NFR-SEC-5)
 export const AUTH_PROFILE_FETCHED = 'Profile fetched successfully';
 export const AUTH_LOGIN_SUCCESS = 'Login successful';
