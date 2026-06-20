@@ -10,7 +10,7 @@ import { StreamService } from '../services/stream.service';
 import { RequestEventsDocs } from '../docs/requests-swagger.doc';
 import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
 
-@Controller('v1/requests')
+@Controller('requests')
 export class RequestsController {
   private readonly logger = new Logger(RequestsController.name);
 
