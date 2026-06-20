@@ -44,7 +44,7 @@ import { RlsContextMiddleware } from '@modules/auth/middleware/rls-context.middl
       username: env.DATABASE_USER,
       password: env.DATABASE_PASSWORD,
       database: env.DATABASE_NAME,
-      autoLoadEntities: true,
+      entities: [__dirname + '/**/*.entity.js'],
       synchronize: env.DATABASE_SYNC,
       logging: env.DATABASE_LOGGING,
       ssl: env.DATABASE_SSL ? { rejectUnauthorized: false } : false,
