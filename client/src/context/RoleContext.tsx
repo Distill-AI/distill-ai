@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { RoleContext, DEFAULT_ROLE, STORAGE_KEY } from './roleContext';
-import type { Role } from './roleContext';
+import { RoleContext, DEFAULT_ROLE, STORAGE_KEY } from './role-context';
+import type { Role } from './role-context';
 
-export type { Role } from './roleContext';
+export type { Role } from './role-context';
 
 function readStoredRole(): Role {
   try {
