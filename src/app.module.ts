@@ -1,3 +1,4 @@
+import { ToolsModule } from './modules/tools/tools.module';
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
@@ -18,6 +19,7 @@ import { JobsModule } from '@modules/jobs/jobs.module';
 import { DlqModule } from '@modules/dlq/dlq.module';
 import { SchedulerModule } from '@modules/scheduler/scheduler.module';
 import { BenchmarkModule } from '@modules/benchmark/benchmark.module';
+import { PipelineModule } from '@modules/pipeline/pipeline.module';
 
 // ── Auth (NFR-SEC-5) ───────────────────────────────────────────────────────
 import { AuthModule } from '@modules/auth';
@@ -52,10 +54,13 @@ import { RlsContextMiddleware } from '@modules/auth/middleware/rls-context.middl
 
     // ── Feature modules — add yours here, remove the reference ones ───────
     AuthModule,
+    // ── Feature modules , add yours here, remove the reference ones ───────
     JobsModule,
     DlqModule,
     SchedulerModule,
     BenchmarkModule,
+    ToolsModule,
+    PipelineModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
