@@ -7,6 +7,7 @@ import { Quotes } from './pages/Quotes';
 import { Catalog } from './pages/Catalog';
 import { Analytics } from './pages/Analytics';
 import { Settings } from './pages/Settings';
+import { ProcessingRequestPage } from './pages/ProcessingRequestPage';
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
       <AppShell>
         <Routes>
           <Route path="/" element={<Inbox />} />
+          <Route path="/requests/:id" element={<ProcessingRequestPage />} />
           <Route path="/quotes" element={<Quotes />} />
           <Route
             path="/catalog"
