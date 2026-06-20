@@ -185,6 +185,12 @@ export class StreamService {
         key === 'chain_of_thought'
       ) {
         sanitized[key] = SYS_MSG.REDACTED_FIELD_PLACEHOLDER;
+      } else if (Array.isArray(value)) {
+        sanitized[key] = value.map((item) =>
+          typeof item === 'object' && item !== null && !Array.isArray(item)
+            ? this.sanitizeEvent(item as Record<string, unknown>)
+            : item,
+        );
       } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
         sanitized[key] = this.sanitizeEvent(value as Record<string, unknown>);
       } else {

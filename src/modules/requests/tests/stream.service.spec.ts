@@ -244,23 +244,31 @@ describe('StreamService', () => {
     });
 
     it('redacts error_detail and raw_output fields', async () => {
-      const { service, events } = makeStreamService();
+      const { events } = makeStreamService();
       const emitSpy = vi.spyOn(events, 'emit');
-
-      service.emitToolInvoked(
-        'req-1',
-        StreamNode.EXTRACT,
-        'catalog_search',
-        StreamToolStatus.FAILED,
-        1,
-        'Error: something broke',
-        'org-1',
-      );
+      // Emit with fields that should be redacted
+      events.emit({
+        eventName: 'tool.invoked',
+        requestId: 'req-1',
+        orgId: 'org-1',
+        attributes: {
+          type: 'tool.invoked',
+          node: StreamNode.EXTRACT,
+          tool_name: 'catalog_search',
+          status: StreamToolStatus.FAILED,
+          attempt: 1,
+          result_summary: 'Error: something broke',
+          error_detail: 'Stack trace here',
+          raw_output: 'Raw model output here',
+        },
+      });
       await new Promise<void>((resolve) => setImmediate(resolve));
 
       const call = emitSpy.mock.calls[0][0] as unknown as Record<string, unknown>;
       const attrs = call.attributes as unknown as Record<string, unknown>;
       expect(attrs.result_summary).toBe('Error: something broke');
+      expect(attrs.error_detail).toBeUndefined();
+      expect(attrs.raw_output).toBeUndefined();
     });
   });
 
