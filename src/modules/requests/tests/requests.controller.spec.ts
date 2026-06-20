@@ -7,6 +7,8 @@ import { StreamService } from '../services/stream.service';
 import type { Request as RequestEntity } from '../entities/request.entity';
 import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
 
+vi.mock('@config/auth.config', () => ({ authConfig: { enabled: true } }));
+
 describe('RequestsController', () => {
   let controller: RequestsController;
   let requestsService: RequestsService;
