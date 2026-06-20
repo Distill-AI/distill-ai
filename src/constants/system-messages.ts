@@ -44,6 +44,15 @@ export const REQUEST_NOT_FOUND = (id: string) => `Request ${id} not found`;
 export const PIPELINE_ENQUEUED = 'Request enqueued for pipeline processing';
 export const PIPELINE_RESUMED = 'Request resumed for pipeline processing';
 
+// Auth (NFR-SEC-5)
+export const AUTH_PROFILE_FETCHED = 'Profile fetched successfully';
+export const AUTH_LOGIN_SUCCESS = 'Login successful';
+export const AUTH_UNAUTHORIZED = 'Unauthorized. Valid token required.';
+export const AUTH_FORBIDDEN = 'Forbidden. Insufficient permissions.';
+export const AUTH_INVALID_TOKEN = 'Invalid or expired token.';
+export const AUTH_INVALID_CREDENTIALS = 'Invalid credentials';
+export const AUTH_TOKEN_MISSING_OR_INVALID = 'Missing or invalid token';
+
 // Tool Registry (US-E8-5)
 export const TOOL_NOT_FOUND = (name: string) =>
   `Tool "${name}" is not registered or does not exist`;
