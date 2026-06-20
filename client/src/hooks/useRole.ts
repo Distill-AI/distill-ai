@@ -1,5 +1,5 @@
 import { useContext } from 'react';
-import { RoleContext } from '../context/roleContext';
+import { RoleContext } from '../context/RoleContext';
 
 export function useRole() {
   return useContext(RoleContext);
