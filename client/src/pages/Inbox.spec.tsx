@@ -28,11 +28,13 @@ describe('Inbox', () => {
     const user = userEvent.setup();
     renderInbox();
 
-    await user.click(screen.getByRole('button', { name: /\+ new request/i }));
+    const trigger = screen.getByRole('button', { name: /\+ new request/i });
+    await user.click(trigger);
     expect(screen.getByRole('dialog')).toBeInTheDocument();
 
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
   });
 
   it('shows the email textarea when Paste email tab is selected', async () => {

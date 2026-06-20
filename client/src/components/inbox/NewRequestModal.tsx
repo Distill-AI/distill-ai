@@ -224,7 +224,10 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
             <button
               type="button"
               role="tab"
+              id="new-request-tab-upload"
+              aria-controls="new-request-panel-upload"
               aria-selected={mode === 'upload'}
+              tabIndex={mode === 'upload' ? 0 : -1}
               onClick={() => setMode('upload')}
               className={[
                 'flex-1 py-1.5 px-3 rounded text-sm font-medium transition-all text-center',
@@ -238,7 +241,10 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
             <button
               type="button"
               role="tab"
+              id="new-request-tab-email"
+              aria-controls="new-request-panel-email"
               aria-selected={mode === 'email'}
+              tabIndex={mode === 'email' ? 0 : -1}
               onClick={() => setMode('email')}
               className={[
                 'flex-1 py-1.5 px-3 rounded text-sm font-medium transition-all text-center',
@@ -251,71 +257,75 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
             </button>
           </div>
 
-          {mode === 'upload' ? (
-            <div role="tabpanel" className="flex flex-col gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept={ACCEPT_ATTR}
-                multiple
-                className="sr-only"
-                onChange={(e) => {
-                  if (e.target.files) addFiles(e.target.files);
-                  e.target.value = '';
-                }}
-              />
-              <div
-                className="border-[1.5px] border-dashed border-border rounded-card h-[140px] flex flex-col items-center justify-center gap-2 bg-surface hover:bg-canvas transition-colors cursor-pointer group"
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  if (e.dataTransfer.files.length > 0) addFiles(e.dataTransfer.files);
-                }}
-              >
-                <span className="text-muted group-hover:text-body-text transition-colors">
-                  <UploadIcon />
+          <div
+            role="tabpanel"
+            id="new-request-panel-upload"
+            aria-labelledby="new-request-tab-upload"
+            hidden={mode !== 'upload'}
+            className="flex flex-col gap-2"
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={ACCEPT_ATTR}
+              multiple
+              className="sr-only"
+              onChange={(e) => {
+                if (e.target.files) addFiles(e.target.files);
+                e.target.value = '';
+              }}
+            />
+            <button
+              type="button"
+              aria-label="Upload files: drag and drop PDF, CSV, or TXT, or browse"
+              className="border-[1.5px] border-dashed border-border rounded-card h-[140px] w-full flex flex-col items-center justify-center gap-2 bg-surface hover:bg-canvas transition-colors cursor-pointer group"
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (e.dataTransfer.files.length > 0) addFiles(e.dataTransfer.files);
+              }}
+            >
+              <span className="text-muted group-hover:text-body-text transition-colors">
+                <UploadIcon />
+              </span>
+              <span className="flex flex-col items-center gap-1">
+                <span className="text-sm text-slate-900 font-medium">
+                  Drag &amp; drop PDF, CSV, or TXT
                 </span>
-                <div className="flex flex-col items-center gap-1">
-                  <span className="text-sm text-slate-900 font-medium">
-                    Drag &amp; drop PDF, CSV, or TXT
-                  </span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      fileInputRef.current?.click();
-                    }}
-                    className="text-[13px] text-indigo-600 hover:text-indigo-700 transition-colors"
-                  >
-                    or browse
-                  </button>
-                </div>
-              </div>
+                <span className="text-[13px] text-indigo-600 group-hover:text-indigo-700 transition-colors">
+                  or browse
+                </span>
+              </span>
+            </button>
 
-              {files.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  {files.map((file) => (
-                    <FileChip key={fileKey(file)} file={file} onRemove={() => removeFile(file)} />
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div role="tabpanel">
-              <label htmlFor="email-body" className="sr-only">
-                Email body
-              </label>
-              <textarea
-                id="email-body"
-                value={emailText}
-                onChange={(e) => setEmailText(e.target.value)}
-                placeholder="Paste the full email thread here…"
-                rows={8}
-                className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-slate-900 placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-indigo-600/30 resize-none"
-              />
-            </div>
-          )}
+            {files.length > 0 && (
+              <div className="flex flex-col gap-2">
+                {files.map((file) => (
+                  <FileChip key={fileKey(file)} file={file} onRemove={() => removeFile(file)} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div
+            role="tabpanel"
+            id="new-request-panel-email"
+            aria-labelledby="new-request-tab-email"
+            hidden={mode !== 'email'}
+          >
+            <label htmlFor="email-body" className="sr-only">
+              Email body
+            </label>
+            <textarea
+              id="email-body"
+              value={emailText}
+              onChange={(e) => setEmailText(e.target.value)}
+              placeholder="Paste the full email thread here…"
+              rows={8}
+              className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-slate-900 placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-indigo-600/30 resize-none"
+            />
+          </div>
         </div>
 
         <div className="px-5 py-4 border-t border-border bg-surface flex justify-end gap-3">
