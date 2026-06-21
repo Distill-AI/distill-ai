@@ -49,7 +49,7 @@ describe('Inbox', () => {
 
   it('disables Process request until files are added on the upload tab', async () => {
     const user = userEvent.setup();
-    renderInbox();
+    const { container } = renderInbox();
 
     await user.click(screen.getByRole('button', { name: /\+ new request/i }));
 
@@ -57,7 +57,7 @@ describe('Inbox', () => {
     expect(processButton).toBeDisabled();
 
     const file = new File(['sample'], 'rfq_apex.pdf', { type: 'application/pdf' });
-    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
     await user.upload(fileInput, file);
 
     expect(processButton).toBeEnabled();
@@ -66,12 +66,12 @@ describe('Inbox', () => {
 
   it('removes a file chip when remove is clicked', async () => {
     const user = userEvent.setup();
-    renderInbox();
+    const { container } = renderInbox();
 
     await user.click(screen.getByRole('button', { name: /\+ new request/i }));
 
     const file = new File(['sample'], 'line_items.csv', { type: 'text/csv' });
-    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
     await user.upload(fileInput, file);
 
     expect(screen.getByText(/line_items\.csv/i)).toBeInTheDocument();
