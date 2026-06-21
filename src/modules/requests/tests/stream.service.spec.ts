@@ -243,25 +243,19 @@ describe('StreamService', () => {
       expect(attrs.summary).toBe('Parsed email + 1 attachment');
     });
 
-    it('redacts error_detail and raw_output fields', async () => {
-      const { events } = makeStreamService();
+    it('does not forward error_detail or raw_output to EventsService', async () => {
+      const { service, events } = makeStreamService();
       const emitSpy = vi.spyOn(events, 'emit');
-      // Emit with fields that should be redacted
-      events.emit({
-        eventName: 'tool.invoked',
-        requestId: 'req-1',
-        orgId: 'org-1',
-        attributes: {
-          type: 'tool.invoked',
-          node: StreamNode.EXTRACT,
-          tool_name: 'catalog_search',
-          status: StreamToolStatus.FAILED,
-          attempt: 1,
-          result_summary: 'Error: something broke',
-          error_detail: 'Stack trace here',
-          raw_output: 'Raw model output here',
-        },
-      });
+
+      service.emitToolInvoked(
+        'req-1',
+        StreamNode.EXTRACT,
+        'catalog_search',
+        StreamToolStatus.FAILED,
+        1,
+        'Error: something broke',
+        'org-1',
+      );
       await new Promise<void>((resolve) => setImmediate(resolve));
 
       const call = emitSpy.mock.calls[0][0] as unknown as Record<string, unknown>;

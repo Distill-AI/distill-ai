@@ -1,6 +1,6 @@
 import { Injectable, Logger, MessageEvent } from '@nestjs/common';
 import { Observable, filter, map, share } from 'rxjs';
-import * as SYS_MSG from '@constants/system-messages';
+import * as SYS_MSG from '../../../constants/system-messages';
 import { SseService } from '../../../sse/sse.service';
 import { EventsService } from '../../events/events.service';
 import { StreamNode } from '../enums/stream-node.enum';
