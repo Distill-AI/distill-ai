@@ -8,6 +8,9 @@ export class AddClassificationConfidence1781772970268 implements MigrationInterf
       `ALTER TABLE "requests" ADD COLUMN "classification_confidence" numeric(3,2)`,
     );
     await queryRunner.query(
+      `ALTER TABLE "requests" ADD CONSTRAINT "chk_classification_confidence_range" CHECK (classification_confidence IS NULL OR (classification_confidence >= 0 AND classification_confidence <= 1))`,
+    );
+    await queryRunner.query(
       `CREATE INDEX IF NOT EXISTS "idx_requests_type" ON "requests" ("request_type")`,
     );
   }

@@ -66,6 +66,7 @@ const envSchema = z.object({
   LLM_MODEL: z.string().default('gpt-4o-mini'),
   LLM_BASE_URL: z.string().default('https://api.openai.com/v1'),
   LLM_API_KEY: z.string().default(''),
+  LLM_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
 
   // ── Classify (US-E2-4) ────────────────────────────────────────────────────
   CLASSIFY_THRESHOLD: z.coerce.number().min(0).max(1).default(0.8),

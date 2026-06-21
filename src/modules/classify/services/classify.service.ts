@@ -1,13 +1,24 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { z } from 'zod';
 import { env } from '@config/env';
 import { LLMProvider } from '@modules/llm/llm.provider';
 import * as SYS_MSG from '@constants/system-messages';
+
+const llmResponseSchema = z.object({
+  type: z.enum(['catalog_rfq', 'service_quote']),
+  confidence: z.number().min(0).max(1),
+});
 
 export interface ParsedRequestInput {
   company: string;
   contact: string;
   description: string;
-  lineItems?: unknown[];
+  lineItems?: {
+    raw_text: string;
+    position: number;
+    quantity?: number | null;
+    unit?: string | null;
+  }[];
 }
 
 export interface ClassifyResult {
@@ -48,7 +59,8 @@ export class ClassifyService {
         maxTokens: 100,
       });
 
-      const result = JSON.parse(response.text) as { type: string; confidence: number };
+      const parsed = JSON.parse(response.text);
+      const result = llmResponseSchema.parse(parsed);
       const threshold = env.CLASSIFY_THRESHOLD;
 
       if (result.confidence < threshold) {
@@ -56,10 +68,7 @@ export class ClassifyService {
         return { type: 'service_quote', confidence: result.confidence };
       }
 
-      return {
-        type: result.type === 'catalog_rfq' ? 'catalog_rfq' : 'service_quote',
-        confidence: result.confidence,
-      };
+      return result;
     } catch (err) {
       if (attempt < 2) {
         this.logger.warn(`Classification attempt ${attempt} failed; retrying...`);
@@ -73,7 +82,7 @@ export class ClassifyService {
     return `Classify this request as either "catalog_rfq" (discrete parts, products, components) or "service_quote" (scoped job, consulting, labor).
 Company: ${parsedRequest.company}
 Description: ${parsedRequest.description}
-Line Items: ${JSON.stringify(parsedRequest.lineItems || [])}
+Line Items: ${(parsedRequest.lineItems ?? []).map((li) => li.raw_text).join('\n') || 'none'}
 Respond with JSON: { "type": "catalog_rfq" | "service_quote", "confidence": 0.0-1.0 }`;
   }
 }
