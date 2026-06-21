@@ -32,7 +32,7 @@ describe('Integration: SSE Event Pipeline', () => {
 
       const t0 = new Date().toISOString();
 
-      // Simulate pipeline emitting events in order — 13 events total
+      // Simulate pipeline emitting events in order — 17 events total
       emitter.emit('job_event', {
         event: 'node.entered',
         data: {
