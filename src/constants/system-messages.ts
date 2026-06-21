@@ -44,6 +44,15 @@ export const REQUEST_NOT_FOUND = (id: string) => `Request ${id} not found`;
 export const PIPELINE_ENQUEUED = 'Request enqueued for pipeline processing';
 export const PIPELINE_RESUMED = 'Request resumed for pipeline processing';
 
+// Classify (US-E2-4)
+export const CLASSIFY_DEFAULTED_LOW_CONFIDENCE = (confidence: number, threshold: number) =>
+  `Classification confidence ${confidence} below threshold ${threshold}; defaulting to service_quote`;
+export const CLASSIFY_RETRY_FAILED = 'Classification retry failed; defaulting to service_quote';
+export const CLASSIFY_MALFORMED_INPUT =
+  'Parsed request missing required fields; defaulting to service_quote';
+export const LLM_INVOCATION_FAILED = (status: number, body: string) =>
+  `LLM invocation failed (${status}): ${body}`;
+
 // Auth (NFR-SEC-5)
 export const AUTH_PROFILE_FETCHED = 'Profile fetched successfully';
 export const AUTH_LOGIN_SUCCESS = 'Login successful';
