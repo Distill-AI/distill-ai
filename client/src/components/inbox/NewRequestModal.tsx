@@ -107,6 +107,7 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
   const [mode, setMode] = useState<InputMode>('upload');
   const [files, setFiles] = useState<File[]>([]);
   const [emailText, setEmailText] = useState('');
+  const [hasRejectedFiles, setHasRejectedFiles] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -117,14 +118,21 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
     setMode('upload');
     setFiles([]);
     setEmailText('');
+    setHasRejectedFiles(false);
     onClose();
     triggerRef.current?.focus();
   }, [onClose, triggerRef]);
 
   function addFiles(incoming: FileList | File[]) {
-    const allowed = Array.from(incoming).filter(isAllowedFile);
-    if (allowed.length === 0) return;
+    const all = Array.from(incoming);
+    const allowed = all.filter(isAllowedFile);
 
+    if (all.length > 0 && allowed.length === 0) {
+      setHasRejectedFiles(true);
+      return;
+    }
+
+    setHasRejectedFiles(false);
     setFiles((prev) => {
       const keys = new Set(prev.map(fileKey));
       const next = [...prev];
@@ -165,7 +173,9 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
 
       const selector =
         'a[href], button:not([disabled]), textarea, input:not([disabled]), [tabindex]:not([tabindex="-1"])';
-      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(selector));
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(selector)).filter(
+        (el) => !el.closest('[hidden]') && el.offsetParent !== null,
+      );
       if (focusable.length === 0) return;
 
       if (e.shiftKey && document.activeElement === focusable[0]) {
@@ -298,6 +308,12 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
                 </span>
               </span>
             </button>
+
+            {hasRejectedFiles && (
+              <p role="alert" className="text-[13px] text-lo-tx">
+                Only PDF, CSV, and TXT files are accepted.
+              </p>
+            )}
 
             {files.length > 0 && (
               <div className="flex flex-col gap-2">
