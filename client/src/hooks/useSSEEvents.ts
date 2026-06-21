@@ -101,12 +101,15 @@ export function useSSEEvents(requestId: string | null): {
 
     es.addEventListener('node.entered', (e: MessageEvent) => {
       resetInactivity();
-      const data = JSON.parse(e.data) as SseNodeEvent;
-      setNodes((prev) =>
-        prev.map((n) => (n.name === data.node ? { ...n, status: 'in-progress' } : n)),
-      );
+      try {
+        const data = JSON.parse(e.data) as SseNodeEvent;
+        setNodes((prev) =>
+          prev.map((n) => (n.name === data.node ? { ...n, status: 'in-progress' } : n)),
+        );
+      } catch {
+        // Ignore malformed events; connection remains active
+      }
     });
-
     es.addEventListener('node.exited', (e: MessageEvent) => {
       resetInactivity();
       const data = JSON.parse(e.data) as SseNodeEvent;
