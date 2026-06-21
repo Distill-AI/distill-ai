@@ -30,7 +30,7 @@ export class ClassifyNode implements PipelineNode {
     const { requestId, orgId } = ctx;
 
     const req = await this.requests.get({
-      identifierOptions: { id: requestId },
+      identifierOptions: { id: requestId, org_id: orgId },
     });
     if (!req) {
       return { kind: 'failed', error: { message: `Request ${requestId} not found` } };
@@ -53,7 +53,7 @@ export class ClassifyNode implements PipelineNode {
     const elapsed = Date.now() - start;
 
     await this.requests.update({
-      identifierOptions: { id: requestId },
+      identifierOptions: { id: requestId, org_id: orgId },
       updatePayload: {
         request_type: type === 'catalog_rfq' ? RequestType.CATALOG_RFQ : RequestType.SERVICE_QUOTE,
         classification_confidence: confidence,
