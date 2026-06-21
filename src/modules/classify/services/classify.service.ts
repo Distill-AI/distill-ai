@@ -33,15 +33,14 @@ export class ClassifyService {
   constructor(private readonly llm: LLMProvider) {}
 
   async classify(parsedRequest: ParsedRequestInput): Promise<ClassifyResult> {
-    if (
-      !parsedRequest.description &&
-      (!parsedRequest.lineItems || parsedRequest.lineItems.length === 0)
-    ) {
+    const description = parsedRequest.description.trim();
+    const lineItems = (parsedRequest.lineItems ?? []).filter((li) => li.raw_text.trim().length > 0);
+    if (!description && lineItems.length === 0) {
       this.logger.warn(SYS_MSG.CLASSIFY_MALFORMED_INPUT);
       return { type: 'service_quote', confidence: 0 };
     }
 
-    const prompt = this.buildPrompt(parsedRequest);
+    const prompt = this.buildPrompt({ ...parsedRequest, description, lineItems });
 
     try {
       return await this.invokeWithRetry(prompt);
@@ -59,7 +58,11 @@ export class ClassifyService {
         maxTokens: 100,
       });
 
-      const parsed = JSON.parse(response.text);
+      const cleaned = response.text
+        .replace(/```(?:json)?\s*/gi, '')
+        .replace(/```\s*$/gm, '')
+        .trim();
+      const parsed = JSON.parse(cleaned);
       const result = llmResponseSchema.parse(parsed);
       const threshold = env.CLASSIFY_THRESHOLD;
 
@@ -83,6 +86,6 @@ export class ClassifyService {
 Company: ${parsedRequest.company}
 Description: ${parsedRequest.description}
 Line Items: ${(parsedRequest.lineItems ?? []).map((li) => li.raw_text).join('\n') || 'none'}
-Respond with JSON: { "type": "catalog_rfq" | "service_quote", "confidence": 0.0-1.0 }`;
+Return ONLY valid JSON with no markdown formatting or prose. Example: {"type": "catalog_rfq", "confidence": 0.95}`;
   }
 }
