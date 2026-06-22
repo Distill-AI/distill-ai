@@ -71,7 +71,6 @@ export class Request extends BaseEntity {
   })
   overall_confidence: number | null;
 
-  // Added by migration 1781772970268 (US-E2-4)
   @Column({
     type: 'numeric',
     precision: 3,
