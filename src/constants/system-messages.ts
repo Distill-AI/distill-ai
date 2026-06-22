@@ -51,13 +51,22 @@ export const REQUEST_NOT_FOUND = (id: string) => `Request ${id} not found`;
 export const PIPELINE_ENQUEUED = 'Request enqueued for pipeline processing';
 export const PIPELINE_RESUMED = 'Request resumed for pipeline processing';
 
-// Ingestion (US-E1-1, US-E1-2, US-E1-3)
+// Ingestion
 export const REQUEST_CREATED = 'Request created and queued for processing';
 export const REQUEST_INPUT_REQUIRED =
   'Provide at least one file or pasted text to create a request.';
 export const UNSUPPORTED_FILE_TYPE =
   'Unsupported file type. Only PDF, CSV, or TXT files are accepted.';
 export const FILE_TOO_LARGE = (maxMb: number) => `File too large. Maximum size is ${maxMb} MB.`;
+
+// Classify (US-E2-4)
+export const CLASSIFY_DEFAULTED_LOW_CONFIDENCE = (confidence: number, threshold: number) =>
+  `Classification confidence ${confidence} below threshold ${threshold}; defaulting to service_quote`;
+export const CLASSIFY_RETRY_FAILED = 'Classification retry failed; defaulting to service_quote';
+export const CLASSIFY_MALFORMED_INPUT =
+  'Parsed request missing required fields; defaulting to service_quote';
+export const LLM_INVOCATION_FAILED = (status: number, body: string) =>
+  `LLM invocation failed (${status}): ${body}`;
 
 // Auth (NFR-SEC-5)
 export const AUTH_PROFILE_FETCHED = 'Profile fetched successfully';
