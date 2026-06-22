@@ -48,9 +48,12 @@ export class LlmClientService implements OnModuleInit {
       await this.circuitBreaker.recordSuccess();
       return response;
     } catch (error) {
-      await this.circuitBreaker.recordFailure();
+      const isTransient = this.isTransientError(error);
+      if (isTransient) {
+        await this.circuitBreaker.recordFailure();
+      }
 
-      if (await this.circuitBreaker.isOpen()) {
+      if (isTransient && (await this.circuitBreaker.isOpen())) {
         return this.handleOpenBreaker(orgId, requestId, node, requestType, params);
       }
 
@@ -133,12 +136,6 @@ export class LlmClientService implements OnModuleInit {
   ): Promise<OpenAI.Chat.ChatCompletion> {
     if (env.DEMO_MODE) {
       this.logger.warn({ event: 'llm_demo_fixture_replay', requestId, node, requestType });
-      await this.eventsService.emit({
-        eventName: 'stage.error',
-        orgId,
-        requestId,
-        attributes: { node, reason: 'llm_timeout_fixture_replay', escalated_to_human: false },
-      });
 
       const fixture = this.getFixture(requestType);
       if (!fixture) {
@@ -146,7 +143,13 @@ export class LlmClientService implements OnModuleInit {
         throw new CircuitBreakerOpenError();
       }
 
-      // Return synthetic OpenAI-like response payload containing the extracted fixture data
+      await this.eventsService.emit({
+        eventName: 'stage.error',
+        orgId,
+        requestId,
+        attributes: { node, reason: 'llm_timeout_fixture_replay', escalated_to_human: false },
+      });
+
       return {
         id: 'chatcmpl-fixture',
         object: 'chat.completion',

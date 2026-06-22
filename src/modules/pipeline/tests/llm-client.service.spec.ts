@@ -5,6 +5,7 @@ import { BackoffService } from '@worker/backoff.service';
 import type { EventsService } from '@modules/events/events.service';
 import type { RedisService } from '@modules/redis/redis.service';
 import OpenAI from 'openai';
+import { env } from '@config/env';
 
 // Mock env
 vi.mock('@config/env', () => ({
@@ -22,11 +23,19 @@ vi.mock('@config/env', () => ({
 }));
 
 function makeRedis() {
-  let stored: string | null = null;
+  const store = new Map<string, string>();
   return {
-    get: vi.fn(async (_key: string) => stored as string | null),
-    set: vi.fn(async (_key: string, value: string, _ttl?: number): Promise<void> => {
-      stored = value;
+    get: vi.fn(async (key: string) => store.get(key) ?? null),
+    set: vi.fn(async (key: string, value: string, _ttl?: number): Promise<void> => {
+      store.set(key, value);
+    }),
+    setNx: vi.fn(async (key: string, value: string, _ttl?: number): Promise<boolean> => {
+      if (store.has(key)) return false;
+      store.set(key, value);
+      return true;
+    }),
+    del: vi.fn(async (key: string): Promise<void> => {
+      store.delete(key);
     }),
   };
 }
@@ -112,6 +121,22 @@ describe('LlmClientService', () => {
       await expect(service.createChatCompletion(baseParams, baseContext)).rejects.toThrow();
 
       expect(createSpy).toHaveBeenCalledTimes(1);
+      expect(await circuitBreaker.isOpen()).toBe(false);
+    });
+
+    it('does not trip the breaker on repeated 400 errors', async () => {
+      const badRequest = new OpenAI.APIError(
+        400,
+        undefined,
+        'Bad Request',
+        undefined as unknown as Headers,
+      );
+      createSpy.mockRejectedValue(badRequest);
+
+      await expect(service.createChatCompletion(baseParams, baseContext)).rejects.toThrow();
+      await expect(service.createChatCompletion(baseParams, baseContext)).rejects.toThrow();
+
+      expect(await circuitBreaker.isOpen()).toBe(false);
     });
 
     it('does not retry a 401 Auth error', async () => {
@@ -126,6 +151,7 @@ describe('LlmClientService', () => {
       await expect(service.createChatCompletion(baseParams, baseContext)).rejects.toThrow();
 
       expect(createSpy).toHaveBeenCalledTimes(1);
+      expect(await circuitBreaker.isOpen()).toBe(false);
     });
   });
 
@@ -189,6 +215,49 @@ describe('LlmClientService', () => {
       expect(emitCall.attributes).toHaveProperty('reason');
       expect(emitCall.attributes).toHaveProperty('node');
       expect(emitCall.attributes).toHaveProperty('escalated_to_human');
+    });
+  });
+
+  describe('DEMO_MODE: open breaker returns fixture completion', () => {
+    beforeEach(() => {
+      (env as Record<string, unknown>).DEMO_MODE = true;
+      (service as unknown as { catalogFixtures: Record<string, unknown>[] }).catalogFixtures = [
+        {
+          _meta: { request_type: 'catalog_rfq', sample_id: 'rfq_01_catalog_clean' },
+          extracted_fields: { item: 'bolt', qty: 200 },
+        },
+      ];
+    });
+
+    afterEach(() => {
+      (env as Record<string, unknown>).DEMO_MODE = false;
+    });
+
+    it('returns a fixture-based completion without calling the OpenAI API', async () => {
+      await circuitBreaker.recordFailure();
+      await circuitBreaker.recordFailure();
+
+      const result = await service.createChatCompletion(baseParams, baseContext);
+
+      expect(result.id).toBe('chatcmpl-fixture');
+      expect(createSpy).not.toHaveBeenCalled();
+    });
+
+    it('emits llm_timeout_fixture_replay with escalated_to_human: false', async () => {
+      await circuitBreaker.recordFailure();
+      await circuitBreaker.recordFailure();
+
+      await service.createChatCompletion(baseParams, baseContext);
+
+      expect(eventsService.emit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventName: 'stage.error',
+          attributes: expect.objectContaining({
+            reason: 'llm_timeout_fixture_replay',
+            escalated_to_human: false,
+          }),
+        }),
+      );
     });
   });
 });
