@@ -120,9 +120,15 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
     createRequestRef.current = createRequest;
   }, [createRequest]);
 
+  const isOpenRef = useRef(open);
+  useEffect(() => {
+    isOpenRef.current = open;
+  }, [open]);
+
   const canProcess = mode === 'upload' ? files.length > 0 : emailText.trim().length > 0;
 
   const handleClose = useCallback(() => {
+    isOpenRef.current = false;
     createRequestRef.current.reset();
     setSubmitError(null);
     setMode('upload');
@@ -170,6 +176,7 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
         {
           onSuccess: () => handleClose(),
           onError: (err) => {
+            if (!isOpenRef.current) return;
             const message =
               (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
               'Something went wrong. Please try again.';
