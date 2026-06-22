@@ -84,7 +84,7 @@ export class LlmClientService {
         return (await this.openai.chat.completions.create(params)) as OpenAI.Chat.ChatCompletion;
       } catch (error: unknown) {
         const isTransient = this.isTransientError(error);
-        if (!isTransient || attempt >= 1) {
+        if (!isTransient || attempt >= env.LLM_MAX_RETRIES) {
           throw error;
         }
 

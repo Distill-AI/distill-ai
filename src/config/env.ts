@@ -68,6 +68,7 @@ const envSchema = z.object({
   LLM_API_KEY: z.string().optional(),
   DEMO_MODE: boolEnv.default(false),
   LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
+  LLM_MAX_RETRIES: z.coerce.number().int().nonnegative().default(1),
   CIRCUIT_BREAKER_WINDOW_S: z.coerce.number().int().positive().default(60),
   CIRCUIT_BREAKER_COOLDOWN_S: z.coerce.number().int().positive().default(30),
 
