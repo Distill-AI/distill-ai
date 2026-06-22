@@ -71,6 +71,15 @@ export class Request extends BaseEntity {
   })
   overall_confidence: number | null;
 
+  @Column({
+    type: 'numeric',
+    precision: 3,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  classification_confidence: number | null;
+
   @Column({ type: 'enum', enum: RequestRouting, enumName: 'request_routing', nullable: true })
   routing: RequestRouting | null;
 
