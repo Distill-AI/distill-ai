@@ -32,7 +32,6 @@ describe('Integration: SSE Event Pipeline', () => {
 
       const t0 = new Date().toISOString();
 
-      // Simulate pipeline emitting events in order — 17 events total
       emitter.emit('job_event', {
         event: 'node.entered',
         data: {
@@ -229,7 +228,6 @@ describe('Integration: SSE Event Pipeline', () => {
 
       expect(emitted.length).toBe(17);
 
-      // Verify event order
       const types = emitted.map((e: { event?: string; type?: string; data?: unknown }) => ({
         type: e.event ?? e.type,
         node: (e.data as Record<string, unknown> | undefined)?.node,
@@ -240,7 +238,6 @@ describe('Integration: SSE Event Pipeline', () => {
       expect(types[6]).toEqual({ type: 'node.entered', node: 'match' });
       expect(types[16]).toEqual({ type: 'processing.complete', node: undefined });
 
-      // Verify no raw model reasoning in any event
       for (const event of emitted) {
         const data = (event.data ?? {}) as Record<string, unknown>;
         const values = Object.values(data).map((v: unknown) => String(v));
@@ -422,11 +419,9 @@ describe('Integration: SSE Event Pipeline', () => {
       await flush();
       expect(received).toHaveLength(1);
 
-      // Simulate disconnect
       sub.unsubscribe();
       await flush();
 
-      // Emit more events after disconnect
       emitter.emit('job_event', {
         event: 'node.exited',
         data: {
@@ -441,7 +436,6 @@ describe('Integration: SSE Event Pipeline', () => {
       });
       await flush();
 
-      // Should not have received the second event
       expect(received).toHaveLength(1);
     });
   });

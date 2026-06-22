@@ -7,10 +7,12 @@ import * as SYS_MSG from '@constants/system-messages';
 export class RequestsService {
   constructor(private readonly modelAction: RequestModelAction) {}
 
+  /** Finds a request by its ID, returning the entity or null if not found. */
   async findById(requestId: string): Promise<Request | null> {
     return this.modelAction.get({ identifierOptions: { id: requestId } });
   }
 
+  /** Finds a request by its ID, throwing NotFoundException if not found. */
   async findByIdOrFail(requestId: string): Promise<Request> {
     const req = await this.findById(requestId);
     if (!req) {

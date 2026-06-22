@@ -1,4 +1,3 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { of } from 'rxjs';
 import { RequestsController } from '../controllers/requests.controller';
@@ -11,8 +10,8 @@ vi.mock('@config/auth.config', () => ({ authConfig: { enabled: true } }));
 
 describe('RequestsController', () => {
   let controller: RequestsController;
-  let requestsService: RequestsService;
-  let streamService: StreamService;
+  let requestsService: Partial<RequestsService>;
+  let streamService: Partial<StreamService>;
 
   const mockUser: AuthUser = {
     userId: 'user-1',
@@ -30,29 +29,18 @@ describe('RequestsController', () => {
 
   const mockStream = of({ type: 'node.entered', data: { request_id: 'req-1', node: 'parse' } });
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [RequestsController],
-      providers: [
-        {
-          provide: RequestsService,
-          useValue: {
-            findById: vi.fn().mockResolvedValue(mockRequest),
-            findByIdOrFail: vi.fn().mockResolvedValue(mockRequest),
-          },
-        },
-        {
-          provide: StreamService,
-          useValue: {
-            subscribe: vi.fn().mockReturnValue(mockStream),
-          },
-        },
-      ],
-    }).compile();
-
-    controller = module.get<RequestsController>(RequestsController);
-    requestsService = module.get<RequestsService>(RequestsService);
-    streamService = module.get<StreamService>(StreamService);
+  beforeEach(() => {
+    requestsService = {
+      findById: vi.fn().mockResolvedValue(mockRequest),
+      findByIdOrFail: vi.fn().mockResolvedValue(mockRequest),
+    };
+    streamService = {
+      subscribe: vi.fn().mockReturnValue(mockStream),
+    };
+    controller = new RequestsController(
+      requestsService as RequestsService,
+      streamService as StreamService,
+    );
   });
 
   describe('events (SSE endpoint)', () => {

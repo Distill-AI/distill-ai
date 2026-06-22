@@ -39,12 +39,12 @@ export const DLQ_RETRY_QUEUED = 'Job re-queued from DLQ for retry';
 export const DLQ_THRESHOLD_EXCEEDED = (count: number, threshold: number) =>
   `DLQ alert: ${count} jobs have failed (threshold: ${threshold})`;
 
-// Pipeline (US-E8-4)
+// Pipeline
 export const REQUEST_NOT_FOUND = (id: string) => `Request ${id} not found`;
 export const PIPELINE_ENQUEUED = 'Request enqueued for pipeline processing';
 export const PIPELINE_RESUMED = 'Request resumed for pipeline processing';
 
-// Stream / SSE (US-E2-5)
+// Stream / SSE
 export const STREAM_SUBSCRIBED = 'SSE stream subscribed';
 export const STREAM_UNSUBSCRIBED = 'SSE stream unsubscribed';
 export const STREAM_COMPLETE = 'SSE stream complete';
@@ -52,7 +52,7 @@ export const STREAM_TIMEOUT = 'SSE stream timed out';
 export const SANITIZED_SUMMARY_PLACEHOLDER = 'Processing step completed';
 export const REDACTED_FIELD_PLACEHOLDER = '[redacted]';
 
-// Auth (NFR-SEC-5)
+// Auth
 export const AUTH_PROFILE_FETCHED = 'Profile fetched successfully';
 export const AUTH_LOGIN_SUCCESS = 'Login successful';
 export const AUTH_UNAUTHORIZED = 'Unauthorized. Valid token required.';
@@ -61,7 +61,7 @@ export const AUTH_INVALID_TOKEN = 'Invalid or expired token.';
 export const AUTH_INVALID_CREDENTIALS = 'Invalid credentials';
 export const AUTH_TOKEN_MISSING_OR_INVALID = 'Missing or invalid token';
 
-// Tool Registry (US-E8-5)
+// Tool Registry
 export const TOOL_NOT_FOUND = (name: string) =>
   `Tool "${name}" is not registered or does not exist`;
 export const TOOL_INPUT_VALIDATION_FAILED = 'Input validation failed';
