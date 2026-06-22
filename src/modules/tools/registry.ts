@@ -145,7 +145,7 @@ export class ToolRegistry implements OnModuleInit {
         errorDetail: msg,
         requestId: rid,
       });
-      await this.emitToolEvent(rid, node, name, 'failed', attempt, msg);
+      await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Execution failed');
       return { status: ToolStatus.ERROR, latency, error: msg };
     }
 
