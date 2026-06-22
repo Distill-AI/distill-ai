@@ -7,6 +7,8 @@ import { STUB_NODES } from '@modules/pipeline/stub-nodes';
 import { CircuitBreakerService } from '@modules/pipeline/circuit-breaker.service';
 import { LlmClientService } from '@modules/pipeline/llm-client.service';
 import { BackoffService } from '@worker/backoff.service';
+import { ClassifyModule } from '@modules/classify/classify.module';
+import { ClassifyNode } from '@modules/classify/classify.node';
 import { QueueClientModule } from './queue-client.module';
 import { PipelineProcessor } from './processors/pipeline.processor';
 
@@ -17,7 +19,7 @@ import { PipelineProcessor } from './processors/pipeline.processor';
  * construction (Nest instantiates providers eagerly).
  */
 @Module({
-  imports: [QueueClientModule, RequestsModule, EventsModule],
+  imports: [QueueClientModule, RequestsModule, EventsModule, ClassifyModule],
   providers: [
     PipelineGraphEngine,
     NodeRegistry,
@@ -26,6 +28,7 @@ import { PipelineProcessor } from './processors/pipeline.processor';
     CircuitBreakerService,
     LlmClientService,
     BackoffService,
+    ClassifyNode,
   ],
   exports: [LlmClientService],
 })
