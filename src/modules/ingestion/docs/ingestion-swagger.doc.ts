@@ -7,7 +7,7 @@ const badRequestExample = (message: string) => ({
   example: {
     success: false,
     statusCode: HttpStatus.BAD_REQUEST,
-    error: SYS_MSG.BAD_REQUEST_NAME,
+    error: HttpStatus[HttpStatus.BAD_REQUEST],
     message,
     path: '/api/v1/requests',
     timestamp: '2026-06-22T00:00:00.000Z',
@@ -21,10 +21,10 @@ export function CreateRequestDocs() {
       summary: 'Submit a request by uploading files or pasting text',
       description:
         'Creates a request and queues it for the parse pipeline (returns 202). Two intake modes:\n\n' +
-        '**Upload** — send one or more files in the `files` part. Allowed types are PDF, CSV, and ' +
-        `TXT; each file must be ≤ ${MAX_UPLOAD_MB} MB. The original bytes are stored and a ` +
+        '**Upload**: send one or more files in the `files` part. Allowed types are PDF, CSV, and ' +
+        `TXT; each file must be at most ${MAX_UPLOAD_MB} MB. The original bytes are stored and a ` +
         'request with `current_node=parse`, `status=parsing` is created.\n\n' +
-        '**Paste** — omit files and send the RFQ text in `source_body`; the request is recorded ' +
+        '**Paste**: omit files and send the RFQ text in `source_body`; the request is recorded ' +
         'with `channel=email`.\n\n' +
         'Provide at least one file or non-empty `source_body`. `channel` is optional and inferred ' +
         'when omitted (files -> upload, otherwise email).',

@@ -58,7 +58,6 @@ export const REQUEST_INPUT_REQUIRED =
 export const UNSUPPORTED_FILE_TYPE =
   'Unsupported file type. Only PDF, CSV, or TXT files are accepted.';
 export const FILE_TOO_LARGE = (maxMb: number) => `File too large. Maximum size is ${maxMb} MB.`;
-export const BAD_REQUEST_NAME = 'Bad Request';
 
 // Auth (NFR-SEC-5)
 export const AUTH_PROFILE_FETCHED = 'Profile fetched successfully';
