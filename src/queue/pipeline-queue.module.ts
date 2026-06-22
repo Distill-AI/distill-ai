@@ -1,6 +1,7 @@
-import { Module } from '@nestjs/common';
+﻿import { Module } from '@nestjs/common';
 import { RequestsModule } from '@modules/requests/requests.module';
 import { EventsModule } from '@modules/events/events.module';
+import { ExtractionModule } from '@modules/extraction/extraction.module';
 import { PipelineGraphEngine } from '@modules/pipeline/graph.engine';
 import { NodeRegistry } from '@modules/pipeline/node-registry';
 import { STUB_NODES } from '@modules/pipeline/stub-nodes';
@@ -16,7 +17,7 @@ import { PipelineProcessor } from './processors/pipeline.processor';
  * construction (Nest instantiates providers eagerly).
  */
 @Module({
-  imports: [QueueClientModule, RequestsModule, EventsModule, ClassifyModule],
+  imports: [QueueClientModule, RequestsModule, EventsModule, ExtractionModule, ClassifyModule],
   providers: [PipelineGraphEngine, NodeRegistry, ...STUB_NODES, ClassifyNode, PipelineProcessor],
 })
 export class PipelineQueueModule {}

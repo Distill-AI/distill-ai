@@ -1,4 +1,4 @@
-import { applyDecorators } from '@nestjs/common';
+﻿import { applyDecorators } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiProduces, ApiResponse, ApiTags } from '@nestjs/swagger';
 import * as SYS_MSG from '@constants/system-messages';
 
@@ -10,7 +10,7 @@ export function RequestEventsDocs(): MethodDecorator {
       description:
         'Opens a Server-Sent Events (SSE) connection that streams live processing trace events ' +
         'for the given request. Events are emitted as each pipeline stage executes: ' +
-        'parse → extract → match → score → price → policy. ' +
+        'parse ΓåÆ extract ΓåÆ match ΓåÆ score ΓåÆ price ΓåÆ policy. ' +
         'Tool invocations (extract, match) are included with retry indicators. ' +
         'No raw model reasoning or chain-of-thought is emitted. ' +
         'The stream closes when processing completes (success or failure) or on client disconnect.',
@@ -34,6 +34,57 @@ export function RequestEventsDocs(): MethodDecorator {
         'event: processing.complete\ndata: {"type":"processing.complete","timestamp":"...","status":"success","total_duration_ms":10000}\n\n' +
         '```',
       content: { 'text/event-stream': { schema: { type: 'string' } } },
+    }),
+    ApiResponse({
+      status: 404,
+      description: SYS_MSG.REQUEST_NOT_FOUND('{id}'),
+    }),
+    ApiResponse({
+      status: 401,
+      description: SYS_MSG.AUTH_UNAUTHORIZED,
+    }),
+    ApiResponse({
+      status: 403,
+      description: SYS_MSG.AUTH_FORBIDDEN,
+    }),
+  );
+}
+
+export function RequestResumeDocs(): MethodDecorator {
+  return applyDecorators(
+    ApiTags('Requests'),
+    ApiOperation({
+      summary: 'Manually resume a pipeline request from its current node',
+      description:
+        'Resumes pipeline processing for a request from its current checkpoint node. ' +
+        'Emits a `request.resumed` event with `reason=manual`. ' +
+        'If the request is at the extract node and a prior valid extraction exists, ' +
+        'the extract node short-circuits to avoid duplicating the LLM tool call. ' +
+        'Responds within 1 second for healthy requests.',
+    }),
+    ApiParam({
+      name: 'id',
+      description: 'UUID of the request to resume',
+      required: true,
+      type: 'string',
+      format: 'uuid',
+    }),
+    ApiResponse({
+      status: 200,
+      description:
+        'Request resumed successfully.\n\n' +
+        '```json\n' +
+        '{\n' +
+        '  "statusCode": 200,\n' +
+        '  "message": "Request resumed successfully",\n' +
+        '  "data": {\n' +
+        '    "request_id": "uuid",\n' +
+        '    "resumed": true,\n' +
+        '    "resume_reason": "manual",\n' +
+        '    "current_node": "extract"\n' +
+        '  }\n' +
+        '}\n' +
+        '```',
     }),
     ApiResponse({
       status: 404,
