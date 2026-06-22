@@ -20,6 +20,7 @@ import { DlqModule } from '@modules/dlq/dlq.module';
 import { SchedulerModule } from '@modules/scheduler/scheduler.module';
 import { BenchmarkModule } from '@modules/benchmark/benchmark.module';
 import { PipelineModule } from '@modules/pipeline/pipeline.module';
+import { IngestionModule } from '@modules/ingestion/ingestion.module';
 
 // ── Auth (NFR-SEC-5) ───────────────────────────────────────────────────────
 import { AuthModule } from '@modules/auth';
@@ -41,6 +42,7 @@ import { RlsContextMiddleware } from '@modules/auth/middleware/rls-context.middl
       username: env.DATABASE_USER,
       password: env.DATABASE_PASSWORD,
       database: env.DATABASE_NAME,
+      entities: [__dirname + '/**/*.entity.{ts,js}'],
       autoLoadEntities: true,
       synchronize: env.DATABASE_SYNC,
       logging: env.DATABASE_LOGGING,
@@ -61,6 +63,7 @@ import { RlsContextMiddleware } from '@modules/auth/middleware/rls-context.middl
     BenchmarkModule,
     ToolsModule,
     PipelineModule,
+    IngestionModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
