@@ -39,6 +39,13 @@ export const DLQ_RETRY_QUEUED = 'Job re-queued from DLQ for retry';
 export const DLQ_THRESHOLD_EXCEEDED = (count: number, threshold: number) =>
   `DLQ alert: ${count} jobs have failed (threshold: ${threshold})`;
 
+// Object storage
+export const OBJECT_STORE_URL_REQUIRED = 'OBJECT_STORE_URL must resolve to a non-empty path';
+export const OBJECT_STORE_UNSUPPORTED_SCHEME = (scheme: string) =>
+  `Unsupported OBJECT_STORE_URL scheme "${scheme}"; only file:// is supported`;
+export const OBJECT_STORE_KEY_BLANK = 'Object key must not be blank';
+export const OBJECT_STORE_KEY_TRAVERSAL = 'Object key escapes store root';
+
 // Pipeline (US-E8-4)
 export const REQUEST_NOT_FOUND = (id: string) => `Request ${id} not found`;
 export const PIPELINE_ENQUEUED = 'Request enqueued for pipeline processing';

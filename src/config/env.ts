@@ -70,6 +70,9 @@ const envSchema = z.object({
 
   // ── Classify (US-E2-4) ────────────────────────────────────────────────────
   CLASSIFY_THRESHOLD: z.coerce.number().min(0).max(1).default(0.8),
+  // ── Object storage ─────────────────────────────────────────────────────────
+  // Bare path or file:// URL for the local adapter; other schemes are rejected at boot for now.
+  OBJECT_STORE_URL: z.string().trim().min(1).default('file://./var/object-store'),
 
   // ── Observability ─────────────────────────────────────────────────────────
   SENTRY_DSN: z.string().url().optional(),
