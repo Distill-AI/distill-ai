@@ -61,6 +61,10 @@ const envSchema = z.object({
   ALERT_EMAIL: z.string().email().default('admin@example.com'),
   EMAIL_FROM: z.string().default('App <noreply@example.com>'),
 
+  // ── Object storage ─────────────────────────────────────────────────────────
+  // Bare path or file:// URL for the local adapter; other schemes are rejected at boot for now.
+  OBJECT_STORE_URL: z.string().trim().min(1).default('file://./var/object-store'),
+
   // ── Observability ─────────────────────────────────────────────────────────
   SENTRY_DSN: z.string().url().optional(),
 });
