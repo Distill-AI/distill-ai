@@ -3,6 +3,7 @@ import { CircuitBreakerService } from '../circuit-breaker.service';
 import { CircuitBreakerOpenError } from '../pipeline.errors';
 import { BackoffService } from '@worker/backoff.service';
 import type { EventsService } from '@modules/events/events.service';
+import type { RedisService } from '@modules/redis/redis.service';
 import OpenAI from 'openai';
 
 // Mock env
@@ -16,8 +17,19 @@ vi.mock('@config/env', () => ({
     DEMO_MODE: false,
     CIRCUIT_BREAKER_WINDOW_S: 60,
     CIRCUIT_BREAKER_COOLDOWN_S: 30,
+    CIRCUIT_BREAKER_FAILURE_THRESHOLD: 2,
   },
 }));
+
+function makeRedis() {
+  let stored: string | null = null;
+  return {
+    get: vi.fn(async (_key: string) => stored as string | null),
+    set: vi.fn(async (_key: string, value: string, _ttl?: number): Promise<void> => {
+      stored = value;
+    }),
+  };
+}
 
 // Shared context for tests
 const baseContext = { orgId: 'org-1', requestId: 'req-1', node: 'extract' };
@@ -34,7 +46,8 @@ describe('LlmClientService', () => {
   let createSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    circuitBreaker = new CircuitBreakerService();
+    const mockRedis = makeRedis();
+    circuitBreaker = new CircuitBreakerService(mockRedis as unknown as RedisService);
     backoff = new BackoffService();
     vi.spyOn(backoff, 'calculateWaitMs').mockReturnValue(0);
 
@@ -135,8 +148,8 @@ describe('LlmClientService', () => {
   describe('AC-04: open breaker skips the LLM call', () => {
     it('throws CircuitBreakerOpenError immediately when breaker is open', async () => {
       // Trip the breaker
-      circuitBreaker.recordFailure();
-      circuitBreaker.recordFailure();
+      await circuitBreaker.recordFailure();
+      await circuitBreaker.recordFailure();
 
       await expect(service.createChatCompletion(baseParams, baseContext)).rejects.toBeInstanceOf(
         CircuitBreakerOpenError,
@@ -147,8 +160,8 @@ describe('LlmClientService', () => {
     });
 
     it('emits stage.error with reason llm_circuit_open when breaker is open', async () => {
-      circuitBreaker.recordFailure();
-      circuitBreaker.recordFailure();
+      await circuitBreaker.recordFailure();
+      await circuitBreaker.recordFailure();
 
       await expect(service.createChatCompletion(baseParams, baseContext)).rejects.toThrow();
 
@@ -166,8 +179,8 @@ describe('LlmClientService', () => {
 
   describe('AC-06: stage.error SSE payload', () => {
     it('does NOT include raw error body (SEC-02)', async () => {
-      circuitBreaker.recordFailure();
-      circuitBreaker.recordFailure();
+      await circuitBreaker.recordFailure();
+      await circuitBreaker.recordFailure();
 
       await expect(service.createChatCompletion(baseParams, baseContext)).rejects.toThrow();
 
