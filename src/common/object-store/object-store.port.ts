@@ -1,5 +1,5 @@
 /**
- * Object-store port (US-E1-1-T2).
+ * Object-store port.
  *
  * The pipeline stores the original bytes of every attachment (and later exported quotes) here, and
  * the download endpoint (US-E1-5-T1) reads them back. Consumers depend on this interface, never on a
