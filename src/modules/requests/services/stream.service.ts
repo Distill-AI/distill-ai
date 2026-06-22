@@ -1,6 +1,7 @@
 import { Injectable, Logger, MessageEvent } from '@nestjs/common';
 import { Observable, filter, map, share } from 'rxjs';
 import * as SYS_MSG from '../../../constants/system-messages';
+import { getTimestamp } from '@common/utils/timestamp';
 import { SseService } from '../../../sse/sse.service';
 import { EventsService } from '../../events/events.service';
 import { StreamNode } from '../enums/stream-node.enum';
@@ -23,10 +24,6 @@ function sanitizeSummary(summary: string): string {
   return summary;
 }
 
-function getTimestamp(): string {
-  return new Date().toISOString();
-}
-
 @Injectable()
 export class StreamService {
   private readonly logger = new Logger(StreamService.name);
@@ -36,6 +33,7 @@ export class StreamService {
     private readonly sse: SseService,
   ) {}
 
+  /** Fires a node.entered event into the SSE stream for the given request. */
   emitNodeEntered(requestId: string, node: StreamNode, orgId?: string): void {
     this.events
       .emit({
@@ -59,6 +57,7 @@ export class StreamService {
       });
   }
 
+  /** Fires a node.exited event with duration and sanitized summary into the SSE stream. */
   emitNodeExited(
     requestId: string,
     node: StreamNode,
@@ -92,6 +91,7 @@ export class StreamService {
       });
   }
 
+  /** Fires a tool.invoked event with attempt count and sanitized result summary. */
   emitToolInvoked(
     requestId: string,
     node: StreamNode.EXTRACT | StreamNode.MATCH,
@@ -127,6 +127,7 @@ export class StreamService {
       });
   }
 
+  /** Fires a processing.complete event marking the end of a pipeline run. */
   emitProcessingComplete(
     requestId: string,
     status: NodeExitStatus,
@@ -154,6 +155,7 @@ export class StreamService {
       });
   }
 
+  /** Returns an Observable of sanitized SSE MessageEvents filtered to the given requestId. */
   subscribe(requestId: string): Observable<MessageEvent> {
     return this.sse.stream().pipe(
       filter((event: MessageEvent) => {

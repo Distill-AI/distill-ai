@@ -7,12 +7,9 @@ import { EventsService } from '@modules/events/events.service';
 import { NodeRegistry } from './node-registry';
 import { isInfraError } from './pipeline.errors';
 import type { NodeResult } from './types';
+import { getTimestamp } from '@common/utils/timestamp';
 
 const MAX_NODE_TRANSITIONS = 50;
-
-function getTimestamp(): string {
-  return new Date().toISOString();
-}
 
 function elapsedMs(start: number): number {
   return Math.round(performance.now() - start);
@@ -58,6 +55,8 @@ export class PipelineGraphEngine {
         attributes: { resumed_from_node: req.current_node, reason: 'crash_recovery' },
       });
     }
+    // The recovery sweep keys off processing_started_at, not status.
+    // A bare setStatus(PARSING) would leave crashed runs undetectable by the sweeper.
     await this.requests.markProcessing(requestId);
 
     let node = req.current_node;
@@ -67,7 +66,7 @@ export class PipelineGraphEngine {
     while (node !== CurrentNode.DONE && node !== CurrentNode.FAILED) {
       if (++steps > MAX_NODE_TRANSITIONS) {
         this.logger.error({ event: 'pipeline_max_transitions_exceeded', requestId, node, steps });
-        await this.checkpoint(requestId, CurrentNode.FAILED, node, orgId);
+        await this.checkpoint(requestId, CurrentNode.FAILED);
         overallStatus = 'failed';
         return this.finalize(orgId, requestId, RequestStatus.FAILED, overallStatus, startedAt);
       }
@@ -75,7 +74,7 @@ export class PipelineGraphEngine {
       if (!this.nodes.has(node)) {
         this.logger.error({ event: 'pipeline_node_unregistered', requestId, node });
         overallStatus = 'failed';
-        await this.checkpoint(requestId, CurrentNode.FAILED, node, orgId);
+        await this.checkpoint(requestId, CurrentNode.FAILED);
         return this.finalize(orgId, requestId, RequestStatus.FAILED, overallStatus, startedAt);
       }
       const impl = this.nodes.get(node);
@@ -101,7 +100,7 @@ export class PipelineGraphEngine {
 
         if (infra) {
           overallStatus = 'failed';
-          await this.checkpoint(requestId, CurrentNode.FAILED, node, orgId);
+          await this.checkpoint(requestId, CurrentNode.FAILED);
           return this.finalize(orgId, requestId, RequestStatus.FAILED, overallStatus, startedAt);
         }
 
@@ -147,12 +146,12 @@ export class PipelineGraphEngine {
           orgId,
         );
         overallStatus = 'failed';
-        await this.checkpoint(requestId, CurrentNode.FAILED, node, orgId);
+        await this.checkpoint(requestId, CurrentNode.FAILED);
         return this.finalize(orgId, requestId, RequestStatus.FAILED, overallStatus, startedAt);
       }
 
       await this.emitNodeExited(requestId, node, 'success', nodeDuration, summary, orgId);
-      await this.checkpoint(requestId, result.next, node, orgId);
+      await this.checkpoint(requestId, result.next);
       node = result.next;
     }
 
@@ -201,12 +200,7 @@ export class PipelineGraphEngine {
     });
   }
 
-  private async checkpoint(
-    requestId: string,
-    next: CurrentNode,
-    _from: CurrentNode,
-    _orgId: string,
-  ): Promise<void> {
+  private async checkpoint(requestId: string, next: CurrentNode): Promise<void> {
     await this.requests.setCurrentNode(requestId, next);
   }
 
@@ -250,6 +244,8 @@ export class PipelineGraphEngine {
     if (endNode === CurrentNode.FAILED) {
       return RequestStatus.FAILED;
     }
+    // Deliberate re-fetch: the score node writes routing during this run.
+    // The req loaded at run() entry still has routing: null here.
     const req = await this.requests.get({ identifierOptions: { id: requestId } });
     return req?.routing === RequestRouting.AUTO_ELIGIBLE
       ? RequestStatus.PRICED

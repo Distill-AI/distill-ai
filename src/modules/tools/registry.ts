@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit, Optional, Inject } from '@nestjs/common';
 import { performance } from 'perf_hooks';
+import { StreamNode } from '@modules/requests/enums/stream-node.enum';
 import { z } from 'zod';
 import { EventsService } from '@modules/events/events.service';
 import * as SYS_MSG from '@constants/system-messages';
@@ -8,17 +9,14 @@ import { ToolStatus } from './enums/tools.enums';
 import { DuplicateToolError, ReservedToolNameError } from './errors/tools.errors';
 import { ToolCallsActions, ToolCallLogParams } from './actions/tool-calls.actions';
 import { ToolName, RESERVED_NAMES } from '../pipeline/types';
+import { getTimestamp } from '@common/utils/timestamp';
 
 type Sanitizer = (data: unknown) => unknown;
 
-const TOOL_NODE_MAP: Record<string, string> = {
-  extract_request: 'extract',
-  search_catalog: 'match',
-};
-
-function getTimestamp(): string {
-  return new Date().toISOString();
-}
+const TOOL_NODE_MAP = {
+  extract_request: StreamNode.EXTRACT,
+  search_catalog: StreamNode.MATCH,
+} as Partial<Record<ToolName, StreamNode>>;
 
 function makeResultSummary(result: unknown): string {
   if (result === null || result === undefined) return 'Completed';
@@ -88,27 +86,10 @@ export class ToolRegistry implements OnModuleInit {
     const start = performance.now();
     const name = toolName.toLowerCase();
     const rid = requestId ?? '00000000-0000-0000-0000-000000000000';
-    const node = TOOL_NODE_MAP[name] ?? null;
+    const node = TOOL_NODE_MAP[name as ToolName] ?? null;
 
-    // Emit running status
-    if (requestId && node) {
-      await this.emitToolEvent(rid, node, name, 'running', attempt, 'Invoking tool');
-    } else if (requestId) {
-      await this.events.emit({
-        eventName: 'tool.invoked',
-        requestId,
-        attributes: {
-          type: 'tool.invoked',
-          timestamp: getTimestamp(),
-          tool_name: name,
-          status: 'running',
-          attempt,
-          result_summary: 'Invoking tool',
-        },
-      });
-    }
+    await this.emitToolEvent(rid, node, name, 'running', attempt, 'Invoking tool');
 
-    // 1: look up contract
     const contract = this.registry.get(name);
     if (!contract) {
       const latency = Math.round(performance.now() - start);
@@ -120,26 +101,10 @@ export class ToolRegistry implements OnModuleInit {
         errorDetail: SYS_MSG.TOOL_NOT_FOUND(name),
         requestId: rid,
       });
-      if (requestId && node) {
-        await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Tool not found');
-      } else if (requestId) {
-        await this.events.emit({
-          eventName: 'tool.invoked',
-          requestId,
-          attributes: {
-            type: 'tool.invoked',
-            timestamp: getTimestamp(),
-            tool_name: name,
-            status: 'failed',
-            attempt,
-            result_summary: 'Tool not found',
-          },
-        });
-      }
+      await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Tool not found');
       return { status: ToolStatus.ERROR, latency, error: SYS_MSG.TOOL_NOT_FOUND(name) };
     }
 
-    // 2: input validation
     const inputParse = contract.inputSchema.safeParse(rawArgs);
     if (!inputParse.success) {
       const latency = Math.round(performance.now() - start);
@@ -151,22 +116,7 @@ export class ToolRegistry implements OnModuleInit {
         errorDetail: `${SYS_MSG.TOOL_INPUT_VALIDATION_FAILED}: ${inputParse.error.message}`,
         requestId: rid,
       });
-      if (requestId && node) {
-        await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Input validation failed');
-      } else if (requestId) {
-        await this.events.emit({
-          eventName: 'tool.invoked',
-          requestId,
-          attributes: {
-            type: 'tool.invoked',
-            timestamp: getTimestamp(),
-            tool_name: name,
-            status: 'failed',
-            attempt,
-            result_summary: 'Input validation failed',
-          },
-        });
-      }
+      await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Input validation failed');
       return {
         status: ToolStatus.VALIDATION_ERROR,
         latency,
@@ -174,7 +124,6 @@ export class ToolRegistry implements OnModuleInit {
       };
     }
 
-    // 3: execution
     let execResult: { ok: true; value: unknown } | { ok: false; error: unknown };
     try {
       const result = await contract.execute(inputParse.data);
@@ -196,26 +145,10 @@ export class ToolRegistry implements OnModuleInit {
         errorDetail: msg,
         requestId: rid,
       });
-      if (requestId && node) {
-        await this.emitToolEvent(rid, node, name, 'failed', attempt, msg);
-      } else if (requestId) {
-        await this.events.emit({
-          eventName: 'tool.invoked',
-          requestId,
-          attributes: {
-            type: 'tool.invoked',
-            timestamp: getTimestamp(),
-            tool_name: name,
-            status: 'failed',
-            attempt,
-            result_summary: msg,
-          },
-        });
-      }
+      await this.emitToolEvent(rid, node, name, 'failed', attempt, msg);
       return { status: ToolStatus.ERROR, latency, error: msg };
     }
 
-    // 4: output validation
     const outputParse = contract.outputSchema.safeParse(execResult.value);
     if (!outputParse.success) {
       await this.log({
@@ -226,22 +159,7 @@ export class ToolRegistry implements OnModuleInit {
         errorDetail: `${SYS_MSG.TOOL_OUTPUT_VALIDATION_FAILED}: ${outputParse.error.message}`,
         requestId: rid,
       });
-      if (requestId && node) {
-        await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Output validation failed');
-      } else if (requestId) {
-        await this.events.emit({
-          eventName: 'tool.invoked',
-          requestId,
-          attributes: {
-            type: 'tool.invoked',
-            timestamp: getTimestamp(),
-            tool_name: name,
-            status: 'failed',
-            attempt,
-            result_summary: 'Output validation failed',
-          },
-        });
-      }
+      await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Output validation failed');
       return {
         status: ToolStatus.VALIDATION_ERROR,
         latency,
@@ -249,7 +167,6 @@ export class ToolRegistry implements OnModuleInit {
       };
     }
 
-    // 5: success
     const safeArgs = this.sanitize(rawArgs);
     const resultSummary = makeResultSummary(outputParse.data);
 
@@ -261,22 +178,7 @@ export class ToolRegistry implements OnModuleInit {
       requestId: rid,
     });
 
-    if (requestId && node) {
-      await this.emitToolEvent(rid, node, name, 'success', attempt, resultSummary);
-    } else if (requestId) {
-      await this.events.emit({
-        eventName: 'tool.invoked',
-        requestId,
-        attributes: {
-          type: 'tool.invoked',
-          timestamp: getTimestamp(),
-          tool_name: name,
-          status: 'success',
-          attempt,
-          result_summary: resultSummary,
-        },
-      });
-    }
+    await this.emitToolEvent(rid, node, name, 'success', attempt, resultSummary);
 
     return { status: ToolStatus.OK, latency, result: outputParse.data };
   }
@@ -290,7 +192,7 @@ export class ToolRegistry implements OnModuleInit {
 
   private async emitToolEvent(
     requestId: string,
-    node: string,
+    node: string | null,
     toolName: string,
     status: string,
     attempt: number,
@@ -302,7 +204,7 @@ export class ToolRegistry implements OnModuleInit {
       attributes: {
         type: 'tool.invoked',
         timestamp: getTimestamp(),
-        node,
+        ...(node !== null ? { node } : {}),
         tool_name: toolName,
         status,
         attempt,
