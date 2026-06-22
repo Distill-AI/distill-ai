@@ -3,6 +3,9 @@ dist/
 .env
 *.js.map
 
+# local filesystem object store (attachments/quotes written by the object-store adapter)
+var/
+
 # local planning / scratch files
 plan.md
 deploy-plan.md
