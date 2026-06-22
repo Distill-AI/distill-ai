@@ -9,6 +9,14 @@
 /** Marker for infrastructure failures (DB/queue/network). Anything else is a recoverable logical error. */
 export class PipelineInfraError extends Error {}
 
+/** Thrown when an LLM call is blocked because the circuit breaker is OPEN. */
+export class CircuitBreakerOpenError extends Error {
+  constructor() {
+    super('Circuit breaker is OPEN');
+    this.name = 'CircuitBreakerOpenError';
+  }
+}
+
 /** Infra errors fail the run; every other error escalates the request to human review. */
 export function isInfraError(err: unknown): boolean {
   return err instanceof PipelineInfraError;
