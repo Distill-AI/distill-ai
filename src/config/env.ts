@@ -61,6 +61,12 @@ const envSchema = z.object({
   ALERT_EMAIL: z.string().email().default('admin@example.com'),
   EMAIL_FROM: z.string().default('App <noreply@example.com>'),
 
+  // ── LLM & Circuit Breaker ──────────────────────────────────────────────────
+  DEMO_MODE: boolEnv.default(false),
+  LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
+  CIRCUIT_BREAKER_WINDOW_S: z.coerce.number().int().positive().default(60),
+  CIRCUIT_BREAKER_COOLDOWN_S: z.coerce.number().int().positive().default(30),
+
   // ── Observability ─────────────────────────────────────────────────────────
   SENTRY_DSN: z.string().url().optional(),
 });
