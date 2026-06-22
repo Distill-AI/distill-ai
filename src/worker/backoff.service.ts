@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 // Delays: attempt 0 → ~1s, attempt 1 → ~5s, attempt 2 → ~25s
 const BASE_MS = 1000;
-const MULTIPLIER = 5;
+const MULTIPLIER = 2;
 
 @Injectable()
 export class BackoffService {
