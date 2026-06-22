@@ -3,6 +3,7 @@ import { of } from 'rxjs';
 import { RequestsController } from '../controllers/requests.controller';
 import { RequestsService } from '../services/requests.service';
 import { StreamService } from '../services/stream.service';
+import { AttachmentsService } from '../services/attachments.service';
 import type { Request as RequestEntity } from '../entities/request.entity';
 import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
 
@@ -12,6 +13,7 @@ describe('RequestsController', () => {
   let controller: RequestsController;
   let requestsService: Partial<RequestsService>;
   let streamService: Partial<StreamService>;
+  let attachmentsService: Partial<AttachmentsService>;
 
   const mockUser: AuthUser = {
     userId: 'user-1',
@@ -29,6 +31,16 @@ describe('RequestsController', () => {
 
   const mockStream = of({ type: 'node.entered', data: { request_id: 'req-1', node: 'parse' } });
 
+  function makeRes() {
+    return {
+      setHeader: vi.fn(),
+      send: vi.fn(),
+    } as unknown as import('express').Response & {
+      setHeader: ReturnType<typeof vi.fn>;
+      send: ReturnType<typeof vi.fn>;
+    };
+  }
+
   beforeEach(() => {
     requestsService = {
       findById: vi.fn().mockResolvedValue(mockRequest),
@@ -37,9 +49,23 @@ describe('RequestsController', () => {
     streamService = {
       subscribe: vi.fn().mockReturnValue(mockStream),
     };
+    attachmentsService = {
+      getForDownload: vi.fn().mockResolvedValue({
+        attachment: {
+          id: 'att-1',
+          request_id: 'req-1',
+          filename: 'rfq.pdf',
+          mime_type: 'application/pdf',
+          size_bytes: 9,
+          storage_url: 'attachments/req-1/rfq.pdf',
+        },
+        bytes: Buffer.from('PDF-BYTES'),
+      }),
+    };
     controller = new RequestsController(
       requestsService as RequestsService,
       streamService as StreamService,
+      attachmentsService as AttachmentsService,
     );
   });
 
@@ -73,6 +99,58 @@ describe('RequestsController', () => {
       await expect(controller.events('req-1', { user: undefined })).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('downloadAttachment', () => {
+    it('streams the bytes with the stored mime type and a download filename', async () => {
+      const res = makeRes();
+      await controller.downloadAttachment('req-1', 'att-1', { user: mockUser }, res);
+
+      expect(attachmentsService.getForDownload).toHaveBeenCalledWith('req-1', 'att-1');
+      expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/pdf');
+      expect(res.setHeader).toHaveBeenCalledWith('Content-Length', 9);
+      expect(res.setHeader).toHaveBeenCalledWith(
+        'Content-Disposition',
+        "attachment; filename*=UTF-8''rfq.pdf",
+      );
+      expect(res.send).toHaveBeenCalledWith(Buffer.from('PDF-BYTES'));
+    });
+
+    it('404s and serves nothing when the request is not found', async () => {
+      const res = makeRes();
+      vi.spyOn(requestsService, 'findByIdOrFail').mockRejectedValueOnce(
+        new NotFoundException('Request req-404 not found'),
+      );
+
+      await expect(
+        controller.downloadAttachment('req-404', 'att-1', { user: mockUser }, res),
+      ).rejects.toThrow(NotFoundException);
+      expect(attachmentsService.getForDownload).not.toHaveBeenCalled();
+      expect(res.send).not.toHaveBeenCalled();
+    });
+
+    it('404s when the request belongs to another org and never reads the attachment', async () => {
+      const res = makeRes();
+      const otherOrg = { ...mockRequest, org_id: 'org-2' } as RequestEntity;
+      vi.spyOn(requestsService, 'findByIdOrFail').mockResolvedValueOnce(otherOrg);
+
+      await expect(
+        controller.downloadAttachment('req-1', 'att-1', { user: mockUser }, res),
+      ).rejects.toThrow(NotFoundException);
+      expect(attachmentsService.getForDownload).not.toHaveBeenCalled();
+    });
+
+    it('propagates NotFoundException when the attachment is missing', async () => {
+      const res = makeRes();
+      vi.spyOn(attachmentsService, 'getForDownload').mockRejectedValueOnce(
+        new NotFoundException('Attachment att-404 not found'),
+      );
+
+      await expect(
+        controller.downloadAttachment('req-1', 'att-404', { user: mockUser }, res),
+      ).rejects.toThrow(NotFoundException);
+      expect(res.send).not.toHaveBeenCalled();
     });
   });
 });
