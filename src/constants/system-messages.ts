@@ -46,7 +46,7 @@ export const OBJECT_STORE_UNSUPPORTED_SCHEME = (scheme: string) =>
 export const OBJECT_STORE_KEY_BLANK = 'Object key must not be blank';
 export const OBJECT_STORE_KEY_TRAVERSAL = 'Object key escapes store root';
 
-// Pipeline (US-E8-4)
+// Pipeline
 export const REQUEST_NOT_FOUND = (id: string) => `Request ${id} not found`;
 export const PIPELINE_ENQUEUED = 'Request enqueued for pipeline processing';
 export const PIPELINE_RESUMED = 'Request resumed for pipeline processing';
@@ -58,8 +58,18 @@ export const REQUEST_INPUT_REQUIRED =
 export const UNSUPPORTED_FILE_TYPE =
   'Unsupported file type. Only PDF, CSV, or TXT files are accepted.';
 export const FILE_TOO_LARGE = (maxMb: number) => `File too large. Maximum size is ${maxMb} MB.`;
+export const RLS_CONTEXT_MISSING = 'Request tenant context is missing; cannot create the request.';
 
-// Classify (US-E2-4)
+// Stream / SSE
+export const STREAM_SUBSCRIBED = 'SSE stream subscribed';
+export const STREAM_UNSUBSCRIBED = 'SSE stream unsubscribed';
+export const STREAM_COMPLETE = 'SSE stream complete';
+export const STREAM_TIMEOUT = 'SSE stream timed out';
+export const SANITIZED_SUMMARY_PLACEHOLDER = 'Processing step completed';
+export const REDACTED_FIELD_PLACEHOLDER = '[redacted]';
+
+// Classify
+
 export const CLASSIFY_DEFAULTED_LOW_CONFIDENCE = (confidence: number, threshold: number) =>
   `Classification confidence ${confidence} below threshold ${threshold}; defaulting to service_quote`;
 export const CLASSIFY_RETRY_FAILED = 'Classification retry failed; defaulting to service_quote';
@@ -68,7 +78,7 @@ export const CLASSIFY_MALFORMED_INPUT =
 export const LLM_INVOCATION_FAILED = (status: number, body: string) =>
   `LLM invocation failed (${status}): ${body}`;
 
-// Auth (NFR-SEC-5)
+// Auth
 export const AUTH_PROFILE_FETCHED = 'Profile fetched successfully';
 export const AUTH_LOGIN_SUCCESS = 'Login successful';
 export const AUTH_UNAUTHORIZED = 'Unauthorized. Valid token required.';
@@ -77,7 +87,7 @@ export const AUTH_INVALID_TOKEN = 'Invalid or expired token.';
 export const AUTH_INVALID_CREDENTIALS = 'Invalid credentials';
 export const AUTH_TOKEN_MISSING_OR_INVALID = 'Missing or invalid token';
 
-// Tool Registry (US-E8-5)
+// Tool Registry
 export const TOOL_NOT_FOUND = (name: string) =>
   `Tool "${name}" is not registered or does not exist`;
 export const TOOL_INPUT_VALIDATION_FAILED = 'Input validation failed';
