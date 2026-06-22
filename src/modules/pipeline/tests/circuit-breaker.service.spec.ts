@@ -10,11 +10,19 @@ vi.mock('@config/env', () => ({
 }));
 
 function makeRedis() {
-  let stored: string | null = null;
+  const store = new Map<string, string>();
   return {
-    get: vi.fn(async (_key: string) => stored as string | null),
-    set: vi.fn(async (_key: string, value: string, _ttl?: number): Promise<void> => {
-      stored = value;
+    get: vi.fn(async (key: string) => store.get(key) ?? null),
+    set: vi.fn(async (key: string, value: string, _ttl?: number): Promise<void> => {
+      store.set(key, value);
+    }),
+    setNx: vi.fn(async (key: string, value: string, _ttl?: number): Promise<boolean> => {
+      if (store.has(key)) return false;
+      store.set(key, value);
+      return true;
+    }),
+    del: vi.fn(async (key: string): Promise<void> => {
+      store.delete(key);
     }),
   };
 }
@@ -99,6 +107,16 @@ describe('CircuitBreakerService', () => {
 
       await service.recordFailure();
       expect(await service.getState()).toBe(CircuitBreakerState.OPEN);
+    });
+
+    it('allows only one probe call at a time; subsequent callers are blocked', async () => {
+      await service.recordFailure();
+      await service.recordFailure();
+      vi.advanceTimersByTime(30_000);
+      expect(await service.getState()).toBe(CircuitBreakerState.HALF_OPEN);
+
+      expect(await service.isOpen()).toBe(false); // first caller acquires probe lock
+      expect(await service.isOpen()).toBe(true); // second caller is blocked
     });
   });
 
