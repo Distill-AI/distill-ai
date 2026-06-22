@@ -14,8 +14,7 @@ import { CurrentNode } from '@modules/requests/enums/current-node.enum';
 import { PipelineRunner } from '@modules/pipeline/pipeline.runner';
 import * as SYS_MSG from '@constants/system-messages';
 import {
-  ALLOWED_EXTENSIONS,
-  ALLOWED_MIMES,
+  ALLOWED_TYPES,
   DEMO_ORG_ID,
   MAX_UPLOAD_BYTES,
   MAX_UPLOAD_MB,
@@ -96,12 +95,14 @@ export class IngestionService {
     return request;
   }
 
-  /** Reject any file outside the pdf/csv/txt allowlist (by extension AND declared mime) or over the
-   * size cap. Checking the mime as well as the extension blocks a renamed file from slipping through. */
+  /** Reject any file outside the pdf/csv/txt allowlist or over the size cap. The declared mime is
+   * checked AS A PAIR with the extension (see ALLOWED_TYPES), so a renamed file (e.g. .txt carrying
+   * application/pdf) is rejected, not just an unknown extension. */
   private validateFiles(files: UploadedFile[]): void {
     for (const file of files) {
       const ext = extname(file.originalname).toLowerCase();
-      if (!ALLOWED_EXTENSIONS.has(ext) || !ALLOWED_MIMES.has(file.mimetype)) {
+      const allowedMimes = ALLOWED_TYPES[ext];
+      if (!allowedMimes || !allowedMimes.has(file.mimetype)) {
         throw new CustomHttpException(SYS_MSG.UNSUPPORTED_FILE_TYPE, HttpStatus.BAD_REQUEST);
       }
       if (file.size > MAX_UPLOAD_BYTES) {
@@ -120,23 +121,31 @@ export class IngestionService {
     }
   }
 
-  /** Use the explicit channel when given, else infer: files -> upload, pasted text -> email. */
+  /** Channel is derived from what was actually submitted so it cannot contradict the payload:
+   * any files -> upload; otherwise the caller's channel (email/form) or email by default. A client
+   * sending files with channel=email no longer persists a mode-inconsistent row. */
   private resolveChannel(dto: CreateRequestDto, files: UploadedFile[]): RequestChannel {
-    if (dto.channel) return dto.channel;
-    return files.length > 0 ? RequestChannel.UPLOAD : RequestChannel.EMAIL;
+    if (files.length > 0) return RequestChannel.UPLOAD;
+    return dto.channel ?? RequestChannel.EMAIL;
   }
 
   /** The org_id the RLS session is scoped to, read from the same connection that will do the insert
-   * so the value always matches the `insert_by_org` WITH CHECK. Falls back to the demo org. */
+   * so the value always matches the `insert_by_org` WITH CHECK. When an EntityManager is present the
+   * RLS middleware must have set app.org_id (the nil UUID even in demo mode); an empty value there is
+   * a misconfiguration and we fail fast rather than risk writing into the wrong tenant. The demo org
+   * fallback applies only when there is no request-scoped manager at all. */
   private async currentOrgId(entityManager?: EntityManager): Promise<string> {
-    if (entityManager) {
-      const rows = (await entityManager.query(
-        "SELECT current_setting('app.org_id', true) AS org_id",
-      )) as Array<{ org_id: string | null }>;
-      const orgId = rows[0]?.org_id;
-      if (orgId) return orgId;
+    if (!entityManager) {
+      return DEMO_ORG_ID;
     }
-    return DEMO_ORG_ID;
+    const rows = (await entityManager.query(
+      "SELECT current_setting('app.org_id', true) AS org_id",
+    )) as Array<{ org_id: string | null }>;
+    const orgId = rows[0]?.org_id;
+    if (!orgId) {
+      throw new CustomHttpException(SYS_MSG.RLS_CONTEXT_MISSING, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+    return orgId;
   }
 }
 

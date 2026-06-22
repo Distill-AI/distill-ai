@@ -40,7 +40,15 @@ function setup() {
     store as unknown as ObjectStore,
     runner as unknown as PipelineRunner,
   );
-  return { service, requests, attachments, store, runner, em: em as unknown as EntityManager };
+  return {
+    service,
+    requests,
+    attachments,
+    store,
+    runner,
+    em: em as unknown as EntityManager,
+    emMock: em,
+  };
 }
 
 describe('IngestionService', () => {
@@ -97,6 +105,35 @@ describe('IngestionService', () => {
 
     await expect(service.createRequest({}, [disguised], em)).rejects.toThrow(
       /Unsupported file type/,
+    );
+    expect(requests.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects a mismatched extension/mime PAIR even when both are individually allowed', async () => {
+    const { service, requests, em } = setup();
+    // .txt is allowed and application/pdf is allowed for .pdf, but not as a pair.
+    const mismatched = file('notes.txt', { mimetype: 'application/pdf' });
+
+    await expect(service.createRequest({}, [mismatched], em)).rejects.toThrow(
+      /Unsupported file type/,
+    );
+    expect(requests.create).not.toHaveBeenCalled();
+  });
+
+  it('forces channel=upload when files are present even if the client says email', async () => {
+    const { service, requests, em } = setup();
+
+    await service.createRequest({ channel: RequestChannel.EMAIL }, [file('rfq.pdf')], em);
+
+    expect(requests.create.mock.calls[0][0].createPayload.channel).toBe(RequestChannel.UPLOAD);
+  });
+
+  it('fails fast when an entityManager is present but app.org_id is empty', async () => {
+    const { service, requests, em, emMock } = setup();
+    emMock.query.mockResolvedValueOnce([{ org_id: '' }]);
+
+    await expect(service.createRequest({ source_body: 'hi' }, [], em)).rejects.toThrow(
+      /tenant context is missing/,
     );
     expect(requests.create).not.toHaveBeenCalled();
   });

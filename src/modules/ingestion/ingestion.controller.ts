@@ -16,7 +16,7 @@ import * as SYS_MSG from '@constants/system-messages';
 import { IngestionService } from './ingestion.service';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { CreateRequestDocs } from './docs/ingestion-swagger.doc';
-import { MAX_FILES_PER_REQUEST, type UploadedFile } from './ingestion.constants';
+import { MAX_FILES_PER_REQUEST, MAX_UPLOAD_BYTES, type UploadedFile } from './ingestion.constants';
 
 /** The RLS middleware attaches a per-request transactional manager (with app.org_id set) to the
  * Express request; intersect rather than replace so the standard request typings are preserved. */
@@ -29,7 +29,13 @@ export class IngestionController {
 
   @Post()
   @HttpCode(HttpStatus.ACCEPTED)
-  @UseInterceptors(FilesInterceptor('files', MAX_FILES_PER_REQUEST))
+  // Cap count AND per-file size at the multipart parser so Multer aborts an oversized stream instead
+  // of buffering it fully into memory; the service still re-checks size as a friendly-message backstop.
+  @UseInterceptors(
+    FilesInterceptor('files', MAX_FILES_PER_REQUEST, {
+      limits: { fileSize: MAX_UPLOAD_BYTES, files: MAX_FILES_PER_REQUEST },
+    }),
+  )
   @CreateRequestDocs()
   async create(
     @Body() dto: CreateRequestDto,
