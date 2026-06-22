@@ -89,7 +89,9 @@ export class LlmClientService {
         }
 
         attempt++;
-        const delayMs = this.backoffService.calculateWaitMs(attempt);
+        const delayMs = this.backoffService.applyJitter(
+          this.backoffService.calculateWaitMs(attempt),
+        );
         this.logger.warn({
           event: 'llm_transient_error_retry',
           attempt,
