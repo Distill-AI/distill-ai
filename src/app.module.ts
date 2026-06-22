@@ -20,8 +20,11 @@ import { DlqModule } from '@modules/dlq/dlq.module';
 import { SchedulerModule } from '@modules/scheduler/scheduler.module';
 import { BenchmarkModule } from '@modules/benchmark/benchmark.module';
 import { PipelineModule } from '@modules/pipeline/pipeline.module';
+import { EventsModule } from '@modules/events/events.module';
+import { SseModule } from './sse/sse.module';
+import { RequestsModule } from '@modules/requests/requests.module';
 
-// ── Auth (NFR-SEC-5) ───────────────────────────────────────────────────────
+// ── Auth ───────────────────────────────────────────────────────
 import { AuthModule } from '@modules/auth';
 import { AuthGuard } from '@modules/auth';
 import { RlsContextMiddleware } from '@modules/auth/middleware/rls-context.middleware';
@@ -61,6 +64,9 @@ import { RlsContextMiddleware } from '@modules/auth/middleware/rls-context.middl
     BenchmarkModule,
     ToolsModule,
     PipelineModule,
+    SseModule,
+    EventsModule,
+    RequestsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
