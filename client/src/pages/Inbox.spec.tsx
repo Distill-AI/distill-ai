@@ -5,12 +5,15 @@ import { MemoryRouter } from 'react-router-dom';
 import { RoleProvider } from '../context/RoleContext';
 import { Inbox } from './Inbox';
 
-const { mockMutate } = vi.hoisted(() => ({ mockMutate: vi.fn() }));
+const { mockMutate, mockIsPending } = vi.hoisted(() => ({
+  mockMutate: vi.fn(),
+  mockIsPending: { value: false },
+}));
 
 vi.mock('../api/requests', () => ({
   useCreateRequest: () => ({
     mutate: mockMutate,
-    isPending: false,
+    isPending: mockIsPending.value,
     reset: vi.fn(),
   }),
 }));
@@ -31,6 +34,7 @@ function renderInbox() {
 describe('Inbox', () => {
   beforeEach(() => {
     mockMutate.mockClear();
+    mockIsPending.value = false;
   });
 
   it('opens the new request dialog when clicking + New request', async () => {
@@ -148,6 +152,19 @@ describe('Inbox', () => {
       { channel: 'email', source_body: 'pasted email body' },
       expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
     );
+  });
+
+  // AC-05: button disabled while mutation is in flight
+  it('disables Process request while the mutation is pending', async () => {
+    mockIsPending.value = true;
+    const user = userEvent.setup();
+    renderInbox();
+
+    await user.click(screen.getByRole('button', { name: /\+ new request/i }));
+    await user.click(screen.getByRole('tab', { name: /paste email/i }));
+    await user.type(screen.getByLabelText(/email body/i), 'Hello');
+
+    expect(screen.getByRole('button', { name: /process request/i })).toBeDisabled();
   });
 
   // AC-09: inline error appears and modal stays open when mutate fires onError
