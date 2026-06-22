@@ -100,7 +100,6 @@ export class ScoreStubNode implements PipelineNode {
 export const STUB_NODES = [
   ParseStubNode,
   ExtractStubNode,
-  ClassifyStubNode,
   MatchStubNode,
   PriceStubNode,
   PolicyStubNode,
