@@ -1,12 +1,10 @@
 import { Module } from '@nestjs/common';
 import { RequestsModule } from '@modules/requests/requests.module';
 import { EventsModule } from '@modules/events/events.module';
+import { PipelineEngineModule } from '@modules/pipeline/pipeline-engine.module';
 import { PipelineGraphEngine } from '@modules/pipeline/graph.engine';
 import { NodeRegistry } from '@modules/pipeline/node-registry';
 import { STUB_NODES } from '@modules/pipeline/stub-nodes';
-import { CircuitBreakerService } from '@modules/pipeline/circuit-breaker.service';
-import { LlmClientService } from '@modules/pipeline/llm-client.service';
-import { BackoffService } from '@worker/backoff.service';
 import { QueueClientModule } from './queue-client.module';
 import { PipelineProcessor } from './processors/pipeline.processor';
 
@@ -17,16 +15,8 @@ import { PipelineProcessor } from './processors/pipeline.processor';
  * construction (Nest instantiates providers eagerly).
  */
 @Module({
-  imports: [QueueClientModule, RequestsModule, EventsModule],
-  providers: [
-    PipelineGraphEngine,
-    NodeRegistry,
-    ...STUB_NODES,
-    PipelineProcessor,
-    CircuitBreakerService,
-    LlmClientService,
-    BackoffService,
-  ],
-  exports: [LlmClientService],
+  imports: [QueueClientModule, RequestsModule, EventsModule, PipelineEngineModule],
+  providers: [PipelineGraphEngine, NodeRegistry, ...STUB_NODES, PipelineProcessor],
+  exports: [PipelineEngineModule],
 })
 export class PipelineQueueModule {}

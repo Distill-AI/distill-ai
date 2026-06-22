@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { CircuitBreakerService } from './circuit-breaker.service';
 import { BackoffService } from '@worker/backoff.service';
 import { EventsService } from '@modules/events/events.service';
@@ -9,7 +9,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 @Injectable()
-export class LlmClientService {
+export class LlmClientService implements OnModuleInit {
   private readonly logger = new Logger(LlmClientService.name);
   private openai: OpenAI;
   private catalogFixtures: Record<string, unknown>[] | null = null;
@@ -26,53 +26,58 @@ export class LlmClientService {
     });
   }
 
-  private loadFixtures(): Record<string, unknown>[] {
-    if (!this.catalogFixtures) {
-      try {
-        const catalogPath = path.resolve(process.cwd(), 'catalog.json');
-        const data = fs.readFileSync(catalogPath, 'utf8');
-        this.catalogFixtures = JSON.parse(data);
-      } catch (err) {
-        this.logger.warn({ event: 'demo_fixture_load_failed', error: (err as Error).message });
-        this.catalogFixtures = [];
-      }
+  async onModuleInit(): Promise<void> {
+    if (env.DEMO_MODE) {
+      await this.loadFixtures();
     }
-    return this.catalogFixtures || [];
   }
 
-  private getFixture(requestType: string): Record<string, unknown> | undefined {
-    const fixtures = this.loadFixtures();
-    return (
-      fixtures.find((f) => (f._meta as Record<string, unknown>)?.request_type === requestType) ||
-      fixtures.find(
-        (f) => (f._meta as Record<string, unknown>)?.sample_id === 'rfq_01_catalog_clean',
-      )
-    );
-  }
-
+  /** Sends a chat completion request, routing through the circuit breaker and retry logic. */
   async createChatCompletion(
     params: OpenAI.Chat.ChatCompletionCreateParams,
     context: { orgId: string; requestId: string; node: string; requestType?: string },
   ): Promise<OpenAI.Chat.ChatCompletion> {
     const { orgId, requestId, node, requestType = 'catalog_rfq' } = context;
 
-    if (this.circuitBreaker.isOpen()) {
+    if (await this.circuitBreaker.isOpen()) {
       return this.handleOpenBreaker(orgId, requestId, node, requestType, params);
     }
 
     try {
       const response = await this.executeWithRetry(params);
-      this.circuitBreaker.recordSuccess();
+      await this.circuitBreaker.recordSuccess();
       return response;
     } catch (error) {
-      this.circuitBreaker.recordFailure();
+      await this.circuitBreaker.recordFailure();
 
-      if (this.circuitBreaker.isOpen()) {
+      if (await this.circuitBreaker.isOpen()) {
         return this.handleOpenBreaker(orgId, requestId, node, requestType, params);
       }
 
       throw error;
     }
+  }
+
+  private async loadFixtures(): Promise<void> {
+    if (this.catalogFixtures) return;
+    try {
+      const catalogPath = path.resolve(process.cwd(), 'catalog.json');
+      const data = await fs.promises.readFile(catalogPath, 'utf8');
+      this.catalogFixtures = JSON.parse(data) as Record<string, unknown>[];
+    } catch (err) {
+      this.logger.warn({ event: 'demo_fixture_load_failed', error: (err as Error).message });
+      this.catalogFixtures = [];
+    }
+  }
+
+  private getFixture(requestType: string): Record<string, unknown> | undefined {
+    const fixtures = this.catalogFixtures || [];
+    return (
+      fixtures.find((f) => (f._meta as Record<string, unknown>)?.request_type === requestType) ||
+      fixtures.find(
+        (f) => (f._meta as Record<string, unknown>)?.sample_id === 'rfq_01_catalog_clean',
+      )
+    );
   }
 
   private async executeWithRetry(
