@@ -2,8 +2,7 @@ import { useParams, Link } from 'react-router-dom';
 import { ProcessingTrace } from '../components/ProcessingTrace';
 
 export function ProcessingRequestPage() {
-  const { id } = useParams<{ id: string }>();
-
+  const { id } = useParams<{ id?: string }>();
   if (!id) {
     return (
       <div className="px-6 py-6">
