@@ -1,6 +1,18 @@
 import { render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import App from './App';
+
+function renderApp() {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
 
 describe('App', () => {
   afterEach(() => {
@@ -8,11 +20,7 @@ describe('App', () => {
   });
 
   it('renders the sidebar with brand lockup and nav links', () => {
-    render(
-      <MemoryRouter>
-        <App />
-      </MemoryRouter>,
-    );
+    renderApp();
 
     expect(screen.getByRole('navigation', { name: /main navigation/i })).toBeInTheDocument();
     expect(screen.getAllByText(/distill/i).length).toBeGreaterThan(0);
@@ -24,11 +32,7 @@ describe('App', () => {
   it('hides catalog and analytics links for the Sales role', () => {
     localStorage.setItem('distill.role', 'Sales');
 
-    render(
-      <MemoryRouter>
-        <App />
-      </MemoryRouter>,
-    );
+    renderApp();
 
     expect(screen.queryByRole('link', { name: /catalog/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /analytics/i })).not.toBeInTheDocument();
