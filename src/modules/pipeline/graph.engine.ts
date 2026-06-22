@@ -97,7 +97,14 @@ export class PipelineGraphEngine {
             requestId,
             attributes: { node, next: 'needs_review' },
           });
-          return this.finalize(orgId, requestId, RequestStatus.NEEDS_REVIEW);
+          overallStatus = 'failed';
+          return this.finalize(
+            orgId,
+            requestId,
+            RequestStatus.NEEDS_REVIEW,
+            overallStatus,
+            startedAt,
+          );
         }
 
         const infra = isInfraError(err);
