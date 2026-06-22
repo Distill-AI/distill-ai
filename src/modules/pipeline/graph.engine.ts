@@ -5,7 +5,7 @@ import { RequestRouting } from '@modules/requests/enums/request-routing.enum';
 import { RequestModelAction } from '@modules/requests/requests.model-action';
 import { EventsService } from '@modules/events/events.service';
 import { NodeRegistry } from './node-registry';
-import { isInfraError } from './pipeline.errors';
+import { isInfraError, CircuitBreakerOpenError } from './pipeline.errors';
 import type { NodeResult } from './types';
 
 /** Safety cap on node transitions per run, guards against a buggy node creating a cycle. */
@@ -84,6 +84,20 @@ export class PipelineGraphEngine {
       try {
         result = await impl.run({ requestId, orgId });
       } catch (err) {
+        // ── Circuit breaker open: LLM call was skipped (FR-5, SEC-02) ──────
+        // The LlmClientService already emitted its own stage.error with the
+        // appropriate reason (llm_circuit_open or llm_timeout_fixture_replay).
+        // If it still threw (production mode), route to needs_review.
+        if (err instanceof CircuitBreakerOpenError) {
+          await this.events.emit({
+            eventName: 'node.exited',
+            orgId,
+            requestId,
+            attributes: { node, next: 'needs_review' },
+          });
+          return this.finalize(orgId, requestId, RequestStatus.NEEDS_REVIEW);
+        }
+
         const infra = isInfraError(err);
         await this.events.emit({
           eventName: 'stage.error',
