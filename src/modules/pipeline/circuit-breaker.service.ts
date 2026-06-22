@@ -17,6 +17,10 @@ interface CBState {
 
 const CB_KEY = 'cb:llm:state';
 const CB_TTL_S = 3600;
+const PROBE_LOCK_KEY = 'cb:llm:probe';
+// Covers max LLM timeout (30s default) * (max retries + 2) with headroom, preventing a
+// crashed probe from holding the lock indefinitely.
+const PROBE_LOCK_TTL_S = 120;
 
 @Injectable()
 export class CircuitBreakerService {
@@ -38,9 +42,16 @@ export class CircuitBreakerService {
     return s.state;
   }
 
-  /** Returns true when the breaker is OPEN and all new LLM calls should be blocked. */
+  /** Returns true when the breaker is OPEN and all new LLM calls should be blocked.
+   * In HALF_OPEN, permits exactly one probe call via a Redis lock; all other callers are blocked. */
   async isOpen(): Promise<boolean> {
-    return (await this.getState()) === CircuitBreakerState.OPEN;
+    const state = await this.getState();
+    if (state === CircuitBreakerState.OPEN) return true;
+    if (state === CircuitBreakerState.HALF_OPEN) {
+      const acquired = await this.redis.setNx(PROBE_LOCK_KEY, '1', PROBE_LOCK_TTL_S);
+      return !acquired;
+    }
+    return false;
   }
 
   /** Records a successful LLM call; resets the breaker if it was HALF_OPEN or CLOSED. */
@@ -68,6 +79,7 @@ export class CircuitBreakerService {
         event: 'circuit_breaker_probe_failure',
         message: 'Probe failed, re-opening breaker',
       });
+      await this.redis.del(PROBE_LOCK_KEY);
       await this.save({ ...s, state: CircuitBreakerState.OPEN, openedAt: now });
       return;
     }
@@ -113,6 +125,7 @@ export class CircuitBreakerService {
   }
 
   private async reset(): Promise<void> {
+    await this.redis.del(PROBE_LOCK_KEY);
     await this.save({
       state: CircuitBreakerState.CLOSED,
       consecutiveFailures: 0,
