@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Request } from '../../requests/entities/request.entity';
+import { ExtractionStatus } from '../../requests/enums/extraction-status.enum';
 
 @Entity('extractions')
 export class Extraction {
@@ -25,6 +26,14 @@ export class Extraction {
 
   @Column({ type: 'boolean' })
   schema_valid: boolean;
+
+  @Column({
+    type: 'enum',
+    enum: ExtractionStatus,
+    enumName: 'extraction_status',
+    default: ExtractionStatus.COMPLETED,
+  })
+  status: ExtractionStatus;
 
   @Column({ type: 'jsonb' })
   raw_json: Record<string, unknown>;
