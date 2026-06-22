@@ -27,7 +27,6 @@ describe('FilesystemObjectStore', () => {
   it('returns the key as the storage_url and writes nested dirs', async () => {
     const url = await store.put('attachments/req-1/deep/a.pdf', Buffer.from('x'));
     expect(url).toBe('attachments/req-1/deep/a.pdf');
-    // The bytes really landed under root at that key.
     const onDisk = await readFile(join(root, 'attachments/req-1/deep/a.pdf'));
     expect(onDisk.toString()).toBe('x');
   });
@@ -42,6 +41,19 @@ describe('FilesystemObjectStore', () => {
     );
     await expect(store.get('../../etc/passwd')).rejects.toThrow(/escapes store root/);
   });
+
+  it('rejects a blank key', async () => {
+    await expect(store.put('   ', Buffer.from('x'))).rejects.toThrow(/must not be blank/);
+    await expect(store.get('')).rejects.toThrow(/must not be blank/);
+  });
+
+  it('does not falsely reject a valid key when the root is the filesystem root', async () => {
+    const rootStore = new FilesystemObjectStore('/');
+    // Regression guard: the old `path.startsWith(root + sep)` check became `startsWith('//')` when
+    // root was '/', wrongly rejecting every key. A normal key must now pass confinement and only
+    // fail later at readFile.
+    await expect(rootStore.get('definitely/missing/a.txt')).rejects.toThrow(/ENOENT|no such file/i);
+  });
 });
 
 describe('resolveStoreRoot', () => {
@@ -53,10 +65,19 @@ describe('resolveStoreRoot', () => {
     expect(resolveStoreRoot('./var/store')).toMatch(/var[\\/]store$/);
   });
 
+  it('strips the scheme case-insensitively (FILE://)', () => {
+    expect(resolveStoreRoot('FILE://./var/object-store')).toMatch(/var[\\/]object-store$/);
+  });
+
   it('rejects any non-file scheme so misconfiguration fails fast', () => {
     expect(() => resolveStoreRoot('s3://bucket/key')).toThrow(
       /Unsupported OBJECT_STORE_URL scheme/,
     );
     expect(() => resolveStoreRoot('oss://bucket')).toThrow(/Unsupported OBJECT_STORE_URL scheme/);
+  });
+
+  it('rejects a blank value or a file:// URL with no path', () => {
+    expect(() => resolveStoreRoot('   ')).toThrow(/non-empty path/);
+    expect(() => resolveStoreRoot('file://')).toThrow(/non-empty path/);
   });
 });
