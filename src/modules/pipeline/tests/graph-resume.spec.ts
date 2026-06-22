@@ -1,12 +1,13 @@
 import { CurrentNode } from '@modules/requests/enums/current-node.enum';
 import { RequestStatus } from '@modules/requests/enums/request-status.enum';
+import { ResumeReason } from '@modules/requests/enums/resume-reason.enum';
 import type { Request } from '@modules/requests/entities/request.entity';
 import type { RequestModelAction } from '@modules/requests/requests.model-action';
 import type { EventsService } from '@modules/events/events.service';
 import { PipelineGraphEngine } from '../graph.engine';
 import { NodeRegistry } from '../node-registry';
 import { RecoverySweep } from '../recovery.sweep';
-import type { PipelineRunner } from '../pipeline.runner';
+import { NodeRecoveryActions } from '../node-recovery.actions';
 import type { NodeResult, PipelineNode } from '../types';
 
 // Graph order and the next-node map the fake nodes follow (parse -> ... -> score -> done).
@@ -108,7 +109,7 @@ describe('graph-resume', () => {
     expect(requests.record.processing_started_at).not.toBeNull();
   });
 
-  it('resumes at classify after a simulated crash mid-extract', async () => {
+  it('resumes at classify after a simulated crash mid-extract (AC: resumes at classify, not extract)', async () => {
     const requests = makeFakeRequests(CurrentNode.CLASSIFY);
     const events = makeEvents();
     const ran: CurrentNode[] = [];
@@ -195,20 +196,138 @@ describe('graph-resume', () => {
     }
   });
 
-  it('RecoverySweep re-enqueues every stale parsing request', async () => {
-    const requests = {
-      findStaleParsing: vi.fn().mockResolvedValue([{ id: 'r1' }, { id: 'r2' }]),
-    };
-    const runner = { enqueue: vi.fn().mockResolvedValue(undefined) };
-    const sweep = new RecoverySweep(
+  it('emits request.resumed when resuming from a non-parse node', async () => {
+    const requests = makeFakeRequests(CurrentNode.CLASSIFY);
+    const events = makeEvents();
+    const ran: CurrentNode[] = [];
+    const registry = buildRegistry(requests.record, ran, {});
+    const engine = new PipelineGraphEngine(
+      registry,
       requests as unknown as RequestModelAction,
-      runner as unknown as PipelineRunner,
+      events as unknown as EventsService,
     );
 
-    await sweep.sweep();
+    await engine.run('req-1');
 
-    expect(runner.enqueue).toHaveBeenCalledTimes(2);
-    expect(runner.enqueue).toHaveBeenCalledWith('r1');
-    expect(runner.enqueue).toHaveBeenCalledWith('r2');
+    expect(events.emit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventName: 'request.resumed',
+        attributes: expect.objectContaining({
+          resumed_from_node: CurrentNode.CLASSIFY,
+          reason: 'crash_recovery',
+        }),
+      }),
+    );
+  });
+
+  it('does not emit request.resumed when starting fresh from parse', async () => {
+    const requests = makeFakeRequests(CurrentNode.PARSE);
+    const events = makeEvents();
+    const ran: CurrentNode[] = [];
+    const registry = buildRegistry(requests.record, ran, {});
+    const engine = new PipelineGraphEngine(
+      registry,
+      requests as unknown as RequestModelAction,
+      events as unknown as EventsService,
+    );
+
+    await engine.run('req-1');
+
+    const resumeCalls = (events.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
+      (call: unknown[]) => (call[0] as { eventName: string }).eventName === 'request.resumed',
+    );
+    expect(resumeCalls).toHaveLength(0);
+  });
+
+  describe('RecoverySweep', () => {
+    it('re-enqueues every stale parsing request and emits crash_recovery event', async () => {
+      const staleRequests = [
+        { id: 'r1', org_id: 'org-1', current_node: CurrentNode.EXTRACT },
+        { id: 'r2', org_id: 'org-2', current_node: CurrentNode.CLASSIFY },
+      ];
+      const requests = {
+        findStaleParsing: vi.fn().mockResolvedValue(staleRequests),
+      };
+      const nodeRecovery = {
+        resumeFromCurrentNode: vi.fn().mockResolvedValue(undefined),
+      };
+      const events = { emit: vi.fn().mockResolvedValue(undefined) };
+      const sweep = new RecoverySweep(
+        requests as unknown as RequestModelAction,
+        nodeRecovery as unknown as NodeRecoveryActions,
+        events as unknown as EventsService,
+      );
+
+      await sweep.sweep();
+
+      expect(nodeRecovery.resumeFromCurrentNode).toHaveBeenCalledTimes(2);
+      expect(nodeRecovery.resumeFromCurrentNode).toHaveBeenCalledWith(
+        'r1',
+        ResumeReason.CRASH_RECOVERY,
+      );
+      expect(nodeRecovery.resumeFromCurrentNode).toHaveBeenCalledWith(
+        'r2',
+        ResumeReason.CRASH_RECOVERY,
+      );
+      expect(events.emit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventName: 'request.resumed',
+          requestId: 'r1',
+          attributes: expect.objectContaining({
+            reason: ResumeReason.CRASH_RECOVERY,
+          }),
+        }),
+      );
+    });
+
+    it('continues recovery when one enqueue fails (per-request isolation)', async () => {
+      const staleRequests = [
+        { id: 'r1', org_id: 'org-1', current_node: CurrentNode.EXTRACT },
+        { id: 'r2', org_id: 'org-2', current_node: CurrentNode.CLASSIFY },
+      ];
+      const requests = {
+        findStaleParsing: vi.fn().mockResolvedValue(staleRequests),
+      };
+      const nodeRecovery = {
+        resumeFromCurrentNode: vi
+          .fn()
+          .mockRejectedValueOnce(new Error('Bull unavailable'))
+          .mockResolvedValueOnce(undefined),
+      };
+      const events = { emit: vi.fn().mockResolvedValue(undefined) };
+      const sweep = new RecoverySweep(
+        requests as unknown as RequestModelAction,
+        nodeRecovery as unknown as NodeRecoveryActions,
+        events as unknown as EventsService,
+      );
+
+      await sweep.sweep();
+
+      expect(nodeRecovery.resumeFromCurrentNode).toHaveBeenCalledTimes(2);
+      expect(nodeRecovery.resumeFromCurrentNode).toHaveBeenCalledWith(
+        'r2',
+        ResumeReason.CRASH_RECOVERY,
+      );
+    });
+
+    it('does nothing when no stale requests exist', async () => {
+      const requests = {
+        findStaleParsing: vi.fn().mockResolvedValue([]),
+      };
+      const nodeRecovery = {
+        resumeFromCurrentNode: vi.fn(),
+      };
+      const events = { emit: vi.fn() };
+      const sweep = new RecoverySweep(
+        requests as unknown as RequestModelAction,
+        nodeRecovery as unknown as NodeRecoveryActions,
+        events as unknown as EventsService,
+      );
+
+      await sweep.sweep();
+
+      expect(nodeRecovery.resumeFromCurrentNode).not.toHaveBeenCalled();
+      expect(events.emit).not.toHaveBeenCalled();
+    });
   });
 });

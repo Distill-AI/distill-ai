@@ -98,3 +98,9 @@ export const TOOL_LIST_SUCCESS = 'Tools retrieved successfully';
 export const TOOL_ALREADY_REGISTERED = (name: string) => `Tool "${name}" is already registered`;
 export const TOOL_NAME_RESERVED = (name: string) =>
   `Tool name "${name}" is reserved and cannot be used`;
+
+// Resume / Crash Recovery
+export const RESUME_SUCCESS = 'Request resumed successfully';
+export const EXTRACTION_VALID_FOUND = 'Valid extraction found; skipping tool invocation';
+export const EXTRACTION_NOT_FOUND = 'No valid extraction found for this request';
+export const RESUME_FROM_NODE = (node: string) => `Resuming pipeline from node "${node}"`;
