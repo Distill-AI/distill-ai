@@ -62,6 +62,10 @@ const envSchema = z.object({
   EMAIL_FROM: z.string().default('App <noreply@example.com>'),
 
   // ── LLM & Circuit Breaker ──────────────────────────────────────────────────
+  LLM_PROVIDER: z.string().default('openai'),
+  LLM_MODEL: z.string().default('qwen-72b'),
+  LLM_BASE_URL: z.string().url().optional(),
+  LLM_API_KEY: z.string().optional(),
   DEMO_MODE: boolEnv.default(false),
   LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
   CIRCUIT_BREAKER_WINDOW_S: z.coerce.number().int().positive().default(60),
