@@ -39,6 +39,13 @@ export const DLQ_RETRY_QUEUED = 'Job re-queued from DLQ for retry';
 export const DLQ_THRESHOLD_EXCEEDED = (count: number, threshold: number) =>
   `DLQ alert: ${count} jobs have failed (threshold: ${threshold})`;
 
+// Object storage
+export const OBJECT_STORE_URL_REQUIRED = 'OBJECT_STORE_URL must resolve to a non-empty path';
+export const OBJECT_STORE_UNSUPPORTED_SCHEME = (scheme: string) =>
+  `Unsupported OBJECT_STORE_URL scheme "${scheme}"; only file:// is supported`;
+export const OBJECT_STORE_KEY_BLANK = 'Object key must not be blank';
+export const OBJECT_STORE_KEY_TRAVERSAL = 'Object key escapes store root';
+
 // Pipeline
 export const REQUEST_NOT_FOUND = (id: string) => `Request ${id} not found`;
 export const PIPELINE_ENQUEUED = 'Request enqueued for pipeline processing';
@@ -51,6 +58,15 @@ export const STREAM_COMPLETE = 'SSE stream complete';
 export const STREAM_TIMEOUT = 'SSE stream timed out';
 export const SANITIZED_SUMMARY_PLACEHOLDER = 'Processing step completed';
 export const REDACTED_FIELD_PLACEHOLDER = '[redacted]';
+
+// Classify
+export const CLASSIFY_DEFAULTED_LOW_CONFIDENCE = (confidence: number, threshold: number) =>
+  `Classification confidence ${confidence} below threshold ${threshold}; defaulting to service_quote`;
+export const CLASSIFY_RETRY_FAILED = 'Classification retry failed; defaulting to service_quote';
+export const CLASSIFY_MALFORMED_INPUT =
+  'Parsed request missing required fields; defaulting to service_quote';
+export const LLM_INVOCATION_FAILED = (status: number, body: string) =>
+  `LLM invocation failed (${status}): ${body}`;
 
 // Auth
 export const AUTH_PROFILE_FETCHED = 'Profile fetched successfully';
