@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { extname } from 'node:path';
-import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
 import type { EntityManager } from 'typeorm';
 import type { AnyTransactionOptions } from '@common/model-action/abstract.model-action';
+import { CustomHttpException } from '@common/exceptions/custom-http.exception';
 import { OBJECT_STORE, type ObjectStore } from '@common/object-store/object-store.port';
 import { RequestModelAction } from '@modules/requests/requests.model-action';
 import { AttachmentModelAction } from '@modules/requests/attachments.model-action';
@@ -14,6 +15,7 @@ import { PipelineRunner } from '@modules/pipeline/pipeline.runner';
 import * as SYS_MSG from '@constants/system-messages';
 import {
   ALLOWED_EXTENSIONS,
+  ALLOWED_MIMES,
   DEMO_ORG_ID,
   MAX_UPLOAD_BYTES,
   MAX_UPLOAD_MB,
@@ -22,7 +24,7 @@ import {
 import { CreateRequestDto } from './dto/create-request.dto';
 
 /** Orchestrates request intake: validate input, persist the request + attachments, store the
- * original bytes, and enqueue the pipeline (US-E1-1, US-E1-2-T2, US-E1-3-T1). */
+ * original bytes, and enqueue the pipeline. */
 @Injectable()
 export class IngestionService {
   private readonly logger = new Logger(IngestionService.name);
@@ -58,7 +60,8 @@ export class IngestionService {
         channel,
         status: RequestStatus.PARSING,
         current_node: CurrentNode.PARSE,
-        processing_started_at: new Date(),
+        // processing_started_at is stamped by the engine's markProcessing() when the run actually
+        // starts; setting it at intake would misrepresent the start time and double-write.
         source_subject: dto.source_subject ?? null,
         source_body: dto.source_body ?? null,
         sender_company: dto.sender_company ?? null,
@@ -93,27 +96,19 @@ export class IngestionService {
     return request;
   }
 
-  /** Reject any file outside the pdf/csv/txt allowlist or over the size cap (US-E1-3-T1). */
+  /** Reject any file outside the pdf/csv/txt allowlist (by extension AND declared mime) or over the
+   * size cap. Checking the mime as well as the extension blocks a renamed file from slipping through. */
   private validateFiles(files: UploadedFile[]): void {
     for (const file of files) {
       const ext = extname(file.originalname).toLowerCase();
-      if (!ALLOWED_EXTENSIONS.has(ext)) {
-        throw new BadRequestException({
-          error: SYS_MSG.BAD_REQUEST_NAME,
-          message: SYS_MSG.UNSUPPORTED_FILE_TYPE,
-          details: { filename: file.originalname, allowed: [...ALLOWED_EXTENSIONS] },
-        });
+      if (!ALLOWED_EXTENSIONS.has(ext) || !ALLOWED_MIMES.has(file.mimetype)) {
+        throw new CustomHttpException(SYS_MSG.UNSUPPORTED_FILE_TYPE, HttpStatus.BAD_REQUEST);
       }
       if (file.size > MAX_UPLOAD_BYTES) {
-        throw new BadRequestException({
-          error: SYS_MSG.BAD_REQUEST_NAME,
-          message: SYS_MSG.FILE_TOO_LARGE(MAX_UPLOAD_MB),
-          details: {
-            filename: file.originalname,
-            size_bytes: file.size,
-            max_bytes: MAX_UPLOAD_BYTES,
-          },
-        });
+        throw new CustomHttpException(
+          SYS_MSG.FILE_TOO_LARGE(MAX_UPLOAD_MB),
+          HttpStatus.BAD_REQUEST,
+        );
       }
     }
   }
@@ -121,10 +116,7 @@ export class IngestionService {
   /** A request needs either at least one file or non-empty pasted text. */
   private ensureHasInput(dto: CreateRequestDto, files: UploadedFile[]): void {
     if (files.length === 0 && !dto.source_body?.trim()) {
-      throw new BadRequestException({
-        error: SYS_MSG.BAD_REQUEST_NAME,
-        message: SYS_MSG.REQUEST_INPUT_REQUIRED,
-      });
+      throw new CustomHttpException(SYS_MSG.REQUEST_INPUT_REQUIRED, HttpStatus.BAD_REQUEST);
     }
   }
 

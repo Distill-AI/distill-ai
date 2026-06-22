@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { CustomHttpException } from '@common/exceptions/custom-http.exception';
 import type { RequestModelAction } from '@modules/requests/requests.model-action';
 import type { AttachmentModelAction } from '@modules/requests/attachments.model-action';
 import type { PipelineRunner } from '@modules/pipeline/pipeline.runner';
@@ -54,7 +54,8 @@ describe('IngestionService', () => {
     expect(call.createPayload.channel).toBe(RequestChannel.UPLOAD);
     expect(call.createPayload.status).toBe(RequestStatus.PARSING);
     expect(call.createPayload.current_node).toBe(CurrentNode.PARSE);
-    expect(call.createPayload.processing_started_at).toBeInstanceOf(Date);
+    // processing_started_at is owned by the engine's markProcessing(), not stamped at intake.
+    expect(call.createPayload.processing_started_at).toBeUndefined();
     expect(call.createPayload.org_id).toBe('org-xyz');
     // Writes enlist in the request-scoped transaction so RLS is satisfied.
     expect(call.transactionOptions).toEqual({ useTransaction: true, transaction: em });
@@ -83,10 +84,21 @@ describe('IngestionService', () => {
       /Unsupported file type/,
     );
     await expect(service.createRequest({}, [file('contract.docx')], em)).rejects.toBeInstanceOf(
-      BadRequestException,
+      CustomHttpException,
     );
     expect(requests.create).not.toHaveBeenCalled();
     expect(runner.enqueue).not.toHaveBeenCalled();
+  });
+
+  it('rejects an allowed extension carrying a disallowed mime type', async () => {
+    const { service, requests, em } = setup();
+    // .pdf name but an executable mime: the extension passes, the mime check catches it.
+    const disguised = file('malware.pdf', { mimetype: 'application/x-msdownload' });
+
+    await expect(service.createRequest({}, [disguised], em)).rejects.toThrow(
+      /Unsupported file type/,
+    );
+    expect(requests.create).not.toHaveBeenCalled();
   });
 
   it('rejects a file over the size cap', async () => {

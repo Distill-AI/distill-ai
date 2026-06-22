@@ -42,7 +42,6 @@ import { RlsContextMiddleware } from '@modules/auth/middleware/rls-context.middl
       username: env.DATABASE_USER,
       password: env.DATABASE_PASSWORD,
       database: env.DATABASE_NAME,
-      entities: [__dirname + '/**/*.entity.{ts,js}'],
       autoLoadEntities: true,
       synchronize: env.DATABASE_SYNC,
       logging: env.DATABASE_LOGGING,
