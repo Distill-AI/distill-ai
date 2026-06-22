@@ -12,17 +12,7 @@ import type { NodeResult, PipelineNode } from './types';
  * before the constructor body runs, so `name`/`nextNode` are set when `register` is called).
  */
 
-@Injectable()
-export class ParseStubNode implements PipelineNode {
-  readonly name = CurrentNode.PARSE;
-  private readonly nextNode = CurrentNode.EXTRACT;
-  constructor(registry: NodeRegistry) {
-    registry.register(this);
-  }
-  run(): Promise<NodeResult> {
-    return Promise.resolve({ kind: 'advance', next: this.nextNode });
-  }
-}
+// PARSE is now a real node (ParseNode, US-E1-1-T3); its stub has been removed from this file.
 
 @Injectable()
 export class ExtractStubNode implements PipelineNode {
@@ -98,7 +88,6 @@ export class ScoreStubNode implements PipelineNode {
 
 /** All stub-node providers, for registration in the module. */
 export const STUB_NODES = [
-  ParseStubNode,
   ExtractStubNode,
   MatchStubNode,
   PriceStubNode,
