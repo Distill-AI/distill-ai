@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
+import * as SYS_MSG from '@constants/system-messages';
 import { EntityManager } from 'typeorm';
 import { CurrentNode } from '@modules/requests/enums/current-node.enum';
 import { RequestType } from '@modules/requests/enums/request-type.enum';
@@ -33,7 +34,7 @@ export class ClassifyNode implements PipelineNode {
       identifierOptions: { id: requestId, org_id: orgId },
     });
     if (!req) {
-      return { kind: 'failed', error: { message: `Request ${requestId} not found` } };
+      return { kind: 'failed', error: { message: SYS_MSG.REQUEST_NOT_FOUND(requestId) } };
     }
 
     const lineItems = await this.em.find(LineItem, {
@@ -52,14 +53,18 @@ export class ClassifyNode implements PipelineNode {
     const { type, confidence } = await this.classifyService.classify(parsedRequest);
     const elapsed = Date.now() - start;
 
-    await this.requests.update({
+    const result = await this.requests.update({
       identifierOptions: { id: requestId, org_id: orgId },
       updatePayload: {
-        request_type: type === 'catalog_rfq' ? RequestType.CATALOG_RFQ : RequestType.SERVICE_QUOTE,
+        request_type: type as RequestType,
         classification_confidence: confidence,
+        current_node: this.nextNode,
       },
       transactionOptions: { useTransaction: false },
     });
+    if (!result) {
+      return { kind: 'failed', error: { message: SYS_MSG.REQUEST_NOT_FOUND(requestId) } };
+    }
 
     try {
       await this.events.emit({
@@ -77,7 +82,6 @@ export class ClassifyNode implements PipelineNode {
       });
     } catch (err) {
       this.logger.error(`Failed to emit node.exited event for request ${requestId}`, err);
-      // Continue pipeline execution even if event emission fails
     }
 
     return { kind: 'advance', next: this.nextNode };
