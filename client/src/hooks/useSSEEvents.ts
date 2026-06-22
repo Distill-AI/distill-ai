@@ -112,43 +112,53 @@ export function useSSEEvents(requestId: string | null): {
     });
     es.addEventListener('node.exited', (e: MessageEvent) => {
       resetInactivity();
-      const data = JSON.parse(e.data) as SseNodeEvent;
-      setNodes((prev) =>
-        prev.map((n) =>
-          n.name === data.node
-            ? {
-                ...n,
-                status: data.status === 'success' ? 'success' : 'failed',
-                duration_ms: data.duration_ms,
-                summary: data.summary,
-              }
-            : n,
-        ),
-      );
+      try {
+        const data = JSON.parse(e.data) as SseNodeEvent;
+        setNodes((prev) =>
+          prev.map((n) =>
+            n.name === data.node
+              ? {
+                  ...n,
+                  status: data.status === 'success' ? 'success' : 'failed',
+                  duration_ms: data.duration_ms,
+                  summary: data.summary,
+                }
+              : n,
+          ),
+        );
+      } catch {
+        // Ignore malformed events; connection remains active
+      }
     });
-
     es.addEventListener('tool.invoked', (e: MessageEvent) => {
       resetInactivity();
-      const data = JSON.parse(e.data) as SseToolEvent;
-      setNodes((prev) =>
-        prev.map((n) => {
-          if (!data.node) return n;
-          if (n.name !== data.node) return n;
-          return {
-            ...n,
-            status: data.status === 'running' ? 'in-progress' : n.status,
-            tool_name: data.tool_name,
-            attempt: data.attempt,
-          };
-        }),
-      );
+      try {
+        const data = JSON.parse(e.data) as SseToolEvent;
+        setNodes((prev) =>
+          prev.map((n) => {
+            if (!data.node) return n;
+            if (n.name !== data.node) return n;
+            return {
+              ...n,
+              status: data.status === 'running' ? 'in-progress' : n.status,
+              tool_name: data.tool_name,
+              attempt: data.attempt,
+            };
+          }),
+        );
+      } catch {
+        // Ignore malformed events; connection remains active
+      }
     });
-
     es.addEventListener('processing.complete', (e: MessageEvent) => {
+      try {
       const data = JSON.parse(e.data) as SseCompleteEvent;
       setFinalOutput({ status: data.status, total_duration_ms: data.total_duration_ms });
       close();
       setConnection({ status: 'disconnected' });
+    } catch {
+      // Ignore malformed events; connection remains active
+    }  
     });
 
     es.onerror = () => {
