@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-// Delays: attempt 0 → ~1s, attempt 1 → ~5s, attempt 2 → ~25s
+// Delays: attempt 0 ~1s, attempt 1 ~2s, attempt 2 ~4s (BASE_MS * MULTIPLIER^attempt)
 const BASE_MS = 1000;
 const MULTIPLIER = 2;
 
