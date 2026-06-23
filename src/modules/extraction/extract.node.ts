@@ -12,7 +12,9 @@ import { EventsService } from '@modules/events/events.service';
 import { NodeRegistry } from '@modules/pipeline/node-registry';
 import { toToolName } from '@modules/pipeline/types';
 import type { NodeContext, NodeResult, PipelineNode } from '@modules/pipeline/types';
+import { EXTRACTION_FAILURE_EMPTY_SOURCE } from './constants';
 import { ExtractionModelAction } from './extraction.model-action';
+import { ExtractionStatus } from './enums/extraction-status.enum';
 import { extractionModelName } from './tools/extract-request.tool';
 import { reconcile } from './reconcile';
 import type { ExtractionV1 } from './schemas/extraction-v1.schema';
@@ -58,8 +60,20 @@ export class ExtractNode implements PipelineNode {
 
     if (!text.trim()) {
       const elapsedMs = Date.now() - start;
-      await this.persistFailure(requestId, {}, 0, elapsedMs);
-      await this.emitExited(requestId, orgId, false, 0, elapsedMs);
+      await this.persistFailure(
+        requestId,
+        { failure_code: EXTRACTION_FAILURE_EMPTY_SOURCE },
+        0,
+        elapsedMs,
+      );
+      await this.emitExited(
+        requestId,
+        orgId,
+        false,
+        0,
+        elapsedMs,
+        SYS_MSG.EXTRACTION_SOURCE_TEXT_EMPTY,
+      );
       this.logger.warn({ event: 'extraction_empty_source', requestId });
       return { kind: 'advance', next: this.nextNode };
     }
@@ -154,6 +168,7 @@ export class ExtractNode implements PipelineNode {
           requestId,
           model: extractionModelName(),
           schemaValid: true,
+          status: ExtractionStatus.COMPLETED,
           rawJson: extracted as unknown as Record<string, unknown>,
           reextractCount,
           latencyMs,
@@ -199,6 +214,7 @@ export class ExtractNode implements PipelineNode {
       requestId,
       model: extractionModelName(),
       schemaValid: false,
+      status: ExtractionStatus.FAILED,
       rawJson,
       reextractCount,
       latencyMs,
@@ -211,7 +227,10 @@ export class ExtractNode implements PipelineNode {
     schemaValid: boolean,
     reextractCount: number,
     elapsedMs: number,
+    exitMessage?: string,
   ): Promise<void> {
+    const message =
+      exitMessage ?? (schemaValid ? SYS_MSG.EXTRACTION_COMPLETE : SYS_MSG.EXTRACTION_ESCALATED);
     try {
       await this.events.emit({
         eventName: 'node.exited',
@@ -223,7 +242,7 @@ export class ExtractNode implements PipelineNode {
           schema_valid: schemaValid,
           reextract_count: reextractCount,
           elapsed_ms: elapsedMs,
-          message: schemaValid ? SYS_MSG.EXTRACTION_COMPLETE : SYS_MSG.EXTRACTION_ESCALATED,
+          message,
         },
       });
     } catch (err) {
