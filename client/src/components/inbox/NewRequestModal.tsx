@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { formatFileSize } from '../../lib/formatFileSize';
 import { useCreateRequest, type CreateRequestPayload } from '../../api/requests';
 import { CLIENT_ERROR_MESSAGES } from '../../lib/errorMessages';
+import { ErrorBanner } from './ErrorBanner';
 
 const ACCEPTED_EXTENSIONS = ['.pdf', '.csv', '.txt'];
 const ACCEPT_ATTR = ACCEPTED_EXTENSIONS.join(',');
@@ -130,7 +131,7 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
   const [mode, setMode] = useState<InputMode>('upload');
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [emailText, setEmailText] = useState('');
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [bannerError, setSubmitError] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -256,6 +257,8 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
         </div>
 
         <div className="px-5 py-6 flex flex-col gap-6">
+          {bannerError && <ErrorBanner message={bannerError} />}
+
           <div
             className="flex p-1 bg-canvas rounded-lg border border-border w-full"
             role="tablist"
@@ -374,11 +377,6 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
         </div>
 
         <div className="px-5 py-4 border-t border-border bg-surface flex justify-end gap-3">
-          {submitError && (
-            <p role="alert" className="text-[13px] text-lo-tx mr-auto">
-              {submitError}
-            </p>
-          )}
           <button
             type="button"
             onClick={handleClose}
