@@ -58,6 +58,9 @@ importers:
       class-validator:
         specifier: ^0.14.1
         version: 0.14.4
+      cross-env:
+        specifier: ^10.1.0
+        version: 10.1.0
       dotenv:
         specifier: ^16.4.5
         version: 16.6.1
@@ -128,9 +131,6 @@ importers:
       concurrently:
         specifier: ^10.0.3
         version: 10.0.3
-      cross-env:
-        specifier: ^10.1.0
-        version: 10.1.0
       eslint:
         specifier: ^9.16.0
         version: 9.39.4(jiti@2.7.0)
