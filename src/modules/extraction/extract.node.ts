@@ -54,6 +54,7 @@ export class ExtractNode implements PipelineNode {
     if (!req) {
       return { kind: 'failed', error: { message: SYS_MSG.REQUEST_NOT_FOUND(requestId) } };
     }
+    const text = await this.aggregateSourceText(requestId, req.source_subject, req.source_body);
 
     if (!text.trim()) {
       const elapsed = Date.now() - start;
