@@ -16,11 +16,7 @@ import { ExtractionModelAction } from './extraction.model-action';
 import { extractionModelName } from './tools/extract-request.tool';
 import { reconcile } from './reconcile';
 import type { ExtractionV1 } from './schemas/extraction-v1.schema';
-import {
-  ExtractionV1Schema,
-  formatSchemaError,
-  UNKNOWN_FIELD,
-} from './schemas/extraction-v1.schema';
+import { ExtractionV1Schema, formatSchemaError } from './schemas/extraction-v1.schema';
 
 @Injectable()
 export class ExtractNode implements PipelineNode {
@@ -179,8 +175,8 @@ export class ExtractNode implements PipelineNode {
       const result = await this.requests.update({
         identifierOptions: { id: requestId, org_id: orgId },
         updatePayload: {
-          sender_company: extracted.company === UNKNOWN_FIELD ? null : extracted.company,
-          sender_contact: extracted.contact === UNKNOWN_FIELD ? null : extracted.contact,
+          sender_company: extracted.company,
+          sender_contact: extracted.contact,
           sender_email: extracted.sender_email,
           delivery_date: extracted.delivery_date,
         },

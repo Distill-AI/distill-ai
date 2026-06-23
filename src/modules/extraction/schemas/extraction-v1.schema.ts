@@ -26,8 +26,8 @@ export const ExtractionLineItemSchema = z.object({
 });
 
 export const ExtractionV1Schema = z.object({
-  company: z.string().min(1),
-  contact: z.string().min(1),
+  company: z.string().min(1).nullable(),
+  contact: z.string().min(1).nullable(),
   sender_email: z.string().email().nullable(),
   delivery_date: z
     .string()

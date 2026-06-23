@@ -72,8 +72,8 @@ Total quantity: 15 units`,
 We need 25 hydraulic hoses (1/2 inch) ASAP.
 Company name not on letterhead.`,
     expected: {
-      company: 'UNKNOWN',
-      contact: 'UNKNOWN',
+      company: null,
+      contact: null,
       sender_email: null,
       delivery_date: null,
       line_items: [
