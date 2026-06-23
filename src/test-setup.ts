@@ -15,3 +15,4 @@ process.env.DATABASE_USER = envDefault('DATABASE_USER', 'test');
 process.env.DATABASE_PASSWORD = envDefault('DATABASE_PASSWORD', 'test');
 process.env.DATABASE_NAME = envDefault('DATABASE_NAME', 'test');
 process.env.OBJECT_STORE_URL = envDefault('OBJECT_STORE_URL', 'file://./var/object-store');
+process.env.LLM_API_KEY = envDefault('LLM_API_KEY', 'test-key');
