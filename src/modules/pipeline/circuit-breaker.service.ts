@@ -10,13 +10,15 @@ export enum CircuitBreakerState {
 
 interface CBState {
   state: CircuitBreakerState;
-  consecutiveFailures: number;
-  firstFailureAt: number | null;
   openedAt: number | null;
 }
 
 const CB_KEY = 'cb:llm:state';
 const CB_TTL_S = 3600;
+// Window-bounded failure counter: separate key so it can be atomically INCR'd.
+// TTL is set to CIRCUIT_BREAKER_WINDOW_S on first failure; Redis expires it automatically,
+// which resets the window without any explicit firstFailureAt tracking.
+const CB_FAILURES_KEY = 'cb:llm:failures';
 const PROBE_LOCK_KEY = 'cb:llm:probe';
 // Covers max LLM timeout (30s default) * (max retries + 2) with headroom, preventing a
 // crashed probe from holding the lock indefinitely.
@@ -72,7 +74,6 @@ export class CircuitBreakerService {
   async recordFailure(): Promise<void> {
     const s = await this.load();
     const now = Date.now();
-    const windowMs = env.CIRCUIT_BREAKER_WINDOW_S * 1000;
 
     if (s.state === CircuitBreakerState.HALF_OPEN) {
       this.logger.warn({
@@ -85,24 +86,17 @@ export class CircuitBreakerService {
     }
 
     if (s.state === CircuitBreakerState.CLOSED) {
-      if (s.firstFailureAt === null || now - s.firstFailureAt > windowMs) {
-        await this.save({ ...s, firstFailureAt: now, consecutiveFailures: 1 });
-      } else {
-        const newFailures = s.consecutiveFailures + 1;
-        if (newFailures >= env.CIRCUIT_BREAKER_FAILURE_THRESHOLD) {
-          this.logger.error({
-            event: 'circuit_breaker_tripped',
-            message: 'Failure threshold reached, opening breaker',
-          });
-          await this.save({
-            ...s,
-            consecutiveFailures: newFailures,
-            state: CircuitBreakerState.OPEN,
-            openedAt: now,
-          });
-        } else {
-          await this.save({ ...s, consecutiveFailures: newFailures });
-        }
+      // setNx initializes the counter at 0 with the window TTL on the first failure.
+      // Redis expires the key automatically after the window, resetting the count.
+      // incr is atomic: concurrent callers get distinct counts, no increment is lost.
+      await this.redis.setNx(CB_FAILURES_KEY, '0', env.CIRCUIT_BREAKER_WINDOW_S);
+      const count = await this.redis.incr(CB_FAILURES_KEY);
+      if (count !== null && count >= env.CIRCUIT_BREAKER_FAILURE_THRESHOLD) {
+        this.logger.error({
+          event: 'circuit_breaker_tripped',
+          message: 'Failure threshold reached, opening breaker',
+        });
+        await this.save({ ...s, state: CircuitBreakerState.OPEN, openedAt: now });
       }
     }
   }
@@ -110,12 +104,7 @@ export class CircuitBreakerService {
   private async load(): Promise<CBState> {
     const raw = await this.redis.get(CB_KEY);
     if (!raw) {
-      return {
-        state: CircuitBreakerState.CLOSED,
-        consecutiveFailures: 0,
-        firstFailureAt: null,
-        openedAt: null,
-      };
+      return { state: CircuitBreakerState.CLOSED, openedAt: null };
     }
     return JSON.parse(raw) as CBState;
   }
@@ -126,11 +115,7 @@ export class CircuitBreakerService {
 
   private async reset(): Promise<void> {
     await this.redis.del(PROBE_LOCK_KEY);
-    await this.save({
-      state: CircuitBreakerState.CLOSED,
-      consecutiveFailures: 0,
-      firstFailureAt: null,
-      openedAt: null,
-    });
+    await this.redis.del(CB_FAILURES_KEY);
+    await this.save({ state: CircuitBreakerState.CLOSED, openedAt: null });
   }
 }

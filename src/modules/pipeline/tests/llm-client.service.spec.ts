@@ -37,6 +37,12 @@ function makeRedis() {
     del: vi.fn(async (key: string): Promise<void> => {
       store.delete(key);
     }),
+    incr: vi.fn(async (key: string): Promise<number> => {
+      const val = parseInt(store.get(key) ?? '0', 10);
+      const next = val + 1;
+      store.set(key, String(next));
+      return next;
+    }),
   };
 }
 

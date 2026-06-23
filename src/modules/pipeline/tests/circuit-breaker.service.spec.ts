@@ -13,16 +13,24 @@ function makeRedis() {
   const store = new Map<string, string>();
   return {
     get: vi.fn(async (key: string) => store.get(key) ?? null),
-    set: vi.fn(async (key: string, value: string, _ttl?: number): Promise<void> => {
+    set: vi.fn(async (key: string, value: string, ttl?: number): Promise<void> => {
       store.set(key, value);
+      if (ttl) setTimeout(() => store.delete(key), ttl * 1000);
     }),
-    setNx: vi.fn(async (key: string, value: string, _ttl?: number): Promise<boolean> => {
+    setNx: vi.fn(async (key: string, value: string, ttl?: number): Promise<boolean> => {
       if (store.has(key)) return false;
       store.set(key, value);
+      if (ttl) setTimeout(() => store.delete(key), ttl * 1000);
       return true;
     }),
     del: vi.fn(async (key: string): Promise<void> => {
       store.delete(key);
+    }),
+    incr: vi.fn(async (key: string): Promise<number> => {
+      const val = parseInt(store.get(key) ?? '0', 10);
+      const next = val + 1;
+      store.set(key, String(next));
+      return next;
     }),
   };
 }
