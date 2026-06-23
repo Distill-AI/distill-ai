@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, type QueryDeepPartialEntity } from 'typeorm';
+import { EntityManager, Repository, type QueryDeepPartialEntity } from 'typeorm';
+import * as SYS_MSG from '@constants/system-messages';
 import { AbstractModelAction } from '@common/model-action/abstract.model-action';
 import { Extraction } from './entities/extraction.entity';
 
@@ -29,37 +30,30 @@ export class ExtractionModelAction extends AbstractModelAction<Extraction> {
     });
   }
 
-  /** Creates or updates the extraction row keyed by request_id. */
-  async upsertForRequest(params: UpsertExtractionParams): Promise<Extraction> {
-    const existing = await this.findByRequestId(params.requestId);
-    const payload: QueryDeepPartialEntity<Extraction> = {
-      model: params.model,
-      schema_valid: params.schemaValid,
-      raw_json: params.rawJson as QueryDeepPartialEntity<Extraction>['raw_json'],
-      reextract_count: params.reextractCount,
-      latency_ms: params.latencyMs,
-    };
+  /** Atomically creates or updates the extraction row keyed by request_id. */
+  async upsertForRequest(
+    params: UpsertExtractionParams,
+    transaction?: EntityManager,
+  ): Promise<Extraction> {
+    const repo = transaction?.getRepository(Extraction) ?? this.repository;
 
-    if (existing) {
-      const updated = await this.update({
-        identifierOptions: { request_id: params.requestId },
-        updatePayload: payload,
-        transactionOptions: { useTransaction: false },
-      });
-      return updated as Extraction;
-    }
-
-    return this.create({
-      createPayload: {
+    await repo.upsert(
+      {
         request_id: params.requestId,
         model: params.model,
         schema_valid: params.schemaValid,
-        raw_json: params.rawJson,
+        raw_json: params.rawJson as QueryDeepPartialEntity<Extraction>['raw_json'],
         reextract_count: params.reextractCount,
         latency_ms: params.latencyMs,
-        loop_steps: [],
       },
-      transactionOptions: { useTransaction: false },
-    });
+      { conflictPaths: ['request_id'] },
+    );
+
+    const saved = await repo.findOne({ where: { request_id: params.requestId } });
+    if (!saved) {
+      throw new Error(SYS_MSG.EXTRACTION_UPSERT_FAILED(params.requestId));
+    }
+
+    return saved;
   }
 }

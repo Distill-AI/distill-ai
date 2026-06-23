@@ -1,4 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { InjectDataSource } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 import * as SYS_MSG from '@constants/system-messages';
 import { CurrentNode } from '@modules/requests/enums/current-node.enum';
 import { RequestModelAction } from '@modules/requests/requests.model-action';
@@ -14,7 +16,7 @@ import { ExtractionModelAction } from './extraction.model-action';
 import { extractionModelName } from './tools/extract-request.tool';
 import { reconcile } from './reconcile';
 import type { ExtractionV1 } from './schemas/extraction-v1.schema';
-import { ExtractionV1Schema } from './schemas/extraction-v1.schema';
+import { ExtractionV1Schema, formatSchemaError } from './schemas/extraction-v1.schema';
 
 @Injectable()
 export class ExtractNode implements PipelineNode {
@@ -31,6 +33,7 @@ export class ExtractNode implements PipelineNode {
     private readonly extractions: ExtractionModelAction,
     private readonly lineItems: LineItemModelAction,
     private readonly events: EventsService,
+    @InjectDataSource() private readonly dataSource: DataSource,
   ) {
     registry.register(this);
   }
@@ -75,7 +78,13 @@ export class ExtractNode implements PipelineNode {
         continue;
       }
 
-      const extracted = ExtractionV1Schema.parse(invocation.result);
+      const parsed = ExtractionV1Schema.safeParse(invocation.result);
+      if (!parsed.success) {
+        priorFailure = formatSchemaError(parsed.error);
+        continue;
+      }
+
+      const extracted = parsed.data;
       lastRaw = extracted as unknown as Record<string, unknown>;
 
       const recon = reconcile(extracted, text);
@@ -133,34 +142,44 @@ export class ExtractNode implements PipelineNode {
     reextractCount: number,
     latencyMs: number,
   ): Promise<void> {
-    await this.extractions.upsertForRequest({
-      requestId,
-      model: extractionModelName(),
-      schemaValid: true,
-      rawJson: extracted as unknown as Record<string, unknown>,
-      reextractCount,
-      latencyMs,
-    });
+    await this.dataSource.transaction(async (transaction) => {
+      await this.extractions.upsertForRequest(
+        {
+          requestId,
+          model: extractionModelName(),
+          schemaValid: true,
+          rawJson: extracted as unknown as Record<string, unknown>,
+          reextractCount,
+          latencyMs,
+        },
+        transaction,
+      );
 
-    await this.lineItems.replaceForRequest(
-      requestId,
-      extracted.line_items.map((item) => ({
-        position: item.position,
-        raw_text: item.raw_text,
-        quantity: item.quantity,
-        unit: item.unit,
-      })),
-    );
+      await this.lineItems.replaceForRequest(
+        requestId,
+        extracted.line_items.map((item) => ({
+          position: item.position,
+          raw_text: item.raw_text,
+          quantity: item.quantity,
+          unit: item.unit,
+        })),
+        transaction,
+      );
 
-    await this.requests.update({
-      identifierOptions: { id: requestId, org_id: orgId },
-      updatePayload: {
-        sender_company: extracted.company === 'UNKNOWN' ? null : extracted.company,
-        sender_contact: extracted.contact === 'UNKNOWN' ? null : extracted.contact,
-        sender_email: extracted.sender_email,
-        delivery_date: extracted.delivery_date,
-      },
-      transactionOptions: { useTransaction: false },
+      const result = await this.requests.update({
+        identifierOptions: { id: requestId, org_id: orgId },
+        updatePayload: {
+          sender_company: extracted.company === 'UNKNOWN' ? null : extracted.company,
+          sender_contact: extracted.contact === 'UNKNOWN' ? null : extracted.contact,
+          sender_email: extracted.sender_email,
+          delivery_date: extracted.delivery_date,
+        },
+        transactionOptions: { useTransaction: true, transaction },
+      });
+
+      if (!result) {
+        throw new Error(SYS_MSG.REQUEST_NOT_FOUND(requestId));
+      }
     });
   }
 

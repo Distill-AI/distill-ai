@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { DataSource } from 'typeorm';
 import { CurrentNode } from '@modules/requests/enums/current-node.enum';
 import { ToolStatus } from '@modules/tools/enums/tools.enums';
 import type { ToolRegistry } from '@modules/tools/registry';
@@ -57,11 +58,25 @@ describe('reconcile', () => {
     const result = reconcile(data, 'Total quantity: 20 units');
     expect(result.ok).toBe(false);
   });
+
+  it('rejects semantically invalid delivery_date', () => {
+    const result = ExtractionV1Schema.safeParse({
+      ...validExtraction,
+      delivery_date: '2026-02-30',
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe('ExtractNode bounded loop', () => {
   const requestId = 'req-1';
   const orgId = 'org-1';
+
+  function makeDataSource(): DataSource {
+    return {
+      transaction: vi.fn(async (work: (em: unknown) => Promise<unknown>) => work({})),
+    } as unknown as DataSource;
+  }
 
   function makeDeps(
     overrides: {
@@ -114,6 +129,7 @@ describe('ExtractNode bounded loop', () => {
       extractions,
       lineItems,
       events,
+      makeDataSource(),
     );
 
     return { node, tools, extractions, lineItems, requests, events };
@@ -145,7 +161,36 @@ describe('ExtractNode bounded loop', () => {
         schemaValid: true,
         reextractCount: 0,
       }),
+      expect.anything(),
     );
+  });
+
+  it('invalid structured output after tool success triggers re-ask via safeParse', async () => {
+    const invoke = vi
+      .fn()
+      .mockResolvedValueOnce({
+        status: ToolStatus.OK,
+        latency: 50,
+        result: {
+          company: 'Acme Corp',
+          contact: 'Jane',
+          sender_email: null,
+          delivery_date: null,
+          line_items: [],
+        },
+      })
+      .mockResolvedValueOnce({
+        status: ToolStatus.OK,
+        latency: 100,
+        result: validExtraction,
+      });
+    const { node } = makeDeps({ invoke });
+
+    await node.run({ requestId, orgId });
+
+    expect(invoke).toHaveBeenCalledTimes(2);
+    const secondCallArgs = invoke.mock.calls[1][1] as { priorFailure: string };
+    expect(secondCallArgs.priorFailure).toContain('line_items');
   });
 
   it('schema failure triggers exactly one re-ask with priorFailure threaded into the prompt', async () => {
@@ -217,6 +262,7 @@ describe('ExtractNode bounded loop', () => {
       } as unknown as ExtractionModelAction,
       { replaceForRequest: vi.fn().mockResolvedValue(undefined) } as unknown as LineItemModelAction,
       { emit: vi.fn().mockResolvedValue(undefined) } as unknown as EventsService,
+      makeDataSource(),
     );
 
     await nodeWithText.run({ requestId, orgId });
@@ -268,6 +314,7 @@ describe('ExtractNode bounded loop', () => {
         schemaValid: true,
         reextractCount: 1,
       }),
+      expect.anything(),
     );
   });
 });
