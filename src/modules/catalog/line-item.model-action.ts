@@ -30,16 +30,17 @@ export class LineItemModelAction extends AbstractModelAction<LineItem> {
   ): Promise<void> {
     const replace = async (em: EntityManager): Promise<void> => {
       await em.delete(LineItem, { request_id: requestId });
-      for (const item of items) {
-        await em.save(LineItem, {
+      await em.save(
+        LineItem,
+        items.map((item) => ({
           request_id: requestId,
           position: item.position,
           raw_text: item.raw_text,
           quantity: item.quantity,
           unit: item.unit,
           flags: [],
-        });
-      }
+        })),
+      );
     };
 
     if (transaction) {
