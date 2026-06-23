@@ -37,6 +37,127 @@ function renderModal(open = true) {
   return { onClose };
 }
 
+describe('NewRequestModal — per-file validation', () => {
+  beforeEach(() => {
+    mockMutateAsync.mockReset();
+    mockIsPending.value = false;
+  });
+
+  it('shows "Unsupported file type" below a chip when an invalid file type is dropped', async () => {
+    const user = userEvent.setup({ applyAccept: false });
+    const { container } = render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <NewRequestModal open triggerRef={createRef()} onClose={vi.fn()} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const invalid = new File(['img'], 'photo.jpg', { type: 'image/jpeg' });
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(fileInput, invalid);
+
+    expect(screen.getByText('photo.jpg', { exact: false })).toBeInTheDocument();
+    expect(screen.getByText('Unsupported file type')).toBeInTheDocument();
+  });
+
+  it('shows no error text below a chip for a valid file', async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <NewRequestModal open triggerRef={createRef()} onClose={vi.fn()} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const valid = new File(['pdf'], 'rfq.pdf', { type: 'application/pdf' });
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(fileInput, valid);
+
+    expect(screen.getByText('rfq.pdf', { exact: false })).toBeInTheDocument();
+    expect(screen.queryByText('Unsupported file type')).not.toBeInTheDocument();
+  });
+
+  it('keeps an errored file in the list instead of auto-removing it', async () => {
+    const user = userEvent.setup({ applyAccept: false });
+    const { container } = render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <NewRequestModal open triggerRef={createRef()} onClose={vi.fn()} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const invalid = new File(['img'], 'photo.jpg', { type: 'image/jpeg' });
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(fileInput, invalid);
+
+    expect(screen.getByRole('button', { name: /remove photo\.jpg/i })).toBeInTheDocument();
+  });
+
+  it('disables Process request when all uploaded files have validation errors', async () => {
+    const user = userEvent.setup({ applyAccept: false });
+    const { container } = render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <NewRequestModal open triggerRef={createRef()} onClose={vi.fn()} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const invalid = new File(['img'], 'photo.jpg', { type: 'image/jpeg' });
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(fileInput, invalid);
+
+    expect(screen.getByRole('button', { name: /process request/i })).toBeDisabled();
+  });
+
+  it('enables Process request when at least one file is valid alongside errored ones', async () => {
+    const user = userEvent.setup({ applyAccept: false });
+    const { container } = render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <NewRequestModal open triggerRef={createRef()} onClose={vi.fn()} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const invalid = new File(['img'], 'photo.jpg', { type: 'image/jpeg' });
+    const valid = new File(['pdf'], 'rfq.pdf', { type: 'application/pdf' });
+    await user.upload(fileInput, invalid);
+    await user.upload(fileInput, valid);
+
+    expect(screen.getByRole('button', { name: /process request/i })).toBeEnabled();
+  });
+
+  it('sends only valid files in the mutateAsync payload, excluding errored ones', async () => {
+    mockMutateAsync.mockResolvedValue({
+      request_id: 'a1b2c3d4-0000-0000-0000-000000000000',
+      status: 'pending',
+      current_node: '',
+    });
+    const user = userEvent.setup({ applyAccept: false });
+    const { container } = render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <NewRequestModal open triggerRef={createRef()} onClose={vi.fn()} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const invalid = new File(['img'], 'photo.jpg', { type: 'image/jpeg' });
+    const valid = new File(['pdf'], 'rfq.pdf', { type: 'application/pdf' });
+    await user.upload(fileInput, invalid);
+    await user.upload(fileInput, valid);
+    await user.click(screen.getByRole('button', { name: /process request/i }));
+
+    expect(mockMutateAsync).toHaveBeenCalledWith({ kind: 'file', files: [valid] });
+  });
+});
+
 describe('NewRequestModal — submit wiring', () => {
   beforeEach(() => {
     mockMutateAsync.mockReset();
