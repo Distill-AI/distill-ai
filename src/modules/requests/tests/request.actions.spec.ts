@@ -33,7 +33,7 @@ describe('RequestActions', () => {
     processing_started_at: new Date(),
     created_at: new Date(),
     updated_at: new Date(),
-  } as Request;
+  } as unknown as Request;
 
   beforeEach(() => {
     mockModelAction = {
