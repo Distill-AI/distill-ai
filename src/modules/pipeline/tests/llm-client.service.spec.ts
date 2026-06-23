@@ -249,18 +249,30 @@ describe('LlmClientService', () => {
       expect(createSpy).not.toHaveBeenCalled();
     });
 
-    it('emits llm_timeout_fixture_replay with escalated_to_human: false', async () => {
+    it('does NOT emit stage.error when fixture replay succeeds', async () => {
       await circuitBreaker.recordFailure();
       await circuitBreaker.recordFailure();
 
       await service.createChatCompletion(baseParams, baseContext);
 
+      expect(eventsService.emit).not.toHaveBeenCalled();
+    });
+
+    it('emits stage.error with llm_circuit_open when fixture is missing', async () => {
+      (service as unknown as { catalogFixtures: Record<string, unknown>[] }).catalogFixtures = [];
+      await circuitBreaker.recordFailure();
+      await circuitBreaker.recordFailure();
+
+      await expect(service.createChatCompletion(baseParams, baseContext)).rejects.toBeInstanceOf(
+        CircuitBreakerOpenError,
+      );
+
       expect(eventsService.emit).toHaveBeenCalledWith(
         expect.objectContaining({
           eventName: 'stage.error',
           attributes: expect.objectContaining({
-            reason: 'llm_timeout_fixture_replay',
-            escalated_to_human: false,
+            reason: 'llm_circuit_open',
+            escalated_to_human: true,
           }),
         }),
       );
