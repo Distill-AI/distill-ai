@@ -20,6 +20,7 @@ import { DlqModule } from '@modules/dlq/dlq.module';
 import { SchedulerModule } from '@modules/scheduler/scheduler.module';
 import { BenchmarkModule } from '@modules/benchmark/benchmark.module';
 import { PipelineModule } from '@modules/pipeline/pipeline.module';
+import { IngestionModule } from '@modules/ingestion/ingestion.module';
 import { EventsModule } from '@modules/events/events.module';
 import { SseModule } from './sse/sse.module';
 import { RequestsModule } from '@modules/requests/requests.module';
@@ -64,6 +65,7 @@ import { RlsContextMiddleware } from '@modules/auth/middleware/rls-context.middl
     BenchmarkModule,
     ToolsModule,
     PipelineModule,
+    IngestionModule,
     SseModule,
     EventsModule,
     RequestsModule,
