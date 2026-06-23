@@ -147,7 +147,7 @@ describe('graph-resume', () => {
     expect(requests.record.status).toBe(RequestStatus.NEEDS_REVIEW);
     expect(requests.record.current_node).toBe(CurrentNode.CLASSIFY);
     expect(requests.setCurrentNode).not.toHaveBeenCalled();
-    // SSE must still see a clean close: both the error and the node.exited for the failing node.
+    // SSE must still see a clean close: error, node.exited, then processing.complete with failed status.
     expect(events.emit).toHaveBeenCalledWith(
       expect.objectContaining({
         eventName: 'stage.error',
@@ -160,7 +160,16 @@ describe('graph-resume', () => {
     expect(events.emit).toHaveBeenCalledWith(
       expect.objectContaining({
         eventName: 'node.exited',
-        attributes: expect.objectContaining({ node: CurrentNode.CLASSIFY, next: 'needs_review' }),
+        attributes: expect.objectContaining({
+          node: CurrentNode.CLASSIFY,
+          status: 'failed',
+        }),
+      }),
+    );
+    expect(events.emit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventName: 'processing.complete',
+        attributes: expect.objectContaining({ status: 'failed' }),
       }),
     );
   });

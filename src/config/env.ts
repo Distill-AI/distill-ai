@@ -74,6 +74,12 @@ const envSchema = z
     CIRCUIT_BREAKER_COOLDOWN_S: z.coerce.number().int().positive().default(30),
     CIRCUIT_BREAKER_FAILURE_THRESHOLD: z.coerce.number().int().min(1).default(2),
 
+    // ── Classify (US-E2-4) ────────────────────────────────────────────────────
+    CLASSIFY_THRESHOLD: z.coerce.number().min(0).max(1).default(0.8),
+    // ── Object storage ─────────────────────────────────────────────────────────
+    // Bare path or file:// URL for the local adapter; other schemes are rejected at boot for now.
+    OBJECT_STORE_URL: z.string().trim().min(1).default('file://./var/object-store'),
+
     // ── Observability ─────────────────────────────────────────────────────────
     SENTRY_DSN: z.string().url().optional(),
   })
