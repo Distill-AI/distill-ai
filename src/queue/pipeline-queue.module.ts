@@ -9,6 +9,8 @@ import { ClassifyModule } from '@modules/classify/classify.module';
 import { ClassifyNode } from '@modules/classify/classify.node';
 import { ExtractionModule } from '@modules/extraction/extraction.module';
 import { ExtractNode } from '@modules/extraction/extract.node';
+import { ScoringModule } from '@modules/scoring/scoring.module';
+import { ScoreNode } from '@modules/scoring/score.node';
 import { ToolsModule } from '@modules/tools/tools.module';
 import { ParseNode } from '@modules/parse/parse.node';
 import { QueueClientModule } from './queue-client.module';
@@ -16,7 +18,8 @@ import { PipelineProcessor } from './processors/pipeline.processor';
 
 /**
  * Worker-process module for the pipeline: the graph engine, the node registry, the real nodes
- * (ParseNode, ClassifyNode) + the remaining (M1) stub nodes, and the Bull processor that drives a
+ * (ParseNode, ExtractNode, ClassifyNode, ScoreNode) + the remaining (M1) stub nodes, and the Bull
+ * processor that drives a
  * run per request. Imported only by WorkerModule, so the processor never runs in the API process.
  * Nodes register themselves with NodeRegistry on construction (Nest instantiates providers eagerly).
  */
@@ -27,6 +30,7 @@ import { PipelineProcessor } from './processors/pipeline.processor';
     EventsModule,
     ClassifyModule,
     ExtractionModule,
+    ScoringModule,
     ToolsModule,
     ObjectStoreModule,
   ],
@@ -37,6 +41,7 @@ import { PipelineProcessor } from './processors/pipeline.processor';
     ParseNode,
     ExtractNode,
     ClassifyNode,
+    ScoreNode,
     PipelineProcessor,
   ],
 })
