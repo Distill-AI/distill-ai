@@ -86,10 +86,9 @@ export class PipelineGraphEngine {
       try {
         result = await impl.run({ requestId, orgId });
       } catch (err) {
-        // ── Circuit breaker open: LLM call was skipped (FR-5, SEC-02) ──────
-        // The LlmClientService already emitted its own stage.error with the
-        // appropriate reason (llm_circuit_open or llm_timeout_fixture_replay).
-        // If it still threw (production mode), route to needs_review.
+        // Circuit breaker open (FR-5, SEC-02): LlmClientService emits stage.error before
+        // throwing, so no duplicate event is needed here. Wired ahead of ClassifyNode
+        // switching from LLMProvider to LlmClientService (planned LlmModule milestone).
         if (err instanceof CircuitBreakerOpenError) {
           await this.events.emit({
             eventName: 'node.exited',
