@@ -1,12 +1,14 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { env } from '@config/env';
+import { ResumeReason } from '@modules/requests/enums/resume-reason.enum';
 import { RequestModelAction } from '@modules/requests/requests.model-action';
-import { PipelineRunner } from './pipeline.runner';
+import { NodeRecoveryActions } from './node-recovery.actions';
 
 /**
  * Crash recovery (US-E8-4). Re-enqueues requests left mid-flight (status 'parsing' beyond the
  * stale window) so a worker crash never strands a request. Runs on a cron and once on boot.
+ * The pipeline engine emits `request.resumed` when it processes the queued job.
  */
 @Injectable()
 export class RecoverySweep implements OnApplicationBootstrap {
@@ -15,7 +17,7 @@ export class RecoverySweep implements OnApplicationBootstrap {
 
   constructor(
     private readonly requests: RequestModelAction,
-    private readonly runner: PipelineRunner,
+    private readonly nodeRecovery: NodeRecoveryActions,
   ) {}
 
   /** Sweep for stale 'parsing' requests and re-enqueue them (Bull dedupes via the stable jobId). */
@@ -24,9 +26,9 @@ export class RecoverySweep implements OnApplicationBootstrap {
     const stale = await this.requests.findStaleParsing(this.staleSeconds);
     let enqueued = 0;
     for (const req of stale) {
-      // Per-request isolation: one failed enqueue must not abort recovery of the rest.
+      // Per-request isolation: one failed resume must not abort recovery of the rest.
       try {
-        await this.runner.enqueue(req.id);
+        await this.nodeRecovery.resumeFromCurrentNode(req.id, ResumeReason.CRASH_RECOVERY);
         enqueued += 1;
       } catch (err) {
         this.logger.error({
