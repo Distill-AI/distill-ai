@@ -278,6 +278,16 @@ describe('graph-resume', () => {
           }),
         }),
       );
+      expect(events.emit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventName: 'request.resumed',
+          requestId: 'r2',
+          attributes: expect.objectContaining({
+            reason: ResumeReason.CRASH_RECOVERY,
+          }),
+        }),
+      );
+      expect(events.emit).toHaveBeenCalledTimes(2);
     });
 
     it('continues recovery when one enqueue fails (per-request isolation)', async () => {
@@ -308,6 +318,23 @@ describe('graph-resume', () => {
         'r2',
         ResumeReason.CRASH_RECOVERY,
       );
+
+      expect(events.emit).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventName: 'request.resumed',
+          requestId: 'r1',
+        }),
+      );
+      expect(events.emit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventName: 'request.resumed',
+          requestId: 'r2',
+          attributes: expect.objectContaining({
+            reason: ResumeReason.CRASH_RECOVERY,
+          }),
+        }),
+      );
+      expect(events.emit).toHaveBeenCalledTimes(1);
     });
 
     it('does nothing when no stale requests exist', async () => {
