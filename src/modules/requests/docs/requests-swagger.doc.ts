@@ -10,7 +10,7 @@ export function RequestEventsDocs(): MethodDecorator {
       description:
         'Opens a Server-Sent Events (SSE) connection that streams live processing trace events ' +
         'for the given request. Events are emitted as each pipeline stage executes: ' +
-        'parse ΓåÆ extract ΓåÆ match ΓåÆ score ΓåÆ price ΓåÆ policy. ' +
+        'parse → extract → match → score → price → policy. ' +
         'Tool invocations (extract, match) are included with retry indicators. ' +
         'No raw model reasoning or chain-of-thought is emitted. ' +
         'The stream closes when processing completes (success or failure) or on client disconnect.',
