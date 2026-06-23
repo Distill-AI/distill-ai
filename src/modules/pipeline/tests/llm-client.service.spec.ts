@@ -3,7 +3,9 @@ import { CircuitBreakerService } from '../circuit-breaker.service';
 import { CircuitBreakerOpenError } from '../pipeline.errors';
 import { BackoffService } from '@worker/backoff.service';
 import type { EventsService } from '@modules/events/events.service';
+import type { RedisService } from '@modules/redis/redis.service';
 import OpenAI from 'openai';
+import { env } from '@config/env';
 
 // Mock env
 vi.mock('@config/env', () => ({
@@ -16,8 +18,33 @@ vi.mock('@config/env', () => ({
     DEMO_MODE: false,
     CIRCUIT_BREAKER_WINDOW_S: 60,
     CIRCUIT_BREAKER_COOLDOWN_S: 30,
+    CIRCUIT_BREAKER_FAILURE_THRESHOLD: 2,
   },
 }));
+
+function makeRedis() {
+  const store = new Map<string, string>();
+  return {
+    get: vi.fn(async (key: string) => store.get(key) ?? null),
+    set: vi.fn(async (key: string, value: string, _ttl?: number): Promise<void> => {
+      store.set(key, value);
+    }),
+    setNx: vi.fn(async (key: string, value: string, _ttl?: number): Promise<boolean> => {
+      if (store.has(key)) return false;
+      store.set(key, value);
+      return true;
+    }),
+    del: vi.fn(async (key: string): Promise<void> => {
+      store.delete(key);
+    }),
+    incr: vi.fn(async (key: string): Promise<number> => {
+      const val = parseInt(store.get(key) ?? '0', 10);
+      const next = val + 1;
+      store.set(key, String(next));
+      return next;
+    }),
+  };
+}
 
 // Shared context for tests
 const baseContext = { orgId: 'org-1', requestId: 'req-1', node: 'extract' };
@@ -34,7 +61,8 @@ describe('LlmClientService', () => {
   let createSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    circuitBreaker = new CircuitBreakerService();
+    const mockRedis = makeRedis();
+    circuitBreaker = new CircuitBreakerService(mockRedis as unknown as RedisService);
     backoff = new BackoffService();
     vi.spyOn(backoff, 'calculateWaitMs').mockReturnValue(0);
 
@@ -99,6 +127,22 @@ describe('LlmClientService', () => {
       await expect(service.createChatCompletion(baseParams, baseContext)).rejects.toThrow();
 
       expect(createSpy).toHaveBeenCalledTimes(1);
+      expect(await circuitBreaker.isOpen()).toBe(false);
+    });
+
+    it('does not trip the breaker on repeated 400 errors', async () => {
+      const badRequest = new OpenAI.APIError(
+        400,
+        undefined,
+        'Bad Request',
+        undefined as unknown as Headers,
+      );
+      createSpy.mockRejectedValue(badRequest);
+
+      await expect(service.createChatCompletion(baseParams, baseContext)).rejects.toThrow();
+      await expect(service.createChatCompletion(baseParams, baseContext)).rejects.toThrow();
+
+      expect(await circuitBreaker.isOpen()).toBe(false);
     });
 
     it('does not retry a 401 Auth error', async () => {
@@ -113,6 +157,7 @@ describe('LlmClientService', () => {
       await expect(service.createChatCompletion(baseParams, baseContext)).rejects.toThrow();
 
       expect(createSpy).toHaveBeenCalledTimes(1);
+      expect(await circuitBreaker.isOpen()).toBe(false);
     });
   });
 
@@ -135,8 +180,8 @@ describe('LlmClientService', () => {
   describe('AC-04: open breaker skips the LLM call', () => {
     it('throws CircuitBreakerOpenError immediately when breaker is open', async () => {
       // Trip the breaker
-      circuitBreaker.recordFailure();
-      circuitBreaker.recordFailure();
+      await circuitBreaker.recordFailure();
+      await circuitBreaker.recordFailure();
 
       await expect(service.createChatCompletion(baseParams, baseContext)).rejects.toBeInstanceOf(
         CircuitBreakerOpenError,
@@ -147,8 +192,8 @@ describe('LlmClientService', () => {
     });
 
     it('emits stage.error with reason llm_circuit_open when breaker is open', async () => {
-      circuitBreaker.recordFailure();
-      circuitBreaker.recordFailure();
+      await circuitBreaker.recordFailure();
+      await circuitBreaker.recordFailure();
 
       await expect(service.createChatCompletion(baseParams, baseContext)).rejects.toThrow();
 
@@ -166,8 +211,8 @@ describe('LlmClientService', () => {
 
   describe('AC-06: stage.error SSE payload', () => {
     it('does NOT include raw error body (SEC-02)', async () => {
-      circuitBreaker.recordFailure();
-      circuitBreaker.recordFailure();
+      await circuitBreaker.recordFailure();
+      await circuitBreaker.recordFailure();
 
       await expect(service.createChatCompletion(baseParams, baseContext)).rejects.toThrow();
 
@@ -176,6 +221,49 @@ describe('LlmClientService', () => {
       expect(emitCall.attributes).toHaveProperty('reason');
       expect(emitCall.attributes).toHaveProperty('node');
       expect(emitCall.attributes).toHaveProperty('escalated_to_human');
+    });
+  });
+
+  describe('DEMO_MODE: open breaker returns fixture completion', () => {
+    beforeEach(() => {
+      (env as Record<string, unknown>).DEMO_MODE = true;
+      (service as unknown as { catalogFixtures: Record<string, unknown>[] }).catalogFixtures = [
+        {
+          _meta: { request_type: 'catalog_rfq', sample_id: 'rfq_01_catalog_clean' },
+          extracted_fields: { item: 'bolt', qty: 200 },
+        },
+      ];
+    });
+
+    afterEach(() => {
+      (env as Record<string, unknown>).DEMO_MODE = false;
+    });
+
+    it('returns a fixture-based completion without calling the OpenAI API', async () => {
+      await circuitBreaker.recordFailure();
+      await circuitBreaker.recordFailure();
+
+      const result = await service.createChatCompletion(baseParams, baseContext);
+
+      expect(result.id).toBe('chatcmpl-fixture');
+      expect(createSpy).not.toHaveBeenCalled();
+    });
+
+    it('emits llm_timeout_fixture_replay with escalated_to_human: false', async () => {
+      await circuitBreaker.recordFailure();
+      await circuitBreaker.recordFailure();
+
+      await service.createChatCompletion(baseParams, baseContext);
+
+      expect(eventsService.emit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventName: 'stage.error',
+          attributes: expect.objectContaining({
+            reason: 'llm_timeout_fixture_replay',
+            escalated_to_human: false,
+          }),
+        }),
+      );
     });
   });
 });

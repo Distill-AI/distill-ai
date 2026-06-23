@@ -7,80 +7,91 @@ const boolEnv = z
   .union([z.boolean(), z.enum(['true', 'false'])])
   .transform((v) => v === true || v === 'true');
 
-const envSchema = z.object({
-  // ── Core ─────────────────────────────────────────────────────────────────
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().int().positive().default(3000),
+const envSchema = z
+  .object({
+    // ── Core ─────────────────────────────────────────────────────────────────
+    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    PORT: z.coerce.number().int().positive().default(3000),
 
-  // ── Database ─────────────────────────────────────────────────────────────
-  DATABASE_HOST: z.string().min(1),
-  DATABASE_PORT: z.coerce.number().int().positive().default(5432),
-  DATABASE_USER: z.string().min(1),
-  DATABASE_PASSWORD: z.string(),
-  DATABASE_NAME: z.string().min(1),
-  DATABASE_SYNC: boolEnv.default(false),
-  DATABASE_LOGGING: boolEnv.default(false),
-  DATABASE_SSL: boolEnv.default(false),
+    // ── Database ─────────────────────────────────────────────────────────────
+    DATABASE_HOST: z.string().min(1),
+    DATABASE_PORT: z.coerce.number().int().positive().default(5432),
+    DATABASE_USER: z.string().min(1),
+    DATABASE_PASSWORD: z.string(),
+    DATABASE_NAME: z.string().min(1),
+    DATABASE_SYNC: boolEnv.default(false),
+    DATABASE_LOGGING: boolEnv.default(false),
+    DATABASE_SSL: boolEnv.default(false),
 
-  // ── Redis ─────────────────────────────────────────────────────────────────
-  REDIS_HOST: z.string().default('localhost'),
-  REDIS_PORT: z.coerce.number().int().positive().default(6379),
-  REDIS_PASSWORD: z.string().optional(),
-  REDIS_USERNAME: z.string().optional(),
-  REDIS_TLS: boolEnv.default(false),
+    // ── Redis ─────────────────────────────────────────────────────────────────
+    REDIS_HOST: z.string().default('localhost'),
+    REDIS_PORT: z.coerce.number().int().positive().default(6379),
+    REDIS_PASSWORD: z.string().optional(),
+    REDIS_USERNAME: z.string().optional(),
+    REDIS_TLS: boolEnv.default(false),
 
-  // ── Logging ───────────────────────────────────────────────────────────────
-  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+    // ── Logging ───────────────────────────────────────────────────────────────
+    LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 
-  // ── API ───────────────────────────────────────────────────────────────────
-  SWAGGER_ENABLED: boolEnv.default(true),
-  CORS_ORIGIN: z.string().default('*'),
+    // ── API ───────────────────────────────────────────────────────────────────
+    SWAGGER_ENABLED: boolEnv.default(true),
+    CORS_ORIGIN: z.string().default('*'),
 
-  // ── Reference feature: Bull queue worker (remove if not using queues) ─────
-  QUEUE_CONCURRENCY: z.coerce
-    .number()
-    .int()
-    .default(3)
-    .transform((v) => Math.max(1, v)),
-  LEASE_TTL_SECONDS: z.coerce.number().int().positive().default(60),
+    // ── Reference feature: Bull queue worker (remove if not using queues) ─────
+    QUEUE_CONCURRENCY: z.coerce
+      .number()
+      .int()
+      .default(3)
+      .transform((v) => Math.max(1, v)),
+    LEASE_TTL_SECONDS: z.coerce.number().int().positive().default(60),
 
-  // ── Pipeline (US-E8-4) ────────────────────────────────────────────────────
-  PIPELINE_CONCURRENCY: z.coerce
-    .number()
-    .int()
-    .default(3)
-    .transform((v) => Math.max(1, v)),
-  SWEEP_STALE_SECONDS: z.coerce
-    .number()
-    .int()
-    .default(60)
-    .transform((v) => Math.max(1, v)),
+    // ── Pipeline (US-E8-4) ────────────────────────────────────────────────────
+    PIPELINE_CONCURRENCY: z.coerce
+      .number()
+      .int()
+      .default(3)
+      .transform((v) => Math.max(1, v)),
+    SWEEP_STALE_SECONDS: z.coerce
+      .number()
+      .int()
+      .default(60)
+      .transform((v) => Math.max(1, v)),
 
-  // ── Reference feature: DLQ alert email (remove if not using DLQ) ─────────
-  DLQ_ALERT_THRESHOLD: z.coerce.number().int().positive().default(10),
-  ALERT_EMAIL: z.string().email().default('admin@example.com'),
-  EMAIL_FROM: z.string().default('App <noreply@example.com>'),
+    // ── Reference feature: DLQ alert email (remove if not using DLQ) ─────────
+    DLQ_ALERT_THRESHOLD: z.coerce.number().int().positive().default(10),
+    ALERT_EMAIL: z.string().email().default('admin@example.com'),
+    EMAIL_FROM: z.string().default('App <noreply@example.com>'),
 
-  // ── LLM & Circuit Breaker ──────────────────────────────────────────────────
-  LLM_PROVIDER: z.string().default('openai'),
-  LLM_MODEL: z.string().default('qwen-72b'),
-  LLM_BASE_URL: z.string().url().optional(),
-  LLM_API_KEY: z.string().optional(),
-  DEMO_MODE: boolEnv.default(false),
-  LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
-  LLM_MAX_RETRIES: z.coerce.number().int().nonnegative().default(1),
-  CIRCUIT_BREAKER_WINDOW_S: z.coerce.number().int().positive().default(60),
-  CIRCUIT_BREAKER_COOLDOWN_S: z.coerce.number().int().positive().default(30),
+    // ── LLM & Circuit Breaker ──────────────────────────────────────────────────
+    LLM_PROVIDER: z.string().default('openai'),
+    LLM_MODEL: z.string().default('qwen-72b'),
+    LLM_BASE_URL: z.string().url().optional(),
+    LLM_API_KEY: z.string().optional(),
+    DEMO_MODE: boolEnv.default(false),
+    LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
+    LLM_MAX_RETRIES: z.coerce.number().int().nonnegative().default(1),
+    CIRCUIT_BREAKER_WINDOW_S: z.coerce.number().int().positive().default(60),
+    CIRCUIT_BREAKER_COOLDOWN_S: z.coerce.number().int().positive().default(30),
+    CIRCUIT_BREAKER_FAILURE_THRESHOLD: z.coerce.number().int().min(1).default(2),
 
-  // ── Classify (US-E2-4) ────────────────────────────────────────────────────
-  CLASSIFY_THRESHOLD: z.coerce.number().min(0).max(1).default(0.8),
-  // ── Object storage ─────────────────────────────────────────────────────────
-  // Bare path or file:// URL for the local adapter; other schemes are rejected at boot for now.
-  OBJECT_STORE_URL: z.string().trim().min(1).default('file://./var/object-store'),
+    // ── Classify (US-E2-4) ────────────────────────────────────────────────────
+    CLASSIFY_THRESHOLD: z.coerce.number().min(0).max(1).default(0.8),
+    // ── Object storage ─────────────────────────────────────────────────────────
+    // Bare path or file:// URL for the local adapter; other schemes are rejected at boot for now.
+    OBJECT_STORE_URL: z.string().trim().min(1).default('file://./var/object-store'),
 
-  // ── Observability ─────────────────────────────────────────────────────────
-  SENTRY_DSN: z.string().url().optional(),
-});
+    // ── Observability ─────────────────────────────────────────────────────────
+    SENTRY_DSN: z.string().url().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.DEMO_MODE && !data.LLM_API_KEY) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'LLM_API_KEY is required when DEMO_MODE is false',
+        path: ['LLM_API_KEY'],
+      });
+    }
+  });
 
 const result = envSchema.safeParse(process.env);
 
