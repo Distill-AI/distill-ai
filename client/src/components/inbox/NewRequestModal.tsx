@@ -300,11 +300,11 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
             </button>
           </div>
 
+          {mode === 'upload' && (
           <div
             role="tabpanel"
             id="new-request-panel-upload"
             aria-labelledby="new-request-tab-upload"
-            hidden={mode !== 'upload'}
             className="flex flex-col gap-2"
           >
             <input
@@ -355,12 +355,13 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
               </div>
             )}
           </div>
+          )}
 
+          {mode === 'email' && (
           <div
             role="tabpanel"
             id="new-request-panel-email"
             aria-labelledby="new-request-tab-email"
-            hidden={mode !== 'email'}
           >
             <label htmlFor="email-body" className="sr-only">
               Email body
@@ -370,10 +371,10 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
               value={emailText}
               onChange={(e) => setEmailText(e.target.value)}
               placeholder="Paste the full email thread here…"
-              rows={8}
-              className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-slate-900 placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-indigo-600/30 resize-none"
+              className="w-full min-h-40 rounded-card border border-border bg-surface px-3 py-2 text-sm text-slate-900 placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-indigo-600/30 resize-y"
             />
           </div>
+          )}
         </div>
 
         <div className="px-5 py-4 border-t border-border bg-surface flex justify-end gap-3">
