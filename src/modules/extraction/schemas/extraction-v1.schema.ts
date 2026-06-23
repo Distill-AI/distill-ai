@@ -25,9 +25,15 @@ export const ExtractionLineItemSchema = z.object({
   unit: z.string().min(1),
 });
 
+/** Accepts null or a non-empty string; maps legacy UNKNOWN sentinel to null. */
+const nullableExtractionField = z.preprocess(
+  (value) => (value === UNKNOWN_FIELD ? null : value),
+  z.string().min(1).nullable(),
+);
+
 export const ExtractionV1Schema = z.object({
-  company: z.string().min(1).nullable(),
-  contact: z.string().min(1).nullable(),
+  company: nullableExtractionField,
+  contact: nullableExtractionField,
   sender_email: z.string().email().nullable(),
   delivery_date: z
     .string()
