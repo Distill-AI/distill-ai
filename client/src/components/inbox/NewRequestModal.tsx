@@ -301,79 +301,79 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
           </div>
 
           {mode === 'upload' && (
-          <div
-            role="tabpanel"
-            id="new-request-panel-upload"
-            aria-labelledby="new-request-tab-upload"
-            className="flex flex-col gap-2"
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept={ACCEPT_ATTR}
-              multiple
-              className="sr-only"
-              onChange={(e) => {
-                if (e.target.files) addFiles(e.target.files);
-                e.target.value = '';
-              }}
-            />
-            <button
-              type="button"
-              aria-label="Upload files: drag and drop PDF, CSV, or TXT, or browse"
-              className="border-[1.5px] border-dashed border-border rounded-card h-[140px] w-full flex flex-col items-center justify-center gap-2 bg-surface hover:bg-canvas transition-colors cursor-pointer group"
-              onClick={() => fileInputRef.current?.click()}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault();
-                if (e.dataTransfer.files.length > 0) addFiles(e.dataTransfer.files);
-              }}
+            <div
+              role="tabpanel"
+              id="new-request-panel-upload"
+              aria-labelledby="new-request-tab-upload"
+              className="flex flex-col gap-2"
             >
-              <span className="text-muted group-hover:text-body-text transition-colors">
-                <UploadIcon />
-              </span>
-              <span className="flex flex-col items-center gap-1">
-                <span className="text-sm text-slate-900 font-medium">
-                  Drag &amp; drop PDF, CSV, or TXT
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={ACCEPT_ATTR}
+                multiple
+                className="sr-only"
+                onChange={(e) => {
+                  if (e.target.files) addFiles(e.target.files);
+                  e.target.value = '';
+                }}
+              />
+              <button
+                type="button"
+                aria-label="Upload files: drag and drop PDF, CSV, or TXT, or browse"
+                className="border-[1.5px] border-dashed border-border rounded-card h-[140px] w-full flex flex-col items-center justify-center gap-2 bg-surface hover:bg-canvas transition-colors cursor-pointer group"
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (e.dataTransfer.files.length > 0) addFiles(e.dataTransfer.files);
+                }}
+              >
+                <span className="text-muted group-hover:text-body-text transition-colors">
+                  <UploadIcon />
                 </span>
-                <span className="text-[13px] text-indigo-600 group-hover:text-indigo-700 transition-colors">
-                  or browse
+                <span className="flex flex-col items-center gap-1">
+                  <span className="text-sm text-slate-900 font-medium">
+                    Drag &amp; drop PDF, CSV, or TXT
+                  </span>
+                  <span className="text-[13px] text-indigo-600 group-hover:text-indigo-700 transition-colors">
+                    or browse
+                  </span>
                 </span>
-              </span>
-            </button>
+              </button>
 
-            {files.length > 0 && (
-              <div className="flex flex-col gap-2">
-                {files.map((entry) => (
-                  <FileChip
-                    key={fileKey(entry.file)}
-                    file={entry.file}
-                    onRemove={() => removeFile(entry.file)}
-                    errorMessage={entry.errorMessage}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+              {files.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  {files.map((entry) => (
+                    <FileChip
+                      key={fileKey(entry.file)}
+                      file={entry.file}
+                      onRemove={() => removeFile(entry.file)}
+                      errorMessage={entry.errorMessage}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           {mode === 'email' && (
-          <div
-            role="tabpanel"
-            id="new-request-panel-email"
-            aria-labelledby="new-request-tab-email"
-          >
-            <label htmlFor="email-body" className="sr-only">
-              Email body
-            </label>
-            <textarea
-              id="email-body"
-              value={emailText}
-              onChange={(e) => setEmailText(e.target.value)}
-              placeholder="Paste the full email thread here…"
-              className="w-full min-h-40 rounded-card border border-border bg-surface px-3 py-2 text-sm text-slate-900 placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-indigo-600/30 resize-y"
-            />
-          </div>
+            <div
+              role="tabpanel"
+              id="new-request-panel-email"
+              aria-labelledby="new-request-tab-email"
+            >
+              <label htmlFor="email-body" className="sr-only">
+                Email body
+              </label>
+              <textarea
+                id="email-body"
+                value={emailText}
+                onChange={(e) => setEmailText(e.target.value)}
+                placeholder="Paste the full email thread here…"
+                className="w-full min-h-40 rounded-card border border-border bg-surface px-3 py-2 text-sm text-slate-900 placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-indigo-600/30 resize-y"
+              />
+            </div>
           )}
         </div>
 
