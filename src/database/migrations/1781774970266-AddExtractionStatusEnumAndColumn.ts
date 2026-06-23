@@ -12,7 +12,7 @@ export class AddExtractionStatusEnumAndColumn1781774970266 implements MigrationI
     `);
     await queryRunner.query(`
       ALTER TABLE "extractions"
-        ADD COLUMN "status" "public"."extraction_status" NOT NULL DEFAULT 'completed'
+        ADD COLUMN IF NOT EXISTS "status" "public"."extraction_status" NOT NULL DEFAULT 'completed'
     `);
   }
 

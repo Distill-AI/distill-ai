@@ -240,7 +240,7 @@ describe('graph-resume', () => {
   });
 
   describe('RecoverySweep', () => {
-    it('re-enqueues every stale parsing request and emits crash_recovery event', async () => {
+    it('re-enqueues every stale parsing request', async () => {
       const staleRequests = [
         { id: 'r1', org_id: 'org-1', current_node: CurrentNode.EXTRACT },
         { id: 'r2', org_id: 'org-2', current_node: CurrentNode.CLASSIFY },
@@ -251,11 +251,9 @@ describe('graph-resume', () => {
       const nodeRecovery = {
         resumeFromCurrentNode: vi.fn().mockResolvedValue(undefined),
       };
-      const events = { emit: vi.fn().mockResolvedValue(undefined) };
       const sweep = new RecoverySweep(
         requests as unknown as RequestModelAction,
         nodeRecovery as unknown as NodeRecoveryActions,
-        events as unknown as EventsService,
       );
 
       await sweep.sweep();
@@ -269,25 +267,6 @@ describe('graph-resume', () => {
         'r2',
         ResumeReason.CRASH_RECOVERY,
       );
-      expect(events.emit).toHaveBeenCalledWith(
-        expect.objectContaining({
-          eventName: 'request.resumed',
-          requestId: 'r1',
-          attributes: expect.objectContaining({
-            reason: ResumeReason.CRASH_RECOVERY,
-          }),
-        }),
-      );
-      expect(events.emit).toHaveBeenCalledWith(
-        expect.objectContaining({
-          eventName: 'request.resumed',
-          requestId: 'r2',
-          attributes: expect.objectContaining({
-            reason: ResumeReason.CRASH_RECOVERY,
-          }),
-        }),
-      );
-      expect(events.emit).toHaveBeenCalledTimes(2);
     });
 
     it('continues recovery when one enqueue fails (per-request isolation)', async () => {
@@ -304,11 +283,9 @@ describe('graph-resume', () => {
           .mockRejectedValueOnce(new Error('Bull unavailable'))
           .mockResolvedValueOnce(undefined),
       };
-      const events = { emit: vi.fn().mockResolvedValue(undefined) };
       const sweep = new RecoverySweep(
         requests as unknown as RequestModelAction,
         nodeRecovery as unknown as NodeRecoveryActions,
-        events as unknown as EventsService,
       );
 
       await sweep.sweep();
@@ -318,23 +295,6 @@ describe('graph-resume', () => {
         'r2',
         ResumeReason.CRASH_RECOVERY,
       );
-
-      expect(events.emit).not.toHaveBeenCalledWith(
-        expect.objectContaining({
-          eventName: 'request.resumed',
-          requestId: 'r1',
-        }),
-      );
-      expect(events.emit).toHaveBeenCalledWith(
-        expect.objectContaining({
-          eventName: 'request.resumed',
-          requestId: 'r2',
-          attributes: expect.objectContaining({
-            reason: ResumeReason.CRASH_RECOVERY,
-          }),
-        }),
-      );
-      expect(events.emit).toHaveBeenCalledTimes(1);
     });
 
     it('does nothing when no stale requests exist', async () => {
@@ -344,17 +304,14 @@ describe('graph-resume', () => {
       const nodeRecovery = {
         resumeFromCurrentNode: vi.fn(),
       };
-      const events = { emit: vi.fn() };
       const sweep = new RecoverySweep(
         requests as unknown as RequestModelAction,
         nodeRecovery as unknown as NodeRecoveryActions,
-        events as unknown as EventsService,
       );
 
       await sweep.sweep();
 
       expect(nodeRecovery.resumeFromCurrentNode).not.toHaveBeenCalled();
-      expect(events.emit).not.toHaveBeenCalled();
     });
   });
 });
