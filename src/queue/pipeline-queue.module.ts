@@ -5,6 +5,8 @@ import { PipelineEngineModule } from '@modules/pipeline/pipeline-engine.module';
 import { PipelineGraphEngine } from '@modules/pipeline/graph.engine';
 import { NodeRegistry } from '@modules/pipeline/node-registry';
 import { STUB_NODES } from '@modules/pipeline/stub-nodes';
+import { ClassifyModule } from '@modules/classify/classify.module';
+import { ClassifyNode } from '@modules/classify/classify.node';
 import { QueueClientModule } from './queue-client.module';
 import { PipelineProcessor } from './processors/pipeline.processor';
 
@@ -15,8 +17,8 @@ import { PipelineProcessor } from './processors/pipeline.processor';
  * construction (Nest instantiates providers eagerly).
  */
 @Module({
-  imports: [QueueClientModule, RequestsModule, EventsModule, PipelineEngineModule],
-  providers: [PipelineGraphEngine, NodeRegistry, ...STUB_NODES, PipelineProcessor],
+  imports: [QueueClientModule, RequestsModule, EventsModule, PipelineEngineModule, ClassifyModule],
+  providers: [PipelineGraphEngine, NodeRegistry, ...STUB_NODES, PipelineProcessor, ClassifyNode],
   exports: [PipelineEngineModule],
 })
 export class PipelineQueueModule {}
