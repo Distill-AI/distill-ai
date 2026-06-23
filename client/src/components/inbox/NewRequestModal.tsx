@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { formatFileSize } from '../../lib/formatFileSize';
 import { useCreateRequest, type CreateRequestPayload } from '../../api/requests';
+import { CLIENT_ERROR_MESSAGES } from '../../lib/errorMessages';
 
 const ACCEPTED_EXTENSIONS = ['.pdf', '.csv', '.txt'];
 const ACCEPT_ATTR = ACCEPTED_EXTENSIONS.join(',');
+const MAX_CLIENT_BYTES = 10 * 1024 * 1024; // 10 MB — mirrors backend MAX_UPLOAD_BYTES
 
 type InputMode = 'upload' | 'email';
 
@@ -13,9 +15,20 @@ interface NewRequestModalProps {
   triggerRef: RefObject<HTMLButtonElement | null>;
 }
 
+interface FileEntry {
+  file: File;
+  errorMessage?: string;
+}
+
 function isAllowedFile(file: File): boolean {
   const lower = file.name.toLowerCase();
   return ACCEPTED_EXTENSIONS.some((ext) => lower.endsWith(ext));
+}
+
+function validateFile(file: File): string | undefined {
+  if (!isAllowedFile(file)) return CLIENT_ERROR_MESSAGES.FILE_TYPE_INVALID;
+  if (file.size > MAX_CLIENT_BYTES) return CLIENT_ERROR_MESSAGES.FILE_SIZE_EXCEEDED;
+  return undefined;
 }
 
 function fileKey(file: File): string {
@@ -79,36 +92,44 @@ function RemoveIcon() {
 interface FileChipProps {
   file: File;
   onRemove: () => void;
+  errorMessage?: string;
 }
 
-function FileChip({ file, onRemove }: FileChipProps) {
+function FileChip({ file, onRemove, errorMessage }: FileChipProps) {
   return (
-    <div className="flex items-center justify-between px-3 py-2 bg-surface border border-border rounded-full">
-      <div className="flex items-center gap-2 overflow-hidden min-w-0">
-        <span className="text-muted shrink-0">
-          <FileIcon />
-        </span>
-        <span className="text-[13px] text-slate-900 truncate">
-          {file.name} · {formatFileSize(file.size)}
-        </span>
+    <div
+      className={[
+        'flex flex-col rounded-card border px-3 py-2 bg-surface',
+        errorMessage ? 'border-lo-tx/40 bg-lo-bg/30' : 'border-border',
+      ].join(' ')}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 overflow-hidden min-w-0">
+          <span className="text-muted shrink-0">
+            <FileIcon />
+          </span>
+          <span className="text-[13px] text-slate-900 truncate">
+            {file.name} · {formatFileSize(file.size)}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="text-muted hover:text-lo-tx transition-colors p-0.5 rounded-full hover:bg-lo-bg ml-2 shrink-0"
+          aria-label={`Remove ${file.name}`}
+        >
+          <RemoveIcon />
+        </button>
       </div>
-      <button
-        type="button"
-        onClick={onRemove}
-        className="text-muted hover:text-lo-tx transition-colors p-0.5 rounded-full hover:bg-lo-bg ml-2 shrink-0"
-        aria-label={`Remove ${file.name}`}
-      >
-        <RemoveIcon />
-      </button>
+      {errorMessage && <p className="mt-1 text-[12px] text-lo-tx">{errorMessage}</p>}
     </div>
   );
 }
 
 export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalProps) {
   const [mode, setMode] = useState<InputMode>('upload');
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<FileEntry[]>([]);
   const [emailText, setEmailText] = useState('');
-  const [hasRejectedFiles, setHasRejectedFiles] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -116,36 +137,28 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
 
   const createRequest = useCreateRequest((msg) => setSubmitError(msg));
 
-  const canProcess = mode === 'upload' ? files.length > 0 : emailText.trim().length > 0;
+  const validFiles = files.filter((e) => !e.errorMessage);
+  const canProcess = mode === 'upload' ? validFiles.length > 0 : emailText.trim().length > 0;
 
   const handleClose = useCallback(() => {
     setSubmitError(null);
     setMode('upload');
     setFiles([]);
     setEmailText('');
-    setHasRejectedFiles(false);
     onClose();
     triggerRef.current?.focus();
   }, [onClose, triggerRef]);
 
   function addFiles(incoming: FileList | File[]) {
     const all = Array.from(incoming);
-    const allowed = all.filter(isAllowedFile);
-
-    if (all.length > 0 && allowed.length === 0) {
-      setHasRejectedFiles(true);
-      return;
-    }
-
-    setHasRejectedFiles(false);
     setFiles((prev) => {
-      const keys = new Set(prev.map(fileKey));
+      const keys = new Set(prev.map((e) => fileKey(e.file)));
       const next = [...prev];
-      for (const file of allowed) {
+      for (const file of all) {
         const key = fileKey(file);
         if (!keys.has(key)) {
           keys.add(key);
-          next.push(file);
+          next.push({ file, errorMessage: validateFile(file) });
         }
       }
       return next;
@@ -153,7 +166,7 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
   }
 
   function removeFile(target: File) {
-    setFiles((prev) => prev.filter((f) => fileKey(f) !== fileKey(target)));
+    setFiles((prev) => prev.filter((e) => fileKey(e.file) !== fileKey(target)));
   }
 
   async function handleProcess() {
@@ -161,7 +174,9 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
     setSubmitError(null);
 
     const payload: CreateRequestPayload =
-      mode === 'upload' ? { kind: 'file', files } : { kind: 'paste', sourceBody: emailText.trim() };
+      mode === 'upload'
+        ? { kind: 'file', files: validFiles.map((e) => e.file) }
+        : { kind: 'paste', sourceBody: emailText.trim() };
 
     try {
       await createRequest.mutateAsync(payload);
@@ -324,16 +339,15 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
               </span>
             </button>
 
-            {hasRejectedFiles && (
-              <p role="alert" className="text-[13px] text-lo-tx">
-                Only PDF, CSV, and TXT files are accepted.
-              </p>
-            )}
-
             {files.length > 0 && (
               <div className="flex flex-col gap-2">
-                {files.map((file) => (
-                  <FileChip key={fileKey(file)} file={file} onRemove={() => removeFile(file)} />
+                {files.map((entry) => (
+                  <FileChip
+                    key={fileKey(entry.file)}
+                    file={entry.file}
+                    onRemove={() => removeFile(entry.file)}
+                    errorMessage={entry.errorMessage}
+                  />
                 ))}
               </div>
             )}
