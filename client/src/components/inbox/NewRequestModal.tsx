@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { formatFileSize } from '../../lib/formatFileSize';
+import { useCreateRequest, type CreateRequestPayload } from '../../api/requests';
 
 const ACCEPTED_EXTENSIONS = ['.pdf', '.csv', '.txt'];
 const ACCEPT_ATTR = ACCEPTED_EXTENSIONS.join(',');
@@ -108,13 +109,17 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
   const [files, setFiles] = useState<File[]>([]);
   const [emailText, setEmailText] = useState('');
   const [hasRejectedFiles, setHasRejectedFiles] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
+  const createRequest = useCreateRequest((msg) => setSubmitError(msg));
+
   const canProcess = mode === 'upload' ? files.length > 0 : emailText.trim().length > 0;
 
   const handleClose = useCallback(() => {
+    setSubmitError(null);
     setMode('upload');
     setFiles([]);
     setEmailText('');
@@ -151,9 +156,19 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
     setFiles((prev) => prev.filter((f) => fileKey(f) !== fileKey(target)));
   }
 
-  function handleProcess() {
+  async function handleProcess() {
     if (!canProcess) return;
-    handleClose();
+    setSubmitError(null);
+
+    const payload: CreateRequestPayload =
+      mode === 'upload' ? { kind: 'file', files } : { kind: 'paste', sourceBody: emailText.trim() };
+
+    try {
+      await createRequest.mutateAsync(payload);
+      handleClose();
+    } catch {
+      // error message is set via the onError callback passed to useCreateRequest
+    }
   }
 
   useEffect(() => {
@@ -345,6 +360,11 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
         </div>
 
         <div className="px-5 py-4 border-t border-border bg-surface flex justify-end gap-3">
+          {submitError && (
+            <p role="alert" className="text-[13px] text-lo-tx mr-auto">
+              {submitError}
+            </p>
+          )}
           <button
             type="button"
             onClick={handleClose}
@@ -355,10 +375,10 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
           <button
             type="button"
             onClick={handleProcess}
-            disabled={!canProcess}
+            disabled={!canProcess || createRequest.isPending}
             className="px-4 h-9 rounded-button bg-indigo-600 text-white text-[13px] font-medium hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-indigo-600"
           >
-            Process request
+            {createRequest.isPending ? 'Processing...' : 'Process request'}
           </button>
         </div>
       </div>
