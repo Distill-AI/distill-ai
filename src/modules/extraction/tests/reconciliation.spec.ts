@@ -10,7 +10,7 @@ describe('reconciliation', () => {
   const validExtraction = {
     id: 'ext-1',
     request_id: 'req-1',
-    model: 'gpt-4o-mini',
+    model: 'llama-3.3-70b-versatile',
     schema_valid: true,
     status: ExtractionStatus.COMPLETED,
     raw_json: { items: [{ sku: 'A1', qty: 10 }] },
@@ -18,7 +18,7 @@ describe('reconciliation', () => {
     loop_steps: [],
     latency_ms: 200,
     created_at: new Date('2026-06-22T12:00:00Z'),
-  } as Extraction;
+  } as unknown as Extraction;
 
   beforeEach(() => {
     mockRepo = {
@@ -76,7 +76,7 @@ describe('reconciliation', () => {
   it('ensureNoDuplication returns true when valid extraction exists (idempotent)', async () => {
     mockRepo.findOne = vi.fn().mockResolvedValue(validExtraction);
 
-    const result = await actions.ensureNoDuplication('req-1');
+    const result = await actions.hasValidExtraction('req-1');
 
     expect(result).toBe(true);
   });
@@ -84,7 +84,7 @@ describe('reconciliation', () => {
   it('ensureNoDuplication returns false when no valid extraction', async () => {
     mockRepo.findOne = vi.fn().mockResolvedValue(null);
 
-    const result = await actions.ensureNoDuplication('req-1');
+    const result = await actions.hasValidExtraction('req-1');
 
     expect(result).toBe(false);
   });
