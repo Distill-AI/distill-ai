@@ -34,10 +34,8 @@ export class ExtractRequestToolFactory {
       maxTokens: 1500,
     });
 
-    const cleaned = response.text
-      .replace(/```(?:json)?\s*/gi, '')
-      .replace(/```\s*$/gm, '')
-      .trim();
+    const wrapped = response.text.match(/^\s*```(?:json)?\s*([\s\S]*)\s*```\s*$/i);
+    const cleaned = (wrapped ? wrapped[1] : response.text).trim();
 
     let parsed: unknown;
     try {

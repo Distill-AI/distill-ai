@@ -16,7 +16,11 @@ import { ExtractionModelAction } from './extraction.model-action';
 import { extractionModelName } from './tools/extract-request.tool';
 import { reconcile } from './reconcile';
 import type { ExtractionV1 } from './schemas/extraction-v1.schema';
-import { ExtractionV1Schema, formatSchemaError } from './schemas/extraction-v1.schema';
+import {
+  ExtractionV1Schema,
+  formatSchemaError,
+  UNKNOWN_FIELD,
+} from './schemas/extraction-v1.schema';
 
 @Injectable()
 export class ExtractNode implements PipelineNode {
@@ -57,9 +61,9 @@ export class ExtractNode implements PipelineNode {
     const text = await this.aggregateSourceText(requestId, req.source_subject, req.source_body);
 
     if (!text.trim()) {
-      const elapsed = Date.now() - start;
-      await this.persistFailure(requestId, {}, 0, elapsed);
-      await this.emitExited(requestId, orgId, false, 0, elapsed);
+      const elapsedMs = Date.now() - start;
+      await this.persistFailure(requestId, {}, 0, elapsedMs);
+      await this.emitExited(requestId, orgId, false, 0, elapsedMs);
       this.logger.warn({ event: 'extraction_empty_source', requestId });
       return { kind: 'advance', next: this.nextNode };
     }
@@ -78,6 +82,10 @@ export class ExtractNode implements PipelineNode {
       if (invocation.status !== ToolStatus.OK || invocation.result === undefined) {
         priorFailure = invocation.error ?? SYS_MSG.EXTRACTION_TOOL_FAILED;
         continue;
+      }
+
+      if (invocation.result && typeof invocation.result === 'object') {
+        lastRaw = invocation.result as Record<string, unknown>;
       }
 
       const parsed = ExtractionV1Schema.safeParse(invocation.result);
@@ -171,8 +179,8 @@ export class ExtractNode implements PipelineNode {
       const result = await this.requests.update({
         identifierOptions: { id: requestId, org_id: orgId },
         updatePayload: {
-          sender_company: extracted.company === 'UNKNOWN' ? null : extracted.company,
-          sender_contact: extracted.contact === 'UNKNOWN' ? null : extracted.contact,
+          sender_company: extracted.company === UNKNOWN_FIELD ? null : extracted.company,
+          sender_contact: extracted.contact === UNKNOWN_FIELD ? null : extracted.contact,
           sender_email: extracted.sender_email,
           delivery_date: extracted.delivery_date,
         },
