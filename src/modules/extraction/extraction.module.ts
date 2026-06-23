@@ -1,0 +1,32 @@
+import { Module, OnModuleInit } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { LLMModule } from '@modules/llm/llm.module';
+import { ToolsModule } from '@modules/tools/tools.module';
+import { ToolRegistry } from '@modules/tools/registry';
+import { RequestsModule } from '@modules/requests/requests.module';
+import { LineItem } from '@modules/catalog/entities/line-item.entity';
+import { Extraction } from './entities/extraction.entity';
+import { ExtractionModelAction } from './extraction.model-action';
+import { LineItemModelAction } from '@modules/catalog/line-item.model-action';
+import { ExtractRequestToolFactory } from './tools/extract-request.tool';
+
+@Module({
+  imports: [
+    LLMModule,
+    ToolsModule,
+    RequestsModule,
+    TypeOrmModule.forFeature([Extraction, LineItem]),
+  ],
+  providers: [ExtractionModelAction, LineItemModelAction, ExtractRequestToolFactory],
+  exports: [ExtractionModelAction, LineItemModelAction, ExtractRequestToolFactory],
+})
+export class ExtractionModule implements OnModuleInit {
+  constructor(
+    private readonly registry: ToolRegistry,
+    private readonly extractRequestToolFactory: ExtractRequestToolFactory,
+  ) {}
+
+  onModuleInit(): void {
+    this.registry.register(this.extractRequestToolFactory.create());
+  }
+}
