@@ -1,5 +1,5 @@
 ﻿import { ExtractionActions } from '../actions/extraction.actions';
-import { ExtractionStatus } from '../../requests/enums/extraction-status.enum';
+import { ExtractionStatus } from '../enums/extraction-status.enum';
 import type { Extraction } from '../entities/extraction.entity';
 import type { Repository } from 'typeorm';
 

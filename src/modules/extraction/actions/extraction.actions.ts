@@ -2,7 +2,7 @@
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Extraction } from '../entities/extraction.entity';
-import { ExtractionStatus } from '../../requests/enums/extraction-status.enum';
+import { ExtractionStatus } from '../enums/extraction-status.enum';
 
 @Injectable()
 export class ExtractionActions {
