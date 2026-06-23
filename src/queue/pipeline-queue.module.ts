@@ -7,6 +7,9 @@ import { NodeRegistry } from '@modules/pipeline/node-registry';
 import { STUB_NODES } from '@modules/pipeline/stub-nodes';
 import { ClassifyModule } from '@modules/classify/classify.module';
 import { ClassifyNode } from '@modules/classify/classify.node';
+import { ExtractionModule } from '@modules/extraction/extraction.module';
+import { ExtractNode } from '@modules/extraction/extract.node';
+import { ToolsModule } from '@modules/tools/tools.module';
 import { ParseNode } from '@modules/parse/parse.node';
 import { QueueClientModule } from './queue-client.module';
 import { PipelineProcessor } from './processors/pipeline.processor';
@@ -18,12 +21,21 @@ import { PipelineProcessor } from './processors/pipeline.processor';
  * Nodes register themselves with NodeRegistry on construction (Nest instantiates providers eagerly).
  */
 @Module({
-  imports: [QueueClientModule, RequestsModule, EventsModule, ClassifyModule, ObjectStoreModule],
+  imports: [
+    QueueClientModule,
+    RequestsModule,
+    EventsModule,
+    ClassifyModule,
+    ExtractionModule,
+    ToolsModule,
+    ObjectStoreModule,
+  ],
   providers: [
     PipelineGraphEngine,
     NodeRegistry,
     ...STUB_NODES,
     ParseNode,
+    ExtractNode,
     ClassifyNode,
     PipelineProcessor,
   ],
