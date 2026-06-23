@@ -46,18 +46,16 @@ export class ParseNode implements PipelineNode {
     let extracted = 0;
     let failed = 0;
     for (const attachment of attachments) {
+      // Only the store read + extraction are best-effort; a persistence fault must surface, not be
+      // masked as a parse failure (which would also discard text we successfully extracted).
+      let parsedText: string | null = null;
       try {
         const bytes = await this.store.get(attachment.storage_url);
-        const text = await extractText(bytes, attachment.filename);
-        await this.attachments.update({
-          identifierOptions: { id: attachment.id },
-          updatePayload: { parsed_text: text },
-          transactionOptions: { useTransaction: false },
-        });
+        parsedText = await extractText(bytes, attachment.filename);
         extracted++;
       } catch (err) {
-        // Best-effort: a single unreadable file must not sink a multi-file request. Record null so a
-        // re-run is idempotent and the downstream step sees "no text" rather than stale content.
+        // A single unreadable file must not sink a multi-file request. Record null so a re-run is
+        // idempotent and the downstream step sees "no text" rather than stale content.
         failed++;
         this.logger.warn({
           event: 'parse_attachment_failed',
@@ -66,12 +64,12 @@ export class ParseNode implements PipelineNode {
           filename: attachment.filename,
           error: (err as Error).message,
         });
-        await this.attachments.update({
-          identifierOptions: { id: attachment.id },
-          updatePayload: { parsed_text: null },
-          transactionOptions: { useTransaction: false },
-        });
       }
+      await this.attachments.update({
+        identifierOptions: { id: attachment.id },
+        updatePayload: { parsed_text: parsedText },
+        transactionOptions: { useTransaction: false },
+      });
     }
 
     this.logger.log({

@@ -106,4 +106,11 @@ describe('ParseNode', () => {
     expect(result.kind).toBe('failed');
     expect(store.get).not.toHaveBeenCalled();
   });
+
+  it('surfaces a persistence fault (a DB write error is not swallowed as a parse failure)', async () => {
+    const { node, attachmentsAction } = setup([makeAttachment({ id: 'a1', filename: 'a.csv' })]);
+    attachmentsAction.update.mockRejectedValueOnce(new Error('db down'));
+
+    await expect(node.run(ctx)).rejects.toThrow(/db down/);
+  });
 });
