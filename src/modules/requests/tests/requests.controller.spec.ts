@@ -1,4 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
+import { CustomHttpException } from '@common/exceptions/custom-http.exception';
 import { of } from 'rxjs';
 import { RequestsController } from '../controllers/requests.controller';
 import { RequestsService } from '../services/requests.service';
@@ -56,7 +57,8 @@ describe('RequestsController', () => {
           request_id: 'req-1',
           filename: 'rfq.pdf',
           mime_type: 'application/pdf',
-          size_bytes: 9,
+          // Deliberately wrong vs the real payload, to prove Content-Length uses bytes.length.
+          size_bytes: 999,
           storage_url: 'attachments/req-1/rfq.pdf',
         },
         bytes: Buffer.from('PDF-BYTES'),
@@ -109,6 +111,7 @@ describe('RequestsController', () => {
 
       expect(attachmentsService.getForDownload).toHaveBeenCalledWith('req-1', 'att-1');
       expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/pdf');
+      // 9 = Buffer.from('PDF-BYTES').length, NOT the (deliberately wrong) size_bytes of 999.
       expect(res.setHeader).toHaveBeenCalledWith('Content-Length', 9);
       expect(res.setHeader).toHaveBeenCalledWith(
         'Content-Disposition',
@@ -137,19 +140,19 @@ describe('RequestsController', () => {
 
       await expect(
         controller.downloadAttachment('req-1', 'att-1', { user: mockUser }, res),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(CustomHttpException);
       expect(attachmentsService.getForDownload).not.toHaveBeenCalled();
     });
 
-    it('propagates NotFoundException when the attachment is missing', async () => {
+    it('propagates a 404 when the attachment is missing', async () => {
       const res = makeRes();
       vi.spyOn(attachmentsService, 'getForDownload').mockRejectedValueOnce(
-        new NotFoundException('Attachment att-404 not found'),
+        new CustomHttpException('Attachment att-404 not found', 404),
       );
 
       await expect(
         controller.downloadAttachment('req-1', 'att-404', { user: mockUser }, res),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(CustomHttpException);
       expect(res.send).not.toHaveBeenCalled();
     });
   });

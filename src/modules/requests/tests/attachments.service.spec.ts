@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { CustomHttpException } from '@common/exceptions/custom-http.exception';
 import type { AttachmentModelAction } from '../attachments.model-action';
 import type { Attachment } from '../entities/attachment.entity';
 import type { ObjectStore } from '@common/object-store/object-store.port';
@@ -41,7 +41,7 @@ describe('AttachmentsService.getForDownload', () => {
   it('throws NotFoundException and never touches the store when the attachment is absent', async () => {
     const { service, store } = setup(null);
 
-    await expect(service.getForDownload('req-1', 'missing')).rejects.toThrow(NotFoundException);
+    await expect(service.getForDownload('req-1', 'missing')).rejects.toThrow(CustomHttpException);
     expect(store.get).not.toHaveBeenCalled();
   });
 });
