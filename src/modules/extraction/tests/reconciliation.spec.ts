@@ -66,6 +66,16 @@ describe('reconcile', () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it('maps UNKNOWN company/contact sentinel to null during schema parse', () => {
+    const parsed = ExtractionV1Schema.parse({
+      ...validExtraction,
+      company: 'UNKNOWN',
+      contact: 'UNKNOWN',
+    });
+    expect(parsed.company).toBeNull();
+    expect(parsed.contact).toBeNull();
+  });
 });
 
 describe('ExtractNode bounded loop', () => {
