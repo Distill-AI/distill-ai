@@ -10,7 +10,7 @@ describe('ExtractionActions', () => {
   const mockExtraction = {
     id: 'ext-1',
     request_id: 'req-1',
-    model: 'gpt-4o-mini',
+    model: 'llama-3.3-70b-versatile',
     schema_valid: true,
     status: ExtractionStatus.COMPLETED,
     raw_json: { items: [] },
@@ -18,7 +18,7 @@ describe('ExtractionActions', () => {
     loop_steps: [],
     latency_ms: 100,
     created_at: new Date('2026-06-22T12:00:00Z'),
-  } as Extraction;
+  } as unknown as Extraction;
 
   beforeEach(() => {
     mockRepo = {
@@ -80,11 +80,11 @@ describe('ExtractionActions', () => {
     });
   });
 
-  describe('ensureNoDuplication', () => {
+  describe('hasValidExtraction', () => {
     it('returns true when a valid extraction exists (EC: Idempotent check prevents duplicate)', async () => {
       mockRepo.findOne = vi.fn().mockResolvedValue(mockExtraction);
 
-      const result = await actions.ensureNoDuplication('req-1');
+      const result = await actions.hasValidExtraction('req-1');
 
       expect(result).toBe(true);
     });
@@ -92,7 +92,7 @@ describe('ExtractionActions', () => {
     it('returns false when no valid extraction exists', async () => {
       mockRepo.findOne = vi.fn().mockResolvedValue(null);
 
-      const result = await actions.ensureNoDuplication('req-1');
+      const result = await actions.hasValidExtraction('req-1');
 
       expect(result).toBe(false);
     });
