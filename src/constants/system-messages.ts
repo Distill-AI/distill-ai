@@ -51,6 +51,10 @@ export const REQUEST_NOT_FOUND = (id: string) => `Request ${id} not found`;
 export const PIPELINE_ENQUEUED = 'Request enqueued for pipeline processing';
 export const PIPELINE_RESUMED = 'Request resumed for pipeline processing';
 
+// Parse node (US-E1-1-T3)
+export const PARSE_UNSUPPORTED_TYPE = (ext: string) =>
+  `Cannot extract text from unsupported file type "${ext}"`;
+
 // Ingestion
 export const REQUEST_CREATED = 'Request created and queued for processing';
 export const REQUEST_INPUT_REQUIRED =

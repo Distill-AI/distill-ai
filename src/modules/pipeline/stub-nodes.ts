@@ -13,18 +13,6 @@ import type { NodeResult, PipelineNode } from './types';
  */
 
 @Injectable()
-export class ParseStubNode implements PipelineNode {
-  readonly name = CurrentNode.PARSE;
-  private readonly nextNode = CurrentNode.EXTRACT;
-  constructor(registry: NodeRegistry) {
-    registry.register(this);
-  }
-  run(): Promise<NodeResult> {
-    return Promise.resolve({ kind: 'advance', next: this.nextNode });
-  }
-}
-
-@Injectable()
 export class ExtractStubNode implements PipelineNode {
   readonly name = CurrentNode.EXTRACT;
   private readonly nextNode = CurrentNode.CLASSIFY;
@@ -98,7 +86,6 @@ export class ScoreStubNode implements PipelineNode {
 
 /** All stub-node providers, for registration in the module. */
 export const STUB_NODES = [
-  ParseStubNode,
   ExtractStubNode,
   MatchStubNode,
   PriceStubNode,
