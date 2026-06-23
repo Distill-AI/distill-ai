@@ -3,7 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { env } from '@config/env';
 import { ResumeReason } from '@modules/requests/enums/resume-reason.enum';
 import { RequestModelAction } from '@modules/requests/requests.model-action';
-import { NodeRecoveryActions } from './node-recovery.actions';
+import { NodeRecoveryActions } from '@modules/requests/actions/node-recovery.actions';
 
 /**
  * Crash recovery (US-E8-4). Re-enqueues requests left mid-flight (status 'parsing' beyond the
