@@ -125,7 +125,7 @@ describe('RequestsController', () => {
       expect(result.data.resumed).toBe(true);
       expect(result.data.resume_reason).toBe(ResumeReason.MANUAL);
       expect(result.data.current_node).toBe(CurrentNode.EXTRACT);
-      expect(requestActions.resumeRequest).toHaveBeenCalledWith('req-1', ResumeReason.MANUAL);
+      expect(requestActions.resumeRequest).toHaveBeenCalledWith(mockRequest, ResumeReason.MANUAL);
     });
 
     it('throws NotFoundException when request does not exist', async () => {
