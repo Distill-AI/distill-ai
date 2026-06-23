@@ -30,6 +30,10 @@ export class LineItemModelAction extends AbstractModelAction<LineItem> {
   ): Promise<void> {
     const replace = async (em: EntityManager): Promise<void> => {
       await em.delete(LineItem, { request_id: requestId });
+      if (items.length === 0) {
+        return;
+      }
+
       await em.save(
         LineItem,
         items.map((item) => ({
