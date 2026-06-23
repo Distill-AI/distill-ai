@@ -1,7 +1,7 @@
-import * as dotenv from 'dotenv';
-
-dotenv.config();
-
+/**
+ * Test bootstrap: do not load `.env` here; we want deterministic test defaults that can't be
+ * overridden by a local developer `.env` file.
+ */
 function envDefault(key: string, fallback: string): string {
   const raw = process.env[key];
   if (raw === undefined || raw.trim() === '') {
