@@ -48,8 +48,22 @@ export const OBJECT_STORE_KEY_TRAVERSAL = 'Object key escapes store root';
 
 // Pipeline
 export const REQUEST_NOT_FOUND = (id: string) => `Request ${id} not found`;
+export const ATTACHMENT_NOT_FOUND = (id: string) => `Attachment ${id} not found`;
 export const PIPELINE_ENQUEUED = 'Request enqueued for pipeline processing';
 export const PIPELINE_RESUMED = 'Request resumed for pipeline processing';
+
+// Parse node (US-E1-1-T3)
+export const PARSE_UNSUPPORTED_TYPE = (ext: string) =>
+  `Cannot extract text from unsupported file type "${ext}"`;
+
+// Ingestion
+export const REQUEST_CREATED = 'Request created and queued for processing';
+export const REQUEST_INPUT_REQUIRED =
+  'Provide at least one file or pasted text to create a request.';
+export const UNSUPPORTED_FILE_TYPE =
+  'Unsupported file type. Only PDF, CSV, or TXT files are accepted.';
+export const FILE_TOO_LARGE = (maxMb: number) => `File too large. Maximum size is ${maxMb} MB.`;
+export const RLS_CONTEXT_MISSING = 'Request tenant context is missing; cannot create the request.';
 
 // Stream / SSE
 export const STREAM_SUBSCRIBED = 'SSE stream subscribed';
@@ -60,6 +74,7 @@ export const SANITIZED_SUMMARY_PLACEHOLDER = 'Processing step completed';
 export const REDACTED_FIELD_PLACEHOLDER = '[redacted]';
 
 // Classify
+
 export const CLASSIFY_DEFAULTED_LOW_CONFIDENCE = (confidence: number, threshold: number) =>
   `Classification confidence ${confidence} below threshold ${threshold}; defaulting to service_quote`;
 export const CLASSIFY_RETRY_FAILED = 'Classification retry failed; defaulting to service_quote';
@@ -67,6 +82,18 @@ export const CLASSIFY_MALFORMED_INPUT =
   'Parsed request missing required fields; defaulting to service_quote';
 export const LLM_INVOCATION_FAILED = (status: number, body: string) =>
   `LLM invocation failed (${status}): ${body}`;
+
+// Extraction (US-E2)
+export const EXTRACTION_COMPLETE = 'Extraction completed successfully';
+export const EXTRACTION_ESCALATED = 'Extraction failed validation after retry; escalated to review';
+export const EXTRACTION_SOURCE_TEXT_EMPTY = 'No source text available for extraction';
+export const EXTRACTION_TOOL_FAILED = 'extract_request tool invocation failed';
+export const EXTRACTION_RECONCILE_FAILED = (reason: string) =>
+  `Extraction reconciliation failed: ${reason}`;
+export const EXTRACTION_UPSERT_FAILED = (requestId: string) =>
+  `Failed to persist extraction for request ${requestId}`;
+export const EXTRACTION_JSON_PARSE_FAILED = (detail: string) =>
+  `Failed to parse extraction JSON: ${detail}`;
 
 // Auth
 export const AUTH_PROFILE_FETCHED = 'Profile fetched successfully';
