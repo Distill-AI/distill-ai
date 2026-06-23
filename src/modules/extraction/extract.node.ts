@@ -55,9 +55,10 @@ export class ExtractNode implements PipelineNode {
       return { kind: 'failed', error: { message: SYS_MSG.REQUEST_NOT_FOUND(requestId) } };
     }
 
-    const text = await this.aggregateSourceText(requestId, req.source_subject, req.source_body);
     if (!text.trim()) {
-      await this.persistFailure(requestId, {}, 0, Date.now() - start);
+      const elapsed = Date.now() - start;
+      await this.persistFailure(requestId, {}, 0, elapsed);
+      await this.emitExited(requestId, orgId, false, 0, elapsed);
       this.logger.warn({ event: 'extraction_empty_source', requestId });
       return { kind: 'advance', next: this.nextNode };
     }
