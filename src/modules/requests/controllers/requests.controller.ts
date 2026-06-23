@@ -1,8 +1,19 @@
-import { Controller, Get, Logger, NotFoundException, Param, Req, Res, Sse } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpStatus,
+  Logger,
+  NotFoundException,
+  Param,
+  Req,
+  Res,
+  Sse,
+} from '@nestjs/common';
 import type { MessageEvent } from '@nestjs/common';
 import type { Response } from 'express';
 import { Observable } from 'rxjs';
 import { authConfig } from '@config/auth.config';
+import { CustomHttpException } from '@common/exceptions/custom-http.exception';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Role } from '../../auth/enums/role.enum';
 import * as SYS_MSG from '@constants/system-messages';
@@ -42,7 +53,7 @@ export class RequestsController {
     if (authConfig.enabled) {
       const user = req.user;
       if (!user || request.org_id !== user.orgId) {
-        throw new NotFoundException(SYS_MSG.REQUEST_NOT_FOUND(requestId));
+        throw new CustomHttpException(SYS_MSG.REQUEST_NOT_FOUND(requestId), HttpStatus.NOT_FOUND);
       }
     }
 
@@ -52,7 +63,8 @@ export class RequestsController {
     );
 
     res.setHeader('Content-Type', attachment.mime_type);
-    res.setHeader('Content-Length', attachment.size_bytes);
+    // Length from the actual payload, not the stored metadata, so the header can't drift from the body.
+    res.setHeader('Content-Length', bytes.length);
     res.setHeader(
       'Content-Disposition',
       `attachment; filename*=UTF-8''${encodeURIComponent(attachment.filename)}`,
