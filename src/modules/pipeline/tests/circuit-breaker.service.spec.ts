@@ -138,6 +138,14 @@ describe('CircuitBreakerService', () => {
     });
   });
 
+  describe('EC-02: Redis incr failure trips the breaker (fail-closed)', () => {
+    it('opens the breaker when incr returns null', async () => {
+      mockRedis.incr.mockResolvedValueOnce(null as unknown as number);
+      await service.recordFailure();
+      expect(await service.getState()).toBe(CircuitBreakerState.OPEN);
+    });
+  });
+
   describe('EC-04: state is shared across service instances via Redis', () => {
     it('a second instance connected to the same Redis sees the OPEN state', async () => {
       await service.recordFailure();

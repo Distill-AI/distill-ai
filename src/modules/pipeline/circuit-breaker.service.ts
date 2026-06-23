@@ -91,7 +91,8 @@ export class CircuitBreakerService {
       // incr is atomic: concurrent callers get distinct counts, no increment is lost.
       await this.redis.setNx(CB_FAILURES_KEY, '0', env.CIRCUIT_BREAKER_WINDOW_S);
       const count = await this.redis.incr(CB_FAILURES_KEY);
-      if (count !== null && count >= env.CIRCUIT_BREAKER_FAILURE_THRESHOLD) {
+      // null means Redis failed mid-window: trip the breaker rather than silently dropping the failure.
+      if (count === null || count >= env.CIRCUIT_BREAKER_FAILURE_THRESHOLD) {
         this.logger.error({
           event: 'circuit_breaker_tripped',
           message: 'Failure threshold reached, opening breaker',

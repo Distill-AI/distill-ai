@@ -20,10 +20,18 @@ export class LlmClientService implements OnModuleInit {
     private readonly eventsService: EventsService,
   ) {
     this.openai = new OpenAI({
-      apiKey: env.LLM_API_KEY || 'dummy-key',
+      apiKey: env.DEMO_MODE ? 'demo-placeholder' : env.LLM_API_KEY!,
       baseURL: env.LLM_BASE_URL,
       timeout: env.LLM_TIMEOUT_MS,
     });
+    if (!env.DEMO_MODE && !env.LLM_BASE_URL) {
+      this.logger.warn({
+        event: 'llm_base_url_unset',
+        message:
+          'LLM_BASE_URL is not set; the OpenAI SDK will default to https://api.openai.com/v1. ' +
+          'Set LLM_BASE_URL explicitly if using a non-OpenAI provider (e.g. qwen-72b).',
+      });
+    }
   }
 
   async onModuleInit(): Promise<void> {
@@ -135,21 +143,20 @@ export class LlmClientService implements OnModuleInit {
     params: OpenAI.Chat.ChatCompletionCreateParams,
   ): Promise<OpenAI.Chat.ChatCompletion> {
     if (env.DEMO_MODE) {
-      this.logger.warn({ event: 'llm_demo_fixture_replay', requestId, node, requestType });
-
       const fixture = this.getFixture(requestType);
       if (!fixture) {
         this.logger.error({ event: 'llm_demo_fixture_missing', requestType });
+        // Must emit stage.error before throwing: catch-blocks skip the emit trusting this invariant.
+        await this.eventsService.emit({
+          eventName: 'stage.error',
+          orgId,
+          requestId,
+          attributes: { node, reason: 'llm_circuit_open', escalated_to_human: true },
+        });
         throw new CircuitBreakerOpenError();
       }
 
-      await this.eventsService.emit({
-        eventName: 'stage.error',
-        orgId,
-        requestId,
-        attributes: { node, reason: 'llm_timeout_fixture_replay', escalated_to_human: false },
-      });
-
+      this.logger.warn({ event: 'llm_demo_fixture_replay', requestId, node, requestType });
       return {
         id: 'chatcmpl-fixture',
         object: 'chat.completion',
