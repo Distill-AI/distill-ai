@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { QueueClientModule } from '@queue/queue-client.module';
 import { EventsModule } from '@modules/events/events.module';
 import { RequestsModule } from '@modules/requests/requests.module';
@@ -13,7 +13,7 @@ import { NodeRecoveryActions } from './node-recovery.actions';
  * ScheduleModule.forRoot() being registered app-wide (via SchedulerModule).
  */
 @Module({
-  imports: [QueueClientModule, EventsModule, forwardRef(() => RequestsModule)],
+  imports: [QueueClientModule, EventsModule, RequestsModule],
   providers: [PipelineRunner, RecoverySweep, NodeRecoveryActions],
   exports: [PipelineRunner, NodeRecoveryActions],
 })

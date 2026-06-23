@@ -7,7 +7,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Request } from '../../requests/entities/request.entity';
-import { ExtractionStatus } from '../../requests/enums/extraction-status.enum';
+import { ExtractionStatus } from '../enums/extraction-status.enum';
 
 @Entity('extractions')
 export class Extraction {

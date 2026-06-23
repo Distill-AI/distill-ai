@@ -8,6 +8,12 @@ export class NodeRecoveryActions {
 
   constructor(private readonly runner: PipelineRunner) {}
 
+  /**
+   * Re-enqueues a stalled request so the pipeline worker picks it up from its
+   * last recorded checkpoint. The `reason` parameter is reserved for future
+   * behavioral branching (e.g. skip-vs-reprocess); currently it is logged only
+   * and does not affect execution.
+   */
   async resumeFromCurrentNode(requestId: string, reason: ResumeReason): Promise<void> {
     this.logger.log({
       event: 'resume_from_node',

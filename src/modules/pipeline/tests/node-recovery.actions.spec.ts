@@ -1,6 +1,6 @@
-import { NodeRecoveryActions } from '../../pipeline/node-recovery.actions';
-import { ResumeReason } from '../enums/resume-reason.enum';
-import type { PipelineRunner } from '../../pipeline/pipeline.runner';
+import { NodeRecoveryActions } from '../node-recovery.actions';
+import { ResumeReason } from '../../requests/enums/resume-reason.enum';
+import type { PipelineRunner } from '../pipeline.runner';
 
 describe('NodeRecoveryActions', () => {
   let actions: NodeRecoveryActions;
