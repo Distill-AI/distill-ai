@@ -1,4 +1,4 @@
-import { applyDecorators } from '@nestjs/common';
+import { applyDecorators, HttpStatus } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiProduces, ApiResponse, ApiTags } from '@nestjs/swagger';
 import * as SYS_MSG from '@constants/system-messages';
 
@@ -47,5 +47,45 @@ export function RequestEventsDocs(): MethodDecorator {
       status: 403,
       description: SYS_MSG.AUTH_FORBIDDEN,
     }),
+  );
+}
+
+export function DownloadAttachmentDocs(): MethodDecorator {
+  return applyDecorators(
+    ApiTags('Requests'),
+    ApiOperation({
+      summary: 'Download the original bytes of an attachment',
+      description:
+        'Streams the stored original file for an attachment, with its original MIME type and ' +
+        'filename (via Content-Disposition). Access is scoped to the parent request: a request ' +
+        'that does not exist, or that belongs to another organization, returns 404 (the same ' +
+        'response as a missing attachment, so existence is not leaked across tenants).',
+    }),
+    ApiParam({
+      name: 'id',
+      description: 'UUID of the parent request',
+      required: true,
+      type: 'string',
+      format: 'uuid',
+    }),
+    ApiParam({
+      name: 'attachmentId',
+      description: 'UUID of the attachment to download',
+      required: true,
+      type: 'string',
+      format: 'uuid',
+    }),
+    ApiProduces('application/octet-stream'),
+    ApiResponse({
+      status: HttpStatus.OK,
+      description: 'The original attachment bytes, served with the stored MIME type.',
+      content: { 'application/octet-stream': { schema: { type: 'string', format: 'binary' } } },
+    }),
+    ApiResponse({
+      status: HttpStatus.NOT_FOUND,
+      description: `${SYS_MSG.REQUEST_NOT_FOUND('{id}')} / ${SYS_MSG.ATTACHMENT_NOT_FOUND('{attachmentId}')}`,
+    }),
+    ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: SYS_MSG.AUTH_UNAUTHORIZED }),
+    ApiResponse({ status: HttpStatus.FORBIDDEN, description: SYS_MSG.AUTH_FORBIDDEN }),
   );
 }
