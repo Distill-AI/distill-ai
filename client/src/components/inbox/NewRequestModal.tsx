@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { formatFileSize } from '../../lib/formatFileSize';
-import { useCreateRequest } from '../../api/requests';
+import { useCreateRequest, type CreateRequestPayload } from '../../api/requests';
 
 const ACCEPTED_EXTENSIONS = ['.pdf', '.csv', '.txt'];
 const ACCEPT_ATTR = ACCEPTED_EXTENSIONS.join(',');
@@ -115,24 +115,10 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   const createRequest = useCreateRequest((msg) => setSubmitError(msg));
-  // createRequest's object reference changes every render; storing it in a ref lets
-  // handleClose call .reset() without adding createRequest to the useCallback dep array
-  // (which would re-create handleClose and re-bind the keyboard listener each render).
-  const createRequestRef = useRef(createRequest);
-  useEffect(() => {
-    createRequestRef.current = createRequest;
-  }, [createRequest]);
-
-  const isOpenRef = useRef(open);
-  useEffect(() => {
-    isOpenRef.current = open;
-  }, [open]);
 
   const canProcess = mode === 'upload' ? files.length > 0 : emailText.trim().length > 0;
 
   const handleClose = useCallback(() => {
-    isOpenRef.current = false;
-    createRequestRef.current.reset();
     setSubmitError(null);
     setMode('upload');
     setFiles([]);
@@ -170,23 +156,19 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
     setFiles((prev) => prev.filter((f) => fileKey(f) !== fileKey(target)));
   }
 
-  function handleProcess() {
+  async function handleProcess() {
     if (!canProcess) return;
-    if (mode === 'email') {
-      setSubmitError(null);
-      createRequest.mutate(
-        { kind: 'paste', sourceBody: emailText.trim() },
-        {
-          onSuccess: () => handleClose(),
-          onError: () => {
-            // error message is set via the onError callback passed to useCreateRequest
-          },
-        },
-      );
-      return;
+    setSubmitError(null);
+
+    const payload: CreateRequestPayload =
+      mode === 'upload' ? { kind: 'file', files } : { kind: 'paste', sourceBody: emailText.trim() };
+
+    try {
+      await createRequest.mutateAsync(payload);
+      handleClose();
+    } catch {
+      // error message is set via the onError callback passed to useCreateRequest
     }
-    // TODO(US-E1-1): wire upload mutation
-    handleClose();
   }
 
   useEffect(() => {
@@ -396,7 +378,7 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
             disabled={!canProcess || createRequest.isPending}
             className="px-4 h-9 rounded-button bg-indigo-600 text-white text-[13px] font-medium hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-indigo-600"
           >
-            Process request
+            {createRequest.isPending ? 'Processing...' : 'Process request'}
           </button>
         </div>
       </div>
