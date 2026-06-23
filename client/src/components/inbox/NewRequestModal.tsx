@@ -115,6 +115,9 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   const createRequest = useCreateRequest();
+  // createRequest's object reference changes every render; storing it in a ref lets
+  // handleClose call .reset() without adding createRequest to the useCallback dep array
+  // (which would re-create handleClose and re-bind the keyboard listener each render).
   const createRequestRef = useRef(createRequest);
   useEffect(() => {
     createRequestRef.current = createRequest;
