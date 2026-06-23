@@ -90,6 +90,10 @@ export const EXTRACTION_SOURCE_TEXT_EMPTY = 'No source text available for extrac
 export const EXTRACTION_TOOL_FAILED = 'extract_request tool invocation failed';
 export const EXTRACTION_RECONCILE_FAILED = (reason: string) =>
   `Extraction reconciliation failed: ${reason}`;
+export const EXTRACTION_UPSERT_FAILED = (requestId: string) =>
+  `Failed to persist extraction for request ${requestId}`;
+export const EXTRACTION_JSON_PARSE_FAILED = (detail: string) =>
+  `Failed to parse extraction JSON: ${detail}`;
 
 // Auth
 export const AUTH_PROFILE_FETCHED = 'Profile fetched successfully';

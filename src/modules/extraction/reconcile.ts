@@ -10,7 +10,7 @@ export type ReconcileResult = { ok: true } | { ok: false; reason: string };
  */
 export function reconcile(data: ExtractionV1, sourceText: string): ReconcileResult {
   for (const item of data.line_items) {
-    if (item.quantity <= 0) {
+    if (!Number.isFinite(item.quantity) || item.quantity <= 0) {
       return {
         ok: false,
         reason: `Line item ${item.position} has invalid quantity ${item.quantity}`,
@@ -35,6 +35,9 @@ export function reconcile(data: ExtractionV1, sourceText: string): ReconcileResu
   const statedTotalQty = parseStatedTotalQuantity(sourceText);
   if (statedTotalQty !== null) {
     const extractedTotal = data.line_items.reduce((sum, item) => sum + item.quantity, 0);
+    if (!Number.isFinite(extractedTotal)) {
+      return { ok: false, reason: 'Extracted line item quantities are not finite' };
+    }
     if (Math.abs(extractedTotal - statedTotalQty) > QUANTITY_TOLERANCE) {
       return {
         ok: false,

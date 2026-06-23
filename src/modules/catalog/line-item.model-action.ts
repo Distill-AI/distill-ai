@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { AbstractModelAction } from '@common/model-action/abstract.model-action';
 import { LineItem } from './entities/line-item.entity';
 
@@ -16,29 +16,37 @@ export class LineItemModelAction extends AbstractModelAction<LineItem> {
   constructor(
     @InjectRepository(LineItem)
     repository: Repository<LineItem>,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
   ) {
     super(repository, LineItem);
   }
 
-  /** Replaces all line items for a request with the extracted set. */
-  async replaceForRequest(requestId: string, items: LineItemInput[]): Promise<void> {
-    await this.delete({
-      identifierOptions: { request_id: requestId },
-      transactionOptions: { useTransaction: false },
-    });
-
-    for (const item of items) {
-      await this.create({
-        createPayload: {
+  /** Replaces all line items for a request with the extracted set inside a transaction. */
+  async replaceForRequest(
+    requestId: string,
+    items: LineItemInput[],
+    transaction?: EntityManager,
+  ): Promise<void> {
+    const replace = async (em: EntityManager): Promise<void> => {
+      await em.delete(LineItem, { request_id: requestId });
+      for (const item of items) {
+        await em.save(LineItem, {
           request_id: requestId,
           position: item.position,
           raw_text: item.raw_text,
           quantity: item.quantity,
           unit: item.unit,
           flags: [],
-        },
-        transactionOptions: { useTransaction: false },
-      });
+        });
+      }
+    };
+
+    if (transaction) {
+      await replace(transaction);
+      return;
     }
+
+    await this.dataSource.transaction(replace);
   }
 }

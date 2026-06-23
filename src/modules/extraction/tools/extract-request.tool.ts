@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { env } from '@config/env';
+import * as SYS_MSG from '@constants/system-messages';
 import { LLMProvider } from '@modules/llm/llm.provider';
 import { ToolContract } from '@modules/tools/interfaces/tool-contract.interface';
 import {
@@ -37,7 +38,15 @@ export class ExtractRequestToolFactory {
       .replace(/```(?:json)?\s*/gi, '')
       .replace(/```\s*$/gm, '')
       .trim();
-    const parsed: unknown = JSON.parse(cleaned);
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      throw new Error(SYS_MSG.EXTRACTION_JSON_PARSE_FAILED(detail));
+    }
+
     return ExtractionV1Schema.parse(parsed);
   }
 
