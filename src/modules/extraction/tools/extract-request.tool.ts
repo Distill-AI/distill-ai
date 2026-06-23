@@ -55,13 +55,13 @@ export class ExtractRequestToolFactory {
         : '';
 
     return `${failureBlock}Extract structured fields from this inbound B2B request.
-Use "${UNKNOWN_FIELD}" for company, contact, or unit when the value cannot be mapped from the text. Never guess.
+Use null for company or contact when the value cannot be mapped from the text. Use "${UNKNOWN_FIELD}" for unit when unknown. Never guess.
 Return ONLY valid JSON with no markdown or prose.
 
 Required shape:
 {
-  "company": "string",
-  "contact": "string",
+  "company": "string or null",
+  "contact": "string or null",
   "sender_email": "email or null",
   "delivery_date": "YYYY-MM-DD or null",
   "line_items": [

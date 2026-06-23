@@ -10,12 +10,6 @@ export type ReconcileResult = { ok: true } | { ok: false; reason: string };
  */
 export function reconcile(data: ExtractionV1, sourceText: string): ReconcileResult {
   for (const item of data.line_items) {
-    if (!Number.isFinite(item.quantity) || item.quantity <= 0) {
-      return {
-        ok: false,
-        reason: `Line item ${item.position} has invalid quantity ${item.quantity}`,
-      };
-    }
     if (!item.unit.trim()) {
       return {
         ok: false,
