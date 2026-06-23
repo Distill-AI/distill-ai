@@ -114,7 +114,7 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
   const fileInputRef = useRef<HTMLInputElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
-  const createRequest = useCreateRequest();
+  const createRequest = useCreateRequest((msg) => setSubmitError(msg));
   // createRequest's object reference changes every render; storing it in a ref lets
   // handleClose call .reset() without adding createRequest to the useCallback dep array
   // (which would re-create handleClose and re-bind the keyboard listener each render).
@@ -175,15 +175,11 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
     if (mode === 'email') {
       setSubmitError(null);
       createRequest.mutate(
-        { channel: 'email', source_body: emailText.trim() },
+        { kind: 'paste', sourceBody: emailText.trim() },
         {
           onSuccess: () => handleClose(),
-          onError: (err) => {
-            if (!isOpenRef.current) return;
-            const message =
-              (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-              'Something went wrong. Please try again.';
-            setSubmitError(message);
+          onError: () => {
+            // error message is set via the onError callback passed to useCreateRequest
           },
         },
       );

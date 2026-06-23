@@ -5,17 +5,21 @@ import { MemoryRouter } from 'react-router-dom';
 import { RoleProvider } from '../context/RoleContext';
 import { Inbox } from './Inbox';
 
-const { mockMutate, mockIsPending } = vi.hoisted(() => ({
+const { mockMutate, mockIsPending, capturedOnError } = vi.hoisted(() => ({
   mockMutate: vi.fn(),
   mockIsPending: { value: false },
+  capturedOnError: { current: null as ((msg: string) => void) | null },
 }));
 
 vi.mock('../api/requests', () => ({
-  useCreateRequest: () => ({
-    mutate: mockMutate,
-    isPending: mockIsPending.value,
-    reset: vi.fn(),
-  }),
+  useCreateRequest: (onError: (msg: string) => void) => {
+    capturedOnError.current = onError;
+    return {
+      mutate: mockMutate,
+      isPending: mockIsPending.value,
+      reset: vi.fn(),
+    };
+  },
 }));
 
 function renderInbox() {
@@ -149,7 +153,7 @@ describe('Inbox', () => {
 
     expect(mockMutate).toHaveBeenCalledOnce();
     expect(mockMutate).toHaveBeenCalledWith(
-      { channel: 'email', source_body: 'pasted email body' },
+      { kind: 'paste', sourceBody: 'pasted email body' },
       expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
     );
   });
@@ -177,12 +181,8 @@ describe('Inbox', () => {
     await user.type(screen.getByLabelText(/email body/i), 'email content');
     await user.click(screen.getByRole('button', { name: /process request/i }));
 
-    const [, callbacks] = mockMutate.mock.calls[0] as [
-      unknown,
-      { onError: (err: unknown) => void },
-    ];
     act(() => {
-      callbacks.onError({ response: { data: { message: 'Request failed: invalid data' } } });
+      capturedOnError.current?.('Request failed: invalid data');
     });
 
     expect(screen.getByRole('alert')).toHaveTextContent('Request failed: invalid data');
