@@ -6,11 +6,6 @@ export const CLIENT_ERROR_MESSAGES: Record<string, string> = {
   PAYLOAD_TOO_LARGE: 'The payload is too large. Reduce the amount of content and try again.',
 };
 
-const messages: Record<string, string> = {
-  UNAUTHORIZED: 'You are not authorized to perform this action.',
-  NOT_FOUND: 'The requested resource was not found.',
-};
-
 export const GENERIC_ERROR = 'Something went wrong. Please try again.';
 
 export function resolveServerError(errorCode: string | undefined): string {
