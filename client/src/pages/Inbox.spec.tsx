@@ -1,20 +1,42 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { RoleProvider } from '../context/RoleContext';
 import { Inbox } from './Inbox';
 
+const { mockMutate, mockIsPending } = vi.hoisted(() => ({
+  mockMutate: vi.fn(),
+  mockIsPending: { value: false },
+}));
+
+vi.mock('../api/requests', () => ({
+  useCreateRequest: () => ({
+    mutate: mockMutate,
+    isPending: mockIsPending.value,
+    reset: vi.fn(),
+  }),
+}));
+
 function renderInbox() {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter>
-      <RoleProvider>
-        <Inbox />
-      </RoleProvider>
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <RoleProvider>
+          <Inbox />
+        </RoleProvider>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
 describe('Inbox', () => {
+  beforeEach(() => {
+    mockMutate.mockClear();
+    mockIsPending.value = false;
+  });
+
   it('opens the new request dialog when clicking + New request', async () => {
     const user = userEvent.setup();
     renderInbox();
@@ -78,5 +100,109 @@ describe('Inbox', () => {
 
     await user.click(screen.getByRole('button', { name: /remove line_items\.csv/i }));
     expect(screen.queryByText(/line_items\.csv/i)).not.toBeInTheDocument();
+  });
+
+  // AC-01: button disabled when email tab is active and textarea is empty
+  it('disables Process request when Paste email tab is active and textarea is empty', async () => {
+    const user = userEvent.setup();
+    renderInbox();
+
+    await user.click(screen.getByRole('button', { name: /\+ new request/i }));
+    await user.click(screen.getByRole('tab', { name: /paste email/i }));
+
+    expect(screen.getByRole('button', { name: /process request/i })).toBeDisabled();
+  });
+
+  // AC-02: button disabled when textarea contains only whitespace
+  it('disables Process request when Paste email tab is active and textarea contains only whitespace', async () => {
+    const user = userEvent.setup();
+    renderInbox();
+
+    await user.click(screen.getByRole('button', { name: /\+ new request/i }));
+    await user.click(screen.getByRole('tab', { name: /paste email/i }));
+    await user.type(screen.getByLabelText(/email body/i), '   ');
+
+    expect(screen.getByRole('button', { name: /process request/i })).toBeDisabled();
+  });
+
+  // AC-03: button enabled when textarea has non-empty content
+  it('enables Process request when Paste email tab is active and textarea has content', async () => {
+    const user = userEvent.setup();
+    renderInbox();
+
+    await user.click(screen.getByRole('button', { name: /\+ new request/i }));
+    await user.click(screen.getByRole('tab', { name: /paste email/i }));
+    await user.type(screen.getByLabelText(/email body/i), 'Hello, please quote this.');
+
+    expect(screen.getByRole('button', { name: /process request/i })).toBeEnabled();
+  });
+
+  // AC-04: clicking Process request calls mutate with trimmed body
+  it('calls mutate with channel and trimmed body when Process request is clicked in paste mode', async () => {
+    const user = userEvent.setup();
+    renderInbox();
+
+    await user.click(screen.getByRole('button', { name: /\+ new request/i }));
+    await user.click(screen.getByRole('tab', { name: /paste email/i }));
+    await user.type(screen.getByLabelText(/email body/i), '  pasted email body  ');
+    await user.click(screen.getByRole('button', { name: /process request/i }));
+
+    expect(mockMutate).toHaveBeenCalledOnce();
+    expect(mockMutate).toHaveBeenCalledWith(
+      { channel: 'email', source_body: 'pasted email body' },
+      expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
+    );
+  });
+
+  // AC-05: button disabled while mutation is in flight
+  it('disables Process request while the mutation is pending', async () => {
+    mockIsPending.value = true;
+    const user = userEvent.setup();
+    renderInbox();
+
+    await user.click(screen.getByRole('button', { name: /\+ new request/i }));
+    await user.click(screen.getByRole('tab', { name: /paste email/i }));
+    await user.type(screen.getByLabelText(/email body/i), 'Hello');
+
+    expect(screen.getByRole('button', { name: /process request/i })).toBeDisabled();
+  });
+
+  // AC-09: inline error appears and modal stays open when mutate fires onError
+  it('shows inline error from server when submit fails; dialog stays open', async () => {
+    const user = userEvent.setup();
+    renderInbox();
+
+    await user.click(screen.getByRole('button', { name: /\+ new request/i }));
+    await user.click(screen.getByRole('tab', { name: /paste email/i }));
+    await user.type(screen.getByLabelText(/email body/i), 'email content');
+    await user.click(screen.getByRole('button', { name: /process request/i }));
+
+    const [, callbacks] = mockMutate.mock.calls[0] as [
+      unknown,
+      { onError: (err: unknown) => void },
+    ];
+    act(() => {
+      callbacks.onError({ response: { data: { message: 'Request failed: invalid data' } } });
+    });
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Request failed: invalid data');
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  // AC-10: switching tabs preserves textarea content; guard re-evaluates on return
+  it('preserves textarea content when switching tabs and re-enables Process request on return', async () => {
+    const user = userEvent.setup();
+    renderInbox();
+
+    await user.click(screen.getByRole('button', { name: /\+ new request/i }));
+    await user.click(screen.getByRole('tab', { name: /paste email/i }));
+    await user.type(screen.getByLabelText(/email body/i), 'hello world');
+
+    await user.click(screen.getByRole('tab', { name: /upload files/i }));
+    expect(screen.getByRole('button', { name: /process request/i })).toBeDisabled();
+
+    await user.click(screen.getByRole('tab', { name: /paste email/i }));
+    expect(screen.getByLabelText(/email body/i)).toHaveValue('hello world');
+    expect(screen.getByRole('button', { name: /process request/i })).toBeEnabled();
   });
 });
