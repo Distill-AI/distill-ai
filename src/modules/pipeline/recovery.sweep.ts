@@ -1,8 +1,6 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { env } from '@config/env';
-import { EventsService } from '@modules/events/events.service';
-import { getTimestamp } from '@common/utils/timestamp';
 import { ResumeReason } from '@modules/requests/enums/resume-reason.enum';
 import { RequestModelAction } from '@modules/requests/requests.model-action';
 import { NodeRecoveryActions } from './node-recovery.actions';
@@ -10,7 +8,7 @@ import { NodeRecoveryActions } from './node-recovery.actions';
 /**
  * Crash recovery (US-E8-4). Re-enqueues requests left mid-flight (status 'parsing' beyond the
  * stale window) so a worker crash never strands a request. Runs on a cron and once on boot.
- * Wired to live nodes — emits `request.resumed(reason=crash_recovery)` on recovery.
+ * The pipeline engine emits `request.resumed` when it processes the queued job.
  */
 @Injectable()
 export class RecoverySweep implements OnApplicationBootstrap {
@@ -20,7 +18,6 @@ export class RecoverySweep implements OnApplicationBootstrap {
   constructor(
     private readonly requests: RequestModelAction,
     private readonly nodeRecovery: NodeRecoveryActions,
-    private readonly events: EventsService,
   ) {}
 
   /** Sweep for stale 'parsing' requests and re-enqueue them (Bull dedupes via the stable jobId). */
@@ -29,22 +26,9 @@ export class RecoverySweep implements OnApplicationBootstrap {
     const stale = await this.requests.findStaleParsing(this.staleSeconds);
     let enqueued = 0;
     for (const req of stale) {
+      // Per-request isolation: one failed resume must not abort recovery of the rest.
       try {
         await this.nodeRecovery.resumeFromCurrentNode(req.id, ResumeReason.CRASH_RECOVERY);
-
-        await this.events.emit({
-          eventName: 'request.resumed',
-          orgId: req.org_id,
-          requestId: req.id,
-          attributes: {
-            type: 'request.resumed',
-            timestamp: getTimestamp(),
-            reason: ResumeReason.CRASH_RECOVERY,
-            resumed_from_node: req.current_node,
-            resumed_at: getTimestamp(),
-          },
-        });
-
         enqueued += 1;
       } catch (err) {
         this.logger.error({
