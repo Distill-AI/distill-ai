@@ -31,7 +31,7 @@ interface CreateRequestResponse {
 export async function postRequest(payload: CreateRequestPayload): Promise<CreateRequestResponse> {
   if (payload.kind === 'file') {
     const form = new FormData();
-    form.append('channel', 'file');
+    form.append('channel', 'upload');
     for (const file of payload.files) {
       form.append('files', file);
     }
@@ -40,7 +40,7 @@ export async function postRequest(payload: CreateRequestPayload): Promise<Create
   }
 
   const res = await client.post<{ data: CreateRequestResponse }>('/requests', {
-    channel: 'paste',
+    channel: 'email',
     source_body: payload.sourceBody,
   });
   return res.data.data;
@@ -67,14 +67,18 @@ export function useCreateRequest(onError: (message: string) => void) {
       }
       navigate(`/requests/${data.request_id}`);
     },
-    onError: (error: AxiosError<{ error?: string }>) => {
+    onError: (error: AxiosError<{ error?: string; message?: string }>) => {
       const status = error.response?.status;
-      const errorCode = error.response?.data?.error;
       if (status && status >= 500) {
         onError('Something went wrong. Please try again.');
-      } else {
-        onError(resolveServerError(errorCode));
+        return;
       }
+      const serverMessage = error.response?.data?.message;
+      if (serverMessage) {
+        onError(serverMessage);
+        return;
+      }
+      onError(resolveServerError(error.response?.data?.error));
     },
   });
 }

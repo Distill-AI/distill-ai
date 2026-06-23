@@ -33,7 +33,7 @@ describe('postRequest', () => {
     mockPost.mockReset();
   });
 
-  it('builds FormData with channel=file and appends each file for kind:file', async () => {
+  it('builds FormData with channel=upload and appends each file for kind:file', async () => {
     const file1 = new File(['a'], 'rfq.pdf', { type: 'application/pdf' });
     const file2 = new File(['b'], 'items.csv', { type: 'text/csv' });
     mockPost.mockResolvedValue({ data: { data: stubResponse } });
@@ -44,11 +44,11 @@ describe('postRequest', () => {
     const [url, body] = mockPost.mock.calls[0] as [string, FormData];
     expect(url).toBe('/requests');
     expect(body).toBeInstanceOf(FormData);
-    expect(body.get('channel')).toBe('file');
+    expect(body.get('channel')).toBe('upload');
     expect(body.getAll('files')).toEqual([file1, file2]);
   });
 
-  it('sends JSON with channel=paste and source_body for kind:paste', async () => {
+  it('sends JSON with channel=email and source_body for kind:paste', async () => {
     mockPost.mockResolvedValue({ data: { data: stubResponse } });
 
     await postRequest({ kind: 'paste', sourceBody: 'Hello world' });
@@ -56,7 +56,7 @@ describe('postRequest', () => {
     expect(mockPost).toHaveBeenCalledOnce();
     const [url, body] = mockPost.mock.calls[0] as [string, object];
     expect(url).toBe('/requests');
-    expect(body).toEqual({ channel: 'paste', source_body: 'Hello world' });
+    expect(body).toEqual({ channel: 'email', source_body: 'Hello world' });
   });
 
   it('returns the data envelope field from the response', async () => {
