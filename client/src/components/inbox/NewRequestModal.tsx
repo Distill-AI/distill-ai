@@ -131,18 +131,18 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
   const [mode, setMode] = useState<InputMode>('upload');
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [emailText, setEmailText] = useState('');
-  const [bannerError, setSubmitError] = useState<string | null>(null);
+  const [bannerError, setBannerError] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
-  const createRequest = useCreateRequest((msg) => setSubmitError(msg));
+  const createRequest = useCreateRequest((msg) => setBannerError(msg));
 
   const validFiles = files.filter((e) => !e.errorMessage);
   const canProcess = mode === 'upload' ? validFiles.length > 0 : emailText.trim().length > 0;
 
   const handleClose = useCallback(() => {
-    setSubmitError(null);
+    setBannerError(null);
     setMode('upload');
     setFiles([]);
     setEmailText('');
@@ -172,7 +172,7 @@ export function NewRequestModal({ open, onClose, triggerRef }: NewRequestModalPr
 
   async function handleProcess() {
     if (!canProcess) return;
-    setSubmitError(null);
+    setBannerError(null);
 
     const payload: CreateRequestPayload =
       mode === 'upload'
