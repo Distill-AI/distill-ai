@@ -123,7 +123,7 @@ export class RequestsController {
       }
     }
 
-    const result = await this.requestActions.resumeRequest(requestId, ResumeReason.MANUAL);
+    const result = await this.requestActions.resumeRequest(request, ResumeReason.MANUAL);
 
     return {
       statusCode: HttpStatus.OK,

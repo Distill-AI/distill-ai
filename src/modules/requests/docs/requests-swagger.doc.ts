@@ -58,8 +58,6 @@ export function RequestResumeDocs(): MethodDecorator {
       description:
         'Resumes pipeline processing for a request from its current checkpoint node. ' +
         'Emits a `request.resumed` event with `reason=manual`. ' +
-        'If the request is at the extract node and a prior valid extraction exists, ' +
-        'the extract node short-circuits to avoid duplicating the LLM tool call. ' +
         'Responds within 1 second for healthy requests.',
     }),
     ApiParam({
@@ -70,7 +68,7 @@ export function RequestResumeDocs(): MethodDecorator {
       format: 'uuid',
     }),
     ApiResponse({
-      status: 200,
+      status: HttpStatus.OK,
       description:
         'Request resumed successfully.\n\n' +
         '```json\n' +
@@ -87,15 +85,15 @@ export function RequestResumeDocs(): MethodDecorator {
         '```',
     }),
     ApiResponse({
-      status: 404,
+      status: HttpStatus.NOT_FOUND,
       description: SYS_MSG.REQUEST_NOT_FOUND('{id}'),
     }),
     ApiResponse({
-      status: 401,
+      status: HttpStatus.UNAUTHORIZED,
       description: SYS_MSG.AUTH_UNAUTHORIZED,
     }),
     ApiResponse({
-      status: 403,
+      status: HttpStatus.FORBIDDEN,
       description: SYS_MSG.AUTH_FORBIDDEN,
     }),
   );

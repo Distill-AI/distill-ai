@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { ObjectStoreModule } from '@common/object-store/object-store.module';
 import { RequestsModule } from '@modules/requests/requests.module';
 import { EventsModule } from '@modules/events/events.module';
-import { ExtractionModule } from '@modules/extraction/extraction.module';
 import { PipelineGraphEngine } from '@modules/pipeline/graph.engine';
 import { NodeRegistry } from '@modules/pipeline/node-registry';
 import { STUB_NODES } from '@modules/pipeline/stub-nodes';
@@ -19,14 +18,7 @@ import { PipelineProcessor } from './processors/pipeline.processor';
  * Nodes register themselves with NodeRegistry on construction (Nest instantiates providers eagerly).
  */
 @Module({
-  imports: [
-    QueueClientModule,
-    RequestsModule,
-    EventsModule,
-    ExtractionModule,
-    ClassifyModule,
-    ObjectStoreModule,
-  ],
+  imports: [QueueClientModule, RequestsModule, EventsModule, ClassifyModule, ObjectStoreModule],
   providers: [
     PipelineGraphEngine,
     NodeRegistry,
