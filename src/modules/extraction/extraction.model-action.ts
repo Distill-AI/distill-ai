@@ -25,11 +25,22 @@ export class ExtractionModelAction extends AbstractModelAction<Extraction> {
     super(repository, Extraction);
   }
 
-  /** Returns the extraction row for a request, if one exists. */
-  async findByRequestId(requestId: string): Promise<Extraction | null> {
-    return this.get({
-      identifierOptions: { request_id: requestId },
-    });
+  /** Returns the extraction row for a request, optionally scoped to the request's org. */
+  async findByRequestId(requestId: string, orgId?: string): Promise<Extraction | null> {
+    if (!orgId) {
+      return this.get({
+        identifierOptions: { request_id: requestId },
+      });
+    }
+
+    const row = await this.repository
+      .createQueryBuilder('extraction')
+      .innerJoin('extraction.request', 'request')
+      .where('extraction.request_id = :requestId', { requestId })
+      .andWhere('request.org_id = :orgId', { orgId })
+      .getOne();
+
+    return row ?? null;
   }
 
   /** Atomically creates or updates the extraction row keyed by request_id. */

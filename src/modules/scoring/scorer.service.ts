@@ -4,7 +4,7 @@ import { EXTRACTION_FAILURE_EMPTY_SOURCE } from '@modules/extraction/constants';
 import type { Extraction } from '@modules/extraction/entities/extraction.entity';
 import type { Request } from '@modules/requests/entities/request.entity';
 import { RequestRouting } from '@modules/requests/enums/request-routing.enum';
-import type { RoutingReason } from './types/routing-reason';
+import type { RoutingReason } from '@modules/requests/types/routing-reason';
 
 export interface ScoringResult {
   routing: RequestRouting;

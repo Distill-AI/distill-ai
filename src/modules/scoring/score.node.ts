@@ -36,7 +36,7 @@ export class ScoreNode implements PipelineNode {
       return { kind: 'failed', error: { message: SYS_MSG.REQUEST_NOT_FOUND(requestId) } };
     }
 
-    const extraction = await this.extractions.findByRequestId(requestId);
+    const extraction = await this.extractions.findByRequestId(requestId, orgId);
     const scored = this.scorer.score(req, extraction);
 
     const updated = await this.requests.update({

@@ -6,6 +6,7 @@ import { RequestType } from '../enums/request-type.enum';
 import { RequestStatus } from '../enums/request-status.enum';
 import { CurrentNode } from '../enums/current-node.enum';
 import { RequestRouting } from '../enums/request-routing.enum';
+import type { RoutingReason } from '../types/routing-reason';
 import { Organization } from '../../organizations/entities/organization.entity';
 
 @Index('requests_stale_processing_idx', ['processing_started_at'], { where: "status = 'parsing'" })
@@ -84,7 +85,7 @@ export class Request extends BaseEntity {
   routing: RequestRouting | null;
 
   @Column({ type: 'jsonb', default: () => "'[]'" })
-  routing_reasons: unknown[];
+  routing_reasons: RoutingReason[];
 
   @Column({ type: 'date', nullable: true })
   delivery_date: string | null;
