@@ -36,8 +36,8 @@ describe('ConfidenceChip', () => {
     render(<ConfidenceChip value={null} />);
     expect(screen.getByText('No data')).toBeInTheDocument();
     const chip = screen.getByText('No data');
-    expect(chip.className).toContain('bg-gray-100');
-    expect(chip.className).toContain('text-gray-500');
+    expect(chip.className).toContain('bg-canvas');
+    expect(chip.className).toContain('text-muted');
   });
 
   it('renders neutral no-data chip when value is undefined', () => {
