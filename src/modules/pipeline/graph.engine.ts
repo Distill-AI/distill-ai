@@ -2,10 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { CurrentNode } from '@modules/requests/enums/current-node.enum';
 import { RequestStatus } from '@modules/requests/enums/request-status.enum';
 import { RequestRouting } from '@modules/requests/enums/request-routing.enum';
+import { ResumeReason } from '@modules/requests/enums/resume-reason.enum';
 import { RequestModelAction } from '@modules/requests/requests.model-action';
 import { EventsService } from '@modules/events/events.service';
 import { NodeRegistry } from './node-registry';
-import { isInfraError } from './pipeline.errors';
+import { isInfraError, CircuitBreakerOpenError } from './pipeline.errors';
 import type { NodeResult } from './types';
 import { getTimestamp } from '@common/utils/timestamp';
 
@@ -38,7 +39,7 @@ export class PipelineGraphEngine {
     private readonly events: EventsService,
   ) {}
 
-  async run(requestId: string): Promise<void> {
+  async run(requestId: string, reason?: string, skipExtract?: boolean): Promise<void> {
     const startedAt = performance.now();
     const req = await this.requests.get({ identifierOptions: { id: requestId } });
     if (!req) {
@@ -52,7 +53,10 @@ export class PipelineGraphEngine {
         eventName: 'request.resumed',
         orgId,
         requestId,
-        attributes: { resumed_from_node: req.current_node, reason: 'crash_recovery' },
+        attributes: {
+          resumed_from_node: req.current_node,
+          reason: reason ?? ResumeReason.CRASH_RECOVERY,
+        },
       });
     }
     // The recovery sweep keys off processing_started_at, not status.
@@ -82,10 +86,45 @@ export class PipelineGraphEngine {
       await this.emitNodeEntered(requestId, node, orgId);
       const nodeStartedAt = performance.now();
 
+      if (skipExtract && node === CurrentNode.EXTRACT) {
+        const nodeDuration = elapsedMs(nodeStartedAt);
+        await this.emitNodeExited(
+          requestId,
+          node,
+          'success',
+          nodeDuration,
+          'Skipped (valid extraction exists)',
+          orgId,
+        );
+        await this.checkpoint(requestId, CurrentNode.CLASSIFY);
+        node = CurrentNode.CLASSIFY;
+        continue;
+      }
+
       let result: NodeResult;
       try {
         result = await impl.run({ requestId, orgId });
       } catch (err) {
+        // Circuit breaker open (FR-5, SEC-02): LlmClientService emits stage.error before
+        // throwing, so no duplicate event is needed here. Wired ahead of ClassifyNode
+        // switching from LLMProvider to LlmClientService (planned LlmModule milestone).
+        if (err instanceof CircuitBreakerOpenError) {
+          await this.events.emit({
+            eventName: 'node.exited',
+            orgId,
+            requestId,
+            attributes: { node, next: 'needs_review' },
+          });
+          overallStatus = 'failed';
+          return this.finalize(
+            orgId,
+            requestId,
+            RequestStatus.NEEDS_REVIEW,
+            overallStatus,
+            startedAt,
+          );
+        }
+
         const infra = isInfraError(err);
         const nodeDuration = elapsedMs(nodeStartedAt);
         const errorMsg = (err as Error).message;

@@ -24,7 +24,7 @@ export class LLMProvider {
     }
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), env.LLM_REQUEST_TIMEOUT_MS);
+    const timeout = setTimeout(() => controller.abort(), env.LLM_TIMEOUT_MS);
 
     try {
       const response = await fetch(`${env.LLM_BASE_URL}/chat/completions`, {
@@ -52,8 +52,8 @@ export class LLMProvider {
       return { text };
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
-        this.logger.error(`LLM request timed out after ${env.LLM_REQUEST_TIMEOUT_MS}ms`);
-        throw new Error(`LLM request timed out after ${env.LLM_REQUEST_TIMEOUT_MS}ms`);
+        this.logger.error(`LLM request timed out after ${env.LLM_TIMEOUT_MS}ms`);
+        throw new Error(`LLM request timed out after ${env.LLM_TIMEOUT_MS}ms`);
       }
       throw err;
     } finally {
