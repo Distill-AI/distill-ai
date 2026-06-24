@@ -10,6 +10,7 @@ import { RequestStatus } from '../enums/request-status.enum';
 import { AttachmentModelAction } from '../attachments.model-action';
 import { RequestModelAction } from '../requests.model-action';
 import type { Attachment } from '../entities/attachment.entity';
+import type { AttachmentSummary } from '../interfaces/request-response.interface';
 import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
 
 /** The stored original of an attachment: its metadata plus the raw bytes from the object store. */
@@ -45,6 +46,24 @@ export class AttachmentsService {
     }
     const bytes = await this.store.get(attachment.storage_url);
     return { attachment, bytes };
+  }
+
+  /** Returns a request's attachment metadata oldest-first, excluding storage_url, parsed_text and raw_text. */
+  async listForRequest(requestId: string): Promise<AttachmentSummary[]> {
+    const { payload } = await this.attachments.find({
+      findOptions: { request_id: requestId },
+      transactionOptions: { useTransaction: false },
+      order: { created_at: 'ASC' },
+    });
+    return payload.map((attachment) => ({
+      id: attachment.id,
+      filename: attachment.filename,
+      mime_type: attachment.mime_type,
+      size_bytes: attachment.size_bytes,
+      parse_status: attachment.parse_status,
+      parse_error_reason: attachment.parse_error_reason,
+      created_at: attachment.created_at,
+    }));
   }
 
   /** Accept pasted content, mark the attachment, re-checkpoint to EXTRACT, and re-enqueue the pipeline. */

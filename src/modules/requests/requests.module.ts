@@ -1,15 +1,10 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { ObjectStoreModule } from '@common/object-store/object-store.module';
 import { ExtractionModule } from '@modules/extraction/extraction.module';
 import { QueueClientModule } from '@queue/queue-client.module';
 import { SseModule } from '../../sse/sse.module';
 import { EventsModule } from '../events/events.module';
-import { Request } from './entities/request.entity';
-import { Attachment } from './entities/attachment.entity';
-import { Organization } from '../organizations/entities/organization.entity';
-import { RequestModelAction } from './requests.model-action';
-import { AttachmentModelAction } from './attachments.model-action';
+import { RequestsDataModule } from './requests-data.module';
 import { RequestsService } from './services/requests.service';
 import { StreamService } from './services/stream.service';
 import { AttachmentsService } from './services/attachments.service';
@@ -19,7 +14,8 @@ import { NodeRecoveryActions } from './actions/node-recovery.actions';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Request, Attachment, Organization]),
+    // RequestsDataModule is the leaf; re-exported below so downstream consumers of RequestsModule are unaffected.
+    RequestsDataModule,
     SseModule,
     EventsModule,
     ObjectStoreModule,
@@ -28,8 +24,6 @@ import { NodeRecoveryActions } from './actions/node-recovery.actions';
   ],
   controllers: [RequestsController],
   providers: [
-    RequestModelAction,
-    AttachmentModelAction,
     AttachmentsService,
     RequestsService,
     RequestActions,
@@ -37,8 +31,7 @@ import { NodeRecoveryActions } from './actions/node-recovery.actions';
     NodeRecoveryActions,
   ],
   exports: [
-    RequestModelAction,
-    AttachmentModelAction,
+    RequestsDataModule,
     RequestsService,
     RequestActions,
     StreamService,
