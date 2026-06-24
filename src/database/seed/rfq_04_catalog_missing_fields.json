@@ -1,0 +1,37 @@
+{
+  "_meta": {
+    "sample_id": "rfq_04_catalog_missing_fields",
+    "label": "MISSING FIELDS - Catalog RFQ with no delivery date and a null quantity; classify routes to needs_clarification",
+    "request_type": "catalog_rfq",
+    "expected_status": "needs_clarification",
+    "test_focus": "clarification path: delivery_date null + quantity null on line 2 - gaps detected at classify node"
+  },
+  "inbound_message": {
+    "channel": "email",
+    "received_at": "2025-06-13T08:05:11Z",
+    "from_name": "Tom Bashir",
+    "from_email": "tom.bashir@novapack.com",
+    "subject": "Quote Request - Packaging Hardware",
+    "body": "Hi,\n\nWe need a quote for some packaging hardware:\n\n- 1000x M6 Hex Bolt, Zinc Plated, Grade 4.6\n- Some M6 Hex Nuts (quantity TBC - waiting on project manager)\n\nLet us know pricing when you can.\n\nTom Bashir\nNova Packaging Ltd"
+  },
+  "attachments": [],
+  "extracted_fields": {
+    "sender_contact": "Tom Bashir",
+    "sender_company": "Nova Packaging Ltd",
+    "sender_email": "tom.bashir@novapack.com",
+    "delivery_date": null,
+    "line_items": [
+      { "position": 1, "raw_text": "M6 Hex Bolt, Zinc Plated, Grade 4.6", "quantity": 1000, "unit": "each" },
+      { "position": 2, "raw_text": "M6 Hex Nut, Zinc Plated",             "quantity": null,  "unit": "each" }
+    ]
+  },
+  "expected_catalog_matches": [],
+  "expected_outcome": {
+    "status": "needs_clarification",
+    "overall_confidence": null,
+    "routing_reasons": [
+      "classify: delivery_date is null",
+      "classify: line_item_2 quantity is null"
+    ]
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "_meta": {
+    "sample_id": "rfq_03_catalog_malformed",
+    "label": "MALFORMED - LLM returns wrong type for line_items; both re-asks fail; fail-closed escalation to needs_review",
+    "request_type": "catalog_rfq",
+    "expected_status": "needs_review",
+    "expected_routing": "needs_review",
+    "test_focus": "US-E2-3 fail-closed: schema_valid=false after MAX_ATTEMPTS, pipeline continues to score - needs_review"
+  },
+  "inbound_message": {
+    "channel": "upload",
+    "received_at": "2025-06-11T14:22:05Z",
+    "filename": "order_form_scan.pdf",
+    "body": null
+  },
+  "attachments": [
+    { "filename": "order_form_scan.pdf", "mime_type": "application/pdf", "size_bytes": 184320 }
+  ],
+  "extracted_fields": {
+    "sender_contact": "Jenny Hoffman",
+    "sender_company": "Apex Logistics Ltd",
+    "sender_email": "j.hoffman@apex-logistics.co.uk",
+    "delivery_date": "UNKNOWN",
+    "line_items": "could not parse - attachment was a low-resolution scan with no readable text"
+  },
+  "expected_catalog_matches": [],
+  "expected_outcome": {
+    "status": "needs_review",
+    "routing": "needs_review",
+    "overall_confidence": null,
+    "routing_reasons": [
+      "extraction: schema_valid=false after 2 attempts - line_items not an array"
+    ]
+  }
+}

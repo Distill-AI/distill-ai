@@ -72,9 +72,15 @@ export class LlmClientService implements OnModuleInit {
   private async loadFixtures(): Promise<void> {
     if (this.catalogFixtures) return;
     try {
-      const catalogPath = path.resolve(process.cwd(), 'catalog.json');
-      const data = await fs.promises.readFile(catalogPath, 'utf8');
-      this.catalogFixtures = JSON.parse(data) as Record<string, unknown>[];
+      const seedDir = path.resolve(process.cwd(), 'src/database/seed');
+      const filenames = await fs.promises.readdir(seedDir);
+      const jsonFiles = filenames.filter((f) => f.endsWith('.json'));
+      const fixtures: Record<string, unknown>[] = [];
+      for (const file of jsonFiles) {
+        const raw = await fs.promises.readFile(path.join(seedDir, file), 'utf8');
+        fixtures.push(JSON.parse(raw) as Record<string, unknown>);
+      }
+      this.catalogFixtures = fixtures;
     } catch (err) {
       this.logger.warn({ event: 'demo_fixture_load_failed', error: (err as Error).message });
       this.catalogFixtures = [];
