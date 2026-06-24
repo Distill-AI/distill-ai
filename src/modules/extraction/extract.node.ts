@@ -88,6 +88,7 @@ export class ExtractNode implements PipelineNode {
         { text, priorFailure },
         requestId,
         attempt,
+        orgId,
       );
 
       if (invocation.status !== ToolStatus.OK || invocation.result === undefined) {

@@ -9,6 +9,7 @@ import { NodeRegistry } from './node-registry';
 import { isInfraError, CircuitBreakerOpenError } from './pipeline.errors';
 import type { NodeResult } from './types';
 import { getTimestamp } from '@common/utils/timestamp';
+import { StageErrorReason } from '@constants/events.constants';
 
 const MAX_NODE_TRANSITIONS = 50;
 
@@ -129,20 +130,20 @@ export class PipelineGraphEngine {
         const nodeDuration = elapsedMs(nodeStartedAt);
         const errorMsg = (err as Error).message;
 
-        await this.events.emit({
-          eventName: 'stage.error',
-          orgId,
-          requestId,
-          attributes: { node, escalated_to_human: !infra, error: errorMsg },
-        });
-        await this.emitNodeExited(requestId, node, 'failed', nodeDuration, errorMsg, orgId);
-
         if (infra) {
+          await this.emitNodeExited(requestId, node, 'failed', nodeDuration, errorMsg, orgId);
           overallStatus = 'failed';
           await this.checkpoint(requestId, CurrentNode.FAILED);
           return this.finalize(orgId, requestId, RequestStatus.FAILED, overallStatus, startedAt);
         }
 
+        await this.events.emit({
+          eventName: 'stage.error',
+          orgId,
+          requestId,
+          attributes: { stage: node, escalated_to_human: true, reason: StageErrorReason.UNKNOWN },
+        });
+        await this.emitNodeExited(requestId, node, 'failed', nodeDuration, errorMsg, orgId);
         overallStatus = 'failed';
         return this.finalize(
           orgId,
