@@ -47,7 +47,7 @@ export function ConfidenceChip({
 
   const b = band(value, thresholds);
   const { container, dot, needsReview } = bands[b];
-  const pct = `${Math.round(value * 100)}%`;
+  const pct = `${Math.floor(value * 100)}%`;
 
   return (
     <span
