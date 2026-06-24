@@ -8,6 +8,7 @@ import {
   NotFoundException,
   Param,
   Post,
+  Query,
   Req,
   Res,
   Sse,
@@ -28,10 +29,13 @@ import {
   RequestEventsDocs,
   RequestResumeDocs,
   DownloadAttachmentDocs,
+  ListRequestsDocs,
+  GetRequestDocs,
   PasteAttachmentDocs,
 } from '../docs/requests-swagger.doc';
 import { AttachmentsService } from '../services/attachments.service';
 import { PasteAttachmentDto } from '../dto/paste-attachment.dto';
+import { parsePagination } from '@common/pagination/parse-pagination';
 import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
 import type { ResumeResponsePayload } from '../interfaces/resume.interface';
 
@@ -45,6 +49,64 @@ export class RequestsController {
     private readonly requestActions: RequestActions,
     private readonly attachmentsService: AttachmentsService,
   ) {}
+
+  /** Lists requests for the calling org, newest first; unscoped in single-tenant dev mode. */
+  @Get()
+  @Roles(Role.ESTIMATOR, Role.ADMIN)
+  @ListRequestsDocs()
+  async list(
+    @Req() req: { user?: AuthUser },
+    @Query('page') rawPage?: string,
+    @Query('limit') rawLimit?: string,
+  ) {
+    const { page, limit } = parsePagination(rawPage, rawLimit);
+
+    // Fail closed: when auth is on, a caller with no org gets an empty list, never an unscoped one.
+    let orgId: string | undefined;
+    if (authConfig.enabled) {
+      if (!req.user?.orgId) {
+        return {
+          statusCode: HttpStatus.OK,
+          message: SYS_MSG.REQUESTS_RETRIEVED,
+          data: [],
+          total: 0,
+        };
+      }
+      orgId = req.user.orgId;
+    }
+
+    const result = await this.requestsService.listForOrg({ orgId, page, limit });
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: SYS_MSG.REQUESTS_RETRIEVED,
+      data: result.payload,
+      ...(result.paginationMeta as Record<string, unknown>),
+    };
+  }
+
+  /** Returns full request detail including attachments; 404s for cross-org or missing requests. */
+  @Get(':id')
+  @Roles(Role.ESTIMATOR, Role.ADMIN)
+  @GetRequestDocs()
+  async getOne(@Param('id') requestId: string, @Req() req: { user?: AuthUser }) {
+    const request = await this.requestsService.findByIdOrFail(requestId);
+
+    if (authConfig.enabled) {
+      const user = req.user;
+      if (!user || request.org_id !== user.orgId) {
+        throw new NotFoundException(SYS_MSG.REQUEST_NOT_FOUND(requestId));
+      }
+    }
+
+    const data = await this.requestsService.getDetail(request);
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: SYS_MSG.REQUEST_RETRIEVED,
+      data,
+    };
+  }
 
   /**
    * Serve the stored original bytes of an attachment (US-E1-5-T1). Access is gated through the

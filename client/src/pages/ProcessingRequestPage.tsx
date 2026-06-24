@@ -19,6 +19,12 @@ export function ProcessingRequestPage() {
         </Link>
         <h1 className="text-xl font-semibold text-slate-900">Processing Request</h1>
         <span className="text-xs font-mono text-gray-400 bg-gray-100 rounded px-2 py-1">{id}</span>
+        <Link
+          to={`/requests/${id}/review`}
+          className="ml-auto text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
+        >
+          Open review
+        </Link>
       </div>
       <ProcessingTrace requestId={id} />
     </div>
