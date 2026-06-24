@@ -1162,6 +1162,11 @@ export class SeedSkuCatalog1782005570000 implements MigrationInterface {
   name = 'SeedSkuCatalog1782005570000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // Purge any rows inserted by a prior manual SQL seed (different org_id, same UUIDs)
+    // so the PK does not conflict with our corrected inserts below.
+    const ids = SKUS.map(([id]) => id);
+    await queryRunner.query(`DELETE FROM "skus" WHERE "id" = ANY($1::uuid[])`, [ids]);
+
     for (const [
       id,
       sku_code,
