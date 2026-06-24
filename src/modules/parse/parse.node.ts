@@ -1,19 +1,22 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import * as SYS_MSG from '@constants/system-messages';
 import { CurrentNode } from '@modules/requests/enums/current-node.enum';
+import { ParseStatus } from '@modules/requests/enums/parse-status.enum';
+import { ParseErrorReason } from '@modules/requests/enums/parse-error-reason.enum';
 import { RequestModelAction } from '@modules/requests/requests.model-action';
 import { AttachmentModelAction } from '@modules/requests/attachments.model-action';
 import { OBJECT_STORE, type ObjectStore } from '@common/object-store/object-store.port';
 import { NodeRegistry } from '@modules/pipeline/node-registry';
+import { EventsService } from '@modules/events/events.service';
 import type { NodeContext, NodeResult, PipelineNode } from '@modules/pipeline/types';
-import { extractText } from './text-extractor';
+import { extractText, UnsupportedFileTypeError } from './text-extractor';
 
 /**
- * Parse node (US-E1-1-T3): the real `parse` step. Reads each attachment's original bytes from the
- * object store, extracts text by type (PDF/CSV/TXT), and writes it to `attachments.parsed_text` for
- * the downstream extract step. Paste-only requests have no attachments and simply advance (their text
- * already lives in `source_body`). Extraction is best-effort per file: one unreadable attachment is
- * logged and stored as null rather than failing the whole request.
+ * Parse node (US-E1-1-T3): reads each attachment's bytes from the object store, extracts text,
+ * and writes it to `attachments.parsed_text` for the downstream extract step. Attachments the
+ * estimator already pasted manually (parse_status = manual_paste) are skipped. A parse failure
+ * is fail-fast: the attachment is marked unparsed, a stage.error event is emitted, and the
+ * node returns clarify so the estimator is prompted to paste content.
  */
 @Injectable()
 export class ParseNode implements PipelineNode {
@@ -26,6 +29,7 @@ export class ParseNode implements PipelineNode {
     private readonly requests: RequestModelAction,
     private readonly attachments: AttachmentModelAction,
     @Inject(OBJECT_STORE) private readonly store: ObjectStore,
+    private readonly events: EventsService,
   ) {
     registry.register(this);
   }
@@ -38,25 +42,36 @@ export class ParseNode implements PipelineNode {
       return { kind: 'failed', error: { message: SYS_MSG.REQUEST_NOT_FOUND(requestId) } };
     }
 
-    const { payload: attachments } = await this.attachments.find({
+    const { payload: attachmentList } = await this.attachments.find({
       findOptions: { request_id: requestId },
       transactionOptions: { useTransaction: false },
     });
 
-    let extracted = 0;
-    let failed = 0;
-    for (const attachment of attachments) {
-      // Only the store read + extraction are best-effort; a persistence fault must surface, not be
-      // masked as a parse failure (which would also discard text we successfully extracted).
-      let parsedText: string | null = null;
+    for (const attachment of attachmentList) {
+      if (attachment.parse_status === ParseStatus.MANUAL_PASTE) {
+        continue;
+      }
+
+      let parsedText: string;
       try {
         const bytes = await this.store.get(attachment.storage_url);
         parsedText = await extractText(bytes, attachment.filename);
-        extracted++;
       } catch (err) {
-        // A single unreadable file must not sink a multi-file request. Record null so a re-run is
-        // idempotent and the downstream step sees "no text" rather than stale content.
-        failed++;
+        const reason =
+          err instanceof UnsupportedFileTypeError
+            ? ParseErrorReason.UNSUPPORTED_FORMAT
+            : ParseErrorReason.UNKNOWN;
+        await this.attachments.markUnparsed(attachment.id, reason);
+        await this.events.emit({
+          eventName: 'stage.error',
+          orgId,
+          requestId,
+          attributes: {
+            stage: 'parse',
+            reason,
+            escalated_to_human: true,
+          },
+        });
         this.logger.warn({
           event: 'parse_attachment_failed',
           requestId,
@@ -64,21 +79,19 @@ export class ParseNode implements PipelineNode {
           filename: attachment.filename,
           error: (err as Error).message,
         });
+        return { kind: 'clarify' };
       }
+
       await this.attachments.update({
         identifierOptions: { id: attachment.id },
-        updatePayload: { parsed_text: parsedText },
+        updatePayload: {
+          parsed_text: parsedText,
+          parse_status: ParseStatus.PARSED,
+          parse_error_reason: null,
+        },
         transactionOptions: { useTransaction: false },
       });
     }
-
-    this.logger.log({
-      event: 'parse_complete',
-      requestId,
-      attachments: attachments.length,
-      extracted,
-      failed,
-    });
 
     return { kind: 'advance', next: this.nextNode };
   }
