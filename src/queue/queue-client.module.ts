@@ -22,16 +22,16 @@ import { QueueModule } from './queue.module';
     }),
     BullModule.registerQueueAsync({
       name: QUEUES.PIPELINE,
-      useFactory: (config: ConfigService) => ({
+      useFactory: () => ({
         settings: { lockDuration: 60_000 },
         defaultJobOptions: {
-          attempts: config.get<number>('QUEUE_MAX_ATTEMPTS') ?? 3,
-          backoff: { type: 'exponential', delay: 1000 },
+          // FR-6: Pipeline nodes handle their own retry (LlmClientService).
+          // Bull must NOT re-enqueue a job already routed to needs_review.
+          attempts: 1,
           removeOnComplete: { age: JOB_RETENTION.COMPLETED_MS / 1000, count: 1000 },
           removeOnFail: { age: JOB_RETENTION.FAILED_MS / 1000 },
         },
       }),
-      inject: [ConfigService],
     }),
   ],
   exports: [BullModule],
