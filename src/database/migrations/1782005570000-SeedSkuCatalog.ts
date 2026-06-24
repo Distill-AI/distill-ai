@@ -1199,6 +1199,7 @@ export class SeedSkuCatalog1782005570000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DELETE FROM "skus" WHERE "org_id" = $1`, [ORG_ID]);
+    const ids = SKUS.map(([id]) => id);
+    await queryRunner.query(`DELETE FROM "skus" WHERE "id" = ANY($1::uuid[])`, [ids]);
   }
 }
