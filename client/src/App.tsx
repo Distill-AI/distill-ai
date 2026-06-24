@@ -3,12 +3,13 @@ import { RoleProvider } from './context/RoleContext';
 import { AppShell } from './components/shell/AppShell';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Inbox } from './pages/Inbox';
-import { Processing } from './pages/Processing';
 import { Review } from './pages/Review';
 import { Quotes } from './pages/Quotes';
 import { Catalog } from './pages/Catalog';
 import { Analytics } from './pages/Analytics';
 import { Settings } from './pages/Settings';
+import { ProcessingRequestPage } from './pages/ProcessingRequestPage';
+import { PasteFallbackDemo } from './pages/PasteFallbackDemo';
 
 export default function App() {
   return (
@@ -16,7 +17,7 @@ export default function App() {
       <AppShell>
         <Routes>
           <Route path="/" element={<Inbox />} />
-          <Route path="/requests/:id" element={<Processing />} />
+          <Route path="/requests/:id" element={<ProcessingRequestPage />} />
           <Route path="/requests/:id/review" element={<Review />} />
           <Route path="/quotes" element={<Quotes />} />
           <Route
@@ -36,6 +37,9 @@ export default function App() {
             }
           />
           <Route path="/settings" element={<Settings />} />
+          {import.meta.env.DEV && (
+            <Route path="/demo/paste-fallback" element={<PasteFallbackDemo />} />
+          )}
         </Routes>
       </AppShell>
     </RoleProvider>

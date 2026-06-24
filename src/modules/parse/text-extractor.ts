@@ -9,12 +9,14 @@ import * as SYS_MSG from '@constants/system-messages';
  */
 export const MAX_PARSED_TEXT_CHARS = 1_000_000;
 
+export class UnsupportedFileTypeError extends Error {}
+
 /**
  * Extract plain text from an attachment's bytes, dispatched by file extension (the canonical signal
  * the ingestion endpoint already validated against its pdf/csv/txt allowlist):
  * - `.txt` / `.csv`: the bytes are already text; returned as UTF-8 as-is.
  * - `.pdf`: run through pdf-parse.
- * Throws for any other extension. Output is truncated to {@link MAX_PARSED_TEXT_CHARS}.
+ * Throws {@link UnsupportedFileTypeError} for any other extension. Output is truncated to {@link MAX_PARSED_TEXT_CHARS}.
  */
 export async function extractText(bytes: Buffer, filename: string): Promise<string> {
   const ext = extname(filename).toLowerCase();
@@ -28,7 +30,7 @@ export async function extractText(bytes: Buffer, filename: string): Promise<stri
       text = await extractPdfText(bytes);
       break;
     default:
-      throw new Error(SYS_MSG.PARSE_UNSUPPORTED_TYPE(ext));
+      throw new UnsupportedFileTypeError(SYS_MSG.PARSE_UNSUPPORTED_TYPE(ext));
   }
   return text.length > MAX_PARSED_TEXT_CHARS ? text.slice(0, MAX_PARSED_TEXT_CHARS) : text;
 }

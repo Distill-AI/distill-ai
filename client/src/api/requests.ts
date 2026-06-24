@@ -10,6 +10,7 @@ export const requestKeys = {
   detail: (id: string) => [...requestKeys.all(), 'detail', id] as const,
 };
 
+// Mirror of the server read model in src/modules/requests/interfaces/request-response.interface.ts (source of truth); keep field names in sync.
 /** Attachment metadata returned by GET /requests/:id (no internal storage fields). */
 export interface AttachmentSummary {
   id: string;

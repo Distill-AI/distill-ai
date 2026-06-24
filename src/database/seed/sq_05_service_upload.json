@@ -1,0 +1,38 @@
+{
+  "_meta": {
+    "sample_id": "sq_05_service_upload",
+    "label": "NEEDS REVIEW - Service quote submitted as PDF upload; extraction succeeds; all fields present",
+    "request_type": "service_quote",
+    "expected_status": "needs_review",
+    "expected_routing": "needs_review",
+    "test_focus": "upload-channel service_quote: PDF source, two service lines, clean extraction"
+  },
+  "inbound_message": {
+    "channel": "upload",
+    "received_at": "2025-06-24T10:20:00Z",
+    "filename": "service_brief.pdf",
+    "body": null
+  },
+  "attachments": [
+    { "filename": "service_brief.pdf", "mime_type": "application/pdf", "size_bytes": 1610 }
+  ],
+  "extracted_fields": {
+    "sender_contact": "Sarah Bloom",
+    "sender_company": "Clearwater Facilities Ltd",
+    "sender_email": "s.bloom@clearwater-fm.co.uk",
+    "delivery_date": "2025-09-15",
+    "line_items": [
+      { "position": 1, "raw_text": "Annual boiler servicing and safety check - 3 units", "quantity": 3,  "unit": "visit" },
+      { "position": 2, "raw_text": "Legionella risk assessment and water treatment",      "quantity": 1,  "unit": "visit" }
+    ]
+  },
+  "expected_catalog_matches": [],
+  "expected_outcome": {
+    "status": "needs_review",
+    "routing": "needs_review",
+    "overall_confidence": null,
+    "routing_reasons": [
+      "classify: request_type=service_quote - catalog match skipped, routed to human review"
+    ]
+  }
+}

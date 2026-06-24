@@ -11,8 +11,13 @@ export function OriginalRequestPane({ request, onError }: OriginalRequestPanePro
   const sender = request.sender_company ?? request.sender_contact ?? 'Unknown sender';
 
   return (
-    <section className="flex flex-col gap-4">
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Original request</h2>
+    <section aria-labelledby="original-request-heading" className="flex flex-col gap-4">
+      <h2
+        id="original-request-heading"
+        className="text-xs font-semibold uppercase tracking-wide text-muted"
+      >
+        Original request
+      </h2>
 
       <div className="flex items-center gap-3">
         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700">

@@ -1,0 +1,40 @@
+{
+  "_meta": {
+    "sample_id": "sq_02_service_missing_fields",
+    "label": "MISSING FIELDS - Service quote with no delivery date and null quantities; classify routes to needs_clarification",
+    "request_type": "service_quote",
+    "expected_status": "needs_clarification",
+    "expected_routing": "needs_clarification",
+    "test_focus": "clarification path on a service_quote: vague scope, quantity null on all items, delivery_date null"
+  },
+  "inbound_message": {
+    "channel": "email",
+    "received_at": "2025-06-15T16:02:44Z",
+    "from_name": "Priya Nair",
+    "from_email": "priya.nair@lakeside-tech.io",
+    "subject": "IT Support Services Quote",
+    "body": "Hi,\n\nWe're looking for a quote for IT support services. We need someone to help with general helpdesk and some infrastructure work - not sure on exact hours yet as we're still scoping.\n\nCould you send over your rates and we'll come back with a proper brief?\n\nThanks,\nPriya Nair\nLakeside Tech Ltd"
+  },
+  "attachments": [],
+  "extracted_fields": {
+    "sender_contact": "Priya Nair",
+    "sender_company": "Lakeside Tech Ltd",
+    "sender_email": "priya.nair@lakeside-tech.io",
+    "delivery_date": null,
+    "line_items": [
+      { "position": 1, "raw_text": "General helpdesk support",    "quantity": null, "unit": "hours" },
+      { "position": 2, "raw_text": "Infrastructure / server work", "quantity": null, "unit": "hours" }
+    ]
+  },
+  "expected_catalog_matches": [],
+  "expected_outcome": {
+    "status": "needs_clarification",
+    "routing": "needs_clarification",
+    "overall_confidence": null,
+    "routing_reasons": [
+      "classify: delivery_date is null",
+      "classify: line_item_1 quantity is null",
+      "classify: line_item_2 quantity is null"
+    ]
+  }
+}
