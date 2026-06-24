@@ -12,20 +12,20 @@ describe('BackoffService', () => {
       expect(service.calculateWaitMs(0)).toBe(1000);
     });
 
-    it('returns 5000ms at attempt 1', () => {
-      expect(service.calculateWaitMs(1)).toBe(5000);
+    it('returns 2000ms at attempt 1', () => {
+      expect(service.calculateWaitMs(1)).toBe(2000);
     });
 
-    it('returns 25000ms at attempt 2', () => {
-      expect(service.calculateWaitMs(2)).toBe(25000);
+    it('returns 4000ms at attempt 2', () => {
+      expect(service.calculateWaitMs(2)).toBe(4000);
     });
 
-    it('grows by 5x on each attempt', () => {
+    it('grows by 2x on each attempt', () => {
       const a0 = service.calculateWaitMs(0);
       const a1 = service.calculateWaitMs(1);
       const a2 = service.calculateWaitMs(2);
-      expect(a1 / a0).toBe(5);
-      expect(a2 / a1).toBe(5);
+      expect(a1 / a0).toBe(2);
+      expect(a2 / a1).toBe(2);
     });
   });
 

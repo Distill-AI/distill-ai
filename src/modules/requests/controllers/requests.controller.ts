@@ -2,9 +2,11 @@ import {
   Controller,
   Get,
   HttpStatus,
+  HttpCode,
   Logger,
   NotFoundException,
   Param,
+  Post,
   Req,
   Res,
   Sse,
@@ -19,9 +21,16 @@ import { Role } from '../../auth/enums/role.enum';
 import * as SYS_MSG from '@constants/system-messages';
 import { RequestsService } from '../services/requests.service';
 import { StreamService } from '../services/stream.service';
+import { RequestActions } from '../actions/request.actions';
+import { ResumeReason } from '../enums/resume-reason.enum';
+import {
+  RequestEventsDocs,
+  RequestResumeDocs,
+  DownloadAttachmentDocs,
+} from '../docs/requests-swagger.doc';
 import { AttachmentsService } from '../services/attachments.service';
-import { RequestEventsDocs, DownloadAttachmentDocs } from '../docs/requests-swagger.doc';
 import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
+import type { ResumeResponsePayload } from '../interfaces/resume.interface';
 
 @Controller('requests')
 export class RequestsController {
@@ -30,6 +39,7 @@ export class RequestsController {
   constructor(
     private readonly requestsService: RequestsService,
     private readonly streamService: StreamService,
+    private readonly requestActions: RequestActions,
     private readonly attachmentsService: AttachmentsService,
   ) {}
 
@@ -90,5 +100,35 @@ export class RequestsController {
     }
 
     return this.streamService.subscribe(requestId);
+  }
+
+  @Post(':id/resume')
+  @HttpCode(HttpStatus.OK)
+  @Roles(Role.ESTIMATOR, Role.ADMIN)
+  @RequestResumeDocs()
+  async resume(
+    @Param('id') requestId: string,
+    @Req() req: { user?: AuthUser },
+  ): Promise<{
+    statusCode: number;
+    message: string;
+    data: ResumeResponsePayload;
+  }> {
+    const request = await this.requestsService.findByIdOrFail(requestId);
+
+    if (authConfig.enabled) {
+      const user = req.user;
+      if (!user || request.org_id !== user.orgId) {
+        throw new NotFoundException(SYS_MSG.REQUEST_NOT_FOUND(requestId));
+      }
+    }
+
+    const result = await this.requestActions.resumeRequest(request, ResumeReason.MANUAL);
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: SYS_MSG.RESUME_SUCCESS,
+      data: result,
+    };
   }
 }
