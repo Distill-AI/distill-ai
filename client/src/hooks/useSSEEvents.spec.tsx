@@ -197,15 +197,17 @@ describe('useSSEEvents', () => {
     });
     act(() => {
       emitSSEEvent('stage.error', {
-        type: 'stage.error',
-        timestamp: new Date().toISOString(),
-        node: 'extract',
-        error: 'LLM API returned 429',
+        event_type: 'stage.error',
+        request_id: 'req-1',
+        stage: 'extract',
+        reason: 'llm_circuit_open',
+        escalated_to_human: true,
+        occurred_at: new Date().toISOString(),
       });
     });
     const extract = result.current.nodes.find((n) => n.name === 'extract');
     expect(extract?.status).toBe('failed');
-    expect(extract?.error).toBe('LLM API returned 429');
+    expect(extract?.error).toBe('llm_circuit_open');
   });
 
   it('tracks classify node events', () => {
