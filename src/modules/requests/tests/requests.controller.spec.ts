@@ -50,6 +50,22 @@ describe('RequestsController', () => {
     requestsService = {
       findById: vi.fn().mockResolvedValue(mockRequest),
       findByIdOrFail: vi.fn().mockResolvedValue(mockRequest),
+      listForOrg: vi.fn().mockResolvedValue({
+        payload: [{ id: 'req-1', sender_company: 'Apex', status: 'needs_review' }],
+        paginationMeta: {
+          total: 1,
+          limit: 50,
+          page: 1,
+          total_pages: 1,
+          has_next: false,
+          has_previous: false,
+        },
+      }),
+      getDetail: vi.fn().mockResolvedValue({
+        id: 'req-1',
+        sender_company: 'Apex',
+        attachments: [{ id: 'att-1', filename: 'rfq.pdf' }],
+      }),
     };
     streamService = {
       subscribe: vi.fn().mockReturnValue(mockStream),
@@ -181,6 +197,90 @@ describe('RequestsController', () => {
       const elapsed = Date.now() - start;
 
       expect(elapsed).toBeLessThan(1000);
+    });
+  });
+
+  describe('list (GET /requests)', () => {
+    it('returns the org-scoped, paginated list with defaults', async () => {
+      const result = await controller.list({ user: mockUser });
+
+      expect(requestsService.listForOrg).toHaveBeenCalledWith({
+        orgId: 'org-1',
+        page: 1,
+        limit: 50,
+      });
+      expect(result.statusCode).toBe(200);
+      expect(result.data).toHaveLength(1);
+      expect(result.total).toBe(1);
+    });
+
+    it('clamps page and limit from the query string', async () => {
+      await controller.list({ user: mockUser }, '3', '500');
+
+      expect(requestsService.listForOrg).toHaveBeenCalledWith({
+        orgId: 'org-1',
+        page: 3,
+        limit: 100,
+      });
+    });
+
+    it('clamps out-of-range and defaults non-numeric query values', async () => {
+      // 'abc' is non-numeric -> default page 1; '-5' is a valid but out-of-range integer -> clamp to 1
+      await controller.list({ user: mockUser }, 'abc', '-5');
+
+      expect(requestsService.listForOrg).toHaveBeenCalledWith({
+        orgId: 'org-1',
+        page: 1,
+        limit: 1,
+      });
+    });
+
+    it('fails closed with an empty list when auth is on and the caller has no orgId', async () => {
+      const result = await controller.list({
+        user: { userId: 'u', roles: [], email: 'e' } as AuthUser,
+      });
+
+      expect(requestsService.listForOrg).not.toHaveBeenCalled();
+      expect(result.data).toEqual([]);
+      expect(result.total).toBe(0);
+    });
+  });
+
+  describe('getOne (GET /requests/:id)', () => {
+    it('returns the request detail when org matches', async () => {
+      const result = await controller.getOne('req-1', { user: mockUser });
+
+      expect(requestsService.getDetail).toHaveBeenCalledWith(mockRequest);
+      expect(result.statusCode).toBe(200);
+      expect(result.data.id).toBe('req-1');
+      expect(result.data.attachments).toHaveLength(1);
+    });
+
+    it('throws NotFoundException when the request is not found', async () => {
+      vi.spyOn(requestsService, 'findByIdOrFail').mockRejectedValueOnce(
+        new NotFoundException('Request req-404 not found'),
+      );
+
+      await expect(controller.getOne('req-404', { user: mockUser })).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('404s for a cross-org request and never builds the detail', async () => {
+      const otherOrg = { ...mockRequest, org_id: 'org-2' } as RequestEntity;
+      vi.spyOn(requestsService, 'findByIdOrFail').mockResolvedValueOnce(otherOrg);
+
+      await expect(controller.getOne('req-1', { user: mockUser })).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(requestsService.getDetail).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException for an authenticated user without an orgId', async () => {
+      await expect(
+        controller.getOne('req-1', { user: { userId: 'u', roles: [], email: 'e' } as AuthUser }),
+      ).rejects.toThrow(NotFoundException);
+      expect(requestsService.getDetail).not.toHaveBeenCalled();
     });
   });
 
