@@ -101,7 +101,10 @@ export class EventsService implements OnModuleInit {
           attributes: result.data as unknown as Record<string, unknown>,
         });
       } catch (err) {
-        this.logger.error({ event: 'audit_event_insert_failed', error: (err as Error).message });
+        this.logger.error({
+          event: 'audit_event_insert_failed',
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
     }
 
