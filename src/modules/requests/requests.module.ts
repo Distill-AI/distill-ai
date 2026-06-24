@@ -38,6 +38,7 @@ import { NodeRecoveryActions } from './actions/node-recovery.actions';
     RequestActions,
     StreamService,
     NodeRecoveryActions,
+    AttachmentsService,
   ],
 })
 export class RequestsModule {}

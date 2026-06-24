@@ -1,0 +1,5 @@
+# Prevent git from mangling line endings in PDF files.
+# The text-based PDFs in src/database/seed/attachments/ have hardcoded
+# byte offsets in their xref tables; CRLF conversion would shift those
+# offsets and make the files unparse-able.
+src/database/seed/attachments/*.pdf binary
