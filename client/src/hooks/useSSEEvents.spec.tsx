@@ -53,16 +53,16 @@ describe('useSSEEvents', () => {
 
   it('starts with all nodes in pending state', () => {
     const { result } = renderHook(() => useSSEEvents('req-1'));
-    expect(result.current.nodes).toHaveLength(6);
+    expect(result.current.nodes).toHaveLength(7);
     for (const node of result.current.nodes) {
       expect(node.status).toBe('pending');
     }
   });
 
-  it('initializes nodes in correct order', () => {
+  it('initializes nodes in correct pipeline order', () => {
     const { result } = renderHook(() => useSSEEvents('req-1'));
     const names = result.current.nodes.map((n) => n.name);
-    expect(names).toEqual(['parse', 'extract', 'match', 'score', 'price', 'policy']);
+    expect(names).toEqual(['parse', 'extract', 'classify', 'match', 'price', 'policy', 'score']);
   });
 
   it('sets connecting status on mount', () => {
@@ -190,9 +190,89 @@ describe('useSSEEvents', () => {
     expect(closeCount).toBeGreaterThan(prev);
   });
 
+  it('updates node to failed with error on stage.error', () => {
+    const { result } = renderHook(() => useSSEEvents('req-1'));
+    act(() => {
+      onOpen?.();
+    });
+    act(() => {
+      emitSSEEvent('stage.error', {
+        type: 'stage.error',
+        timestamp: new Date().toISOString(),
+        node: 'extract',
+        error: 'LLM API returned 429',
+      });
+    });
+    const extract = result.current.nodes.find((n) => n.name === 'extract');
+    expect(extract?.status).toBe('failed');
+    expect(extract?.error).toBe('LLM API returned 429');
+  });
+
+  it('tracks classify node events', () => {
+    const { result } = renderHook(() => useSSEEvents('req-1'));
+    act(() => {
+      onOpen?.();
+    });
+    act(() => {
+      emitSSEEvent('node.entered', {
+        type: 'node.entered',
+        node: 'classify',
+        status: 'processing',
+        timestamp: new Date().toISOString(),
+      });
+    });
+    expect(result.current.nodes.find((n) => n.name === 'classify')?.status).toBe('in-progress');
+
+    act(() => {
+      emitSSEEvent('node.exited', {
+        type: 'node.exited',
+        node: 'classify',
+        status: 'success',
+        duration_ms: 400,
+        timestamp: new Date().toISOString(),
+      });
+    });
+    expect(result.current.nodes.find((n) => n.name === 'classify')?.status).toBe('success');
+    expect(result.current.nodes.find((n) => n.name === 'classify')?.duration_ms).toBe(400);
+  });
+
+  it('replays a full pipeline fixture end-to-end', () => {
+    const { result } = renderHook(() => useSSEEvents('req-1'));
+    act(() => {
+      onOpen?.();
+    });
+
+    const pipeline = ['parse', 'extract', 'classify', 'match', 'price', 'policy', 'score'];
+    for (const node of pipeline) {
+      act(() => {
+        emitSSEEvent('node.entered', {
+          type: 'node.entered',
+          node,
+          status: 'processing',
+          timestamp: new Date().toISOString(),
+        });
+      });
+      act(() => {
+        emitSSEEvent('node.exited', {
+          type: 'node.exited',
+          node,
+          status: 'success',
+          duration_ms: 100,
+          timestamp: new Date().toISOString(),
+        });
+      });
+    }
+
+    for (const node of pipeline) {
+      const n = result.current.nodes.find((x) => x.name === node);
+      expect(n?.status).toBe('success');
+      expect(n?.duration_ms).toBe(100);
+    }
+  });
+
   it('does nothing when requestId is null', () => {
     const { result } = renderHook(() => useSSEEvents(null));
-    expect(result.current.nodes).toHaveLength(6);
+    expect(result.current.nodes).toHaveLength(7);
     expect(result.current.connection.status).toBe('disconnected');
   });
 });

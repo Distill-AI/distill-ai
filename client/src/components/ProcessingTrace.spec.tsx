@@ -6,19 +6,21 @@ import type { NodeState, SseConnectionState } from '../hooks/useSSEEvents';
 const mockNodes: NodeState[] = [
   { id: 'parse', name: 'parse', status: 'success', duration_ms: 500 },
   { id: 'extract', name: 'extract', status: 'success', duration_ms: 3000 },
+  { id: 'classify', name: 'classify', status: 'success', duration_ms: 400 },
   { id: 'match', name: 'match', status: 'success', duration_ms: 2000 },
-  { id: 'score', name: 'score', status: 'success', duration_ms: 500 },
   { id: 'price', name: 'price', status: 'success', duration_ms: 800 },
   { id: 'policy', name: 'policy', status: 'success', duration_ms: 600 },
+  { id: 'score', name: 'score', status: 'success', duration_ms: 500 },
 ];
 
 const emptyNodes: NodeState[] = [
   { id: 'parse', name: 'parse', status: 'pending' },
   { id: 'extract', name: 'extract', status: 'pending' },
+  { id: 'classify', name: 'classify', status: 'pending' },
   { id: 'match', name: 'match', status: 'pending' },
-  { id: 'score', name: 'score', status: 'pending' },
   { id: 'price', name: 'price', status: 'pending' },
   { id: 'policy', name: 'policy', status: 'pending' },
+  { id: 'score', name: 'score', status: 'pending' },
 ];
 
 let mockHook = {
@@ -42,14 +44,15 @@ describe('ProcessingTrace', () => {
     };
   });
 
-  it('renders all 6 node names', () => {
+  it('renders all 7 node names', () => {
     render(<ProcessingTrace requestId="test-uuid" />);
     expect(screen.getByText('parse')).toBeInTheDocument();
     expect(screen.getByText('extract')).toBeInTheDocument();
+    expect(screen.getByText('classify')).toBeInTheDocument();
     expect(screen.getByText('match')).toBeInTheDocument();
-    expect(screen.getByText('score')).toBeInTheDocument();
     expect(screen.getByText('price')).toBeInTheDocument();
     expect(screen.getByText('policy')).toBeInTheDocument();
+    expect(screen.getByText('score')).toBeInTheDocument();
   });
 
   it('renders Extraction Trace heading', () => {
@@ -57,16 +60,16 @@ describe('ProcessingTrace', () => {
     expect(screen.getByText('Extraction Trace')).toBeInTheDocument();
   });
 
-  it('renders Structured Output heading', () => {
+  it('renders Run Summary heading', () => {
     render(<ProcessingTrace requestId="test-uuid" />);
-    expect(screen.getByText('Structured Output')).toBeInTheDocument();
+    expect(screen.getByText('Run Summary')).toBeInTheDocument();
   });
 
   it('shows success nodes with checkmarks', () => {
     mockHook = { ...mockHook, nodes: mockNodes };
     render(<ProcessingTrace requestId="test-uuid" />);
     const checks = screen.getAllByText('\u2713');
-    expect(checks).toHaveLength(6);
+    expect(checks).toHaveLength(7);
   });
 
   it('shows error banner and reconnect button on connection error', () => {

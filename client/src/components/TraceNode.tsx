@@ -5,6 +5,7 @@ interface TraceNodeProps {
   attempt?: number;
   duration_ms?: number;
   summary?: string;
+  error?: string;
 }
 
 const statusIcons: Record<TraceNodeProps['status'], string> = {
@@ -35,6 +36,7 @@ export function TraceNode({
   attempt,
   duration_ms,
   summary,
+  error,
 }: TraceNodeProps) {
   const showTool =
     status === 'in-progress' && tool_name && (name === 'extract' || name === 'match');
@@ -68,6 +70,11 @@ export function TraceNode({
       {summary && status === 'success' && (
         <span className="hidden text-xs text-gray-500 truncate max-w-[200px] lg:inline">
           {summary}
+        </span>
+      )}
+      {error && status === 'failed' && (
+        <span className="text-xs text-red-500 truncate max-w-[200px]" title={error}>
+          {error}
         </span>
       )}
     </div>

@@ -74,4 +74,14 @@ describe('TraceNode', () => {
     render(<TraceNode name="parse" status="success" />);
     expect(screen.getByText('parse').className).toContain('text-slate-900');
   });
+
+  it('shows error text when status is failed and error is provided', () => {
+    render(<TraceNode name="extract" status="failed" error="LLM API returned 429" />);
+    expect(screen.getByText('LLM API returned 429')).toBeInTheDocument();
+  });
+
+  it('does not show error text when status is not failed', () => {
+    render(<TraceNode name="extract" status="success" error="LLM API returned 429" />);
+    expect(screen.queryByText('LLM API returned 429')).not.toBeInTheDocument();
+  });
 });
