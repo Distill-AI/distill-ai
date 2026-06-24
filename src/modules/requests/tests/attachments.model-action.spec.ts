@@ -46,6 +46,15 @@ describe('AttachmentModelAction.markUnparsed', () => {
       { parse_status: ParseStatus.UNPARSED, parse_error_reason: ParseErrorReason.NO_TEXT_LAYER },
     );
   });
+
+  it('throws 404 when no row is matched', async () => {
+    const { action, repository } = setup();
+    repository.update.mockResolvedValue({ affected: 0 });
+
+    await expect(
+      action.markUnparsed('att-1', ParseErrorReason.NO_TEXT_LAYER),
+    ).rejects.toMatchObject({ status: 404 });
+  });
 });
 
 describe('AttachmentModelAction.markManualPaste', () => {
@@ -60,7 +69,15 @@ describe('AttachmentModelAction.markManualPaste', () => {
         parse_status: ParseStatus.MANUAL_PASTE,
         raw_text: 'line 1\nline 2',
         parse_error_reason: null,
+        parsed_text: null,
       },
     );
+  });
+
+  it('throws 404 when no row is matched', async () => {
+    const { action, repository } = setup();
+    repository.update.mockResolvedValue({ affected: 0 });
+
+    await expect(action.markManualPaste('att-1', 'text')).rejects.toMatchObject({ status: 404 });
   });
 });

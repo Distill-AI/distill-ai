@@ -14,5 +14,5 @@ export interface ResumeResponsePayload {
   request_id: string;
   resumed: boolean;
   resume_reason: ResumeReason;
-  current_node: CurrentNode;
+  current_node: CurrentNode | 'unknown';
 }

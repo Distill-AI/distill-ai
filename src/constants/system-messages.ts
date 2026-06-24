@@ -58,7 +58,7 @@ export const PARSE_UNSUPPORTED_TYPE = (ext: string) =>
 
 // Paste fallback
 export const ATTACHMENT_PASTE_ACCEPTED = 'Content accepted; extraction re-queued';
-export const ATTACHMENT_PASTE_CONFLICT = 'Extraction is already in progress for this request';
+export const ATTACHMENT_PASTE_CONFLICT = 'Request is already being parsed';
 export const ATTACHMENT_PASTE_EMPTY = 'Paste content must not be empty';
 
 // Ingestion
@@ -100,6 +100,9 @@ export const EXTRACTION_UPSERT_FAILED = (requestId: string) =>
 export const EXTRACTION_JSON_PARSE_FAILED = (detail: string) =>
   `Failed to parse extraction JSON: ${detail}`;
 
+// Scoring (US-E2-3 / US-E5)
+export const SCORE_ROUTING_APPLIED = (routing: string) => `Routing set to ${routing}`;
+
 // Auth
 export const AUTH_PROFILE_FETCHED = 'Profile fetched successfully';
 export const AUTH_LOGIN_SUCCESS = 'Login successful';
@@ -120,3 +123,7 @@ export const TOOL_LIST_SUCCESS = 'Tools retrieved successfully';
 export const TOOL_ALREADY_REGISTERED = (name: string) => `Tool "${name}" is already registered`;
 export const TOOL_NAME_RESERVED = (name: string) =>
   `Tool name "${name}" is reserved and cannot be used`;
+
+// Resume / Crash Recovery
+export const RESUME_SUCCESS = 'Request resumed successfully';
+export const RESUME_FROM_NODE = (node: string) => `Resuming pipeline from node "${node}"`;

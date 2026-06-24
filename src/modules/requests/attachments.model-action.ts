@@ -42,7 +42,12 @@ export class AttachmentModelAction extends AbstractModelAction<Attachment> {
   async markManualPaste(attachmentId: string, rawText: string): Promise<void> {
     const result = await this.repository.update(
       { id: attachmentId },
-      { parse_status: ParseStatus.MANUAL_PASTE, raw_text: rawText, parse_error_reason: null },
+      {
+        parse_status: ParseStatus.MANUAL_PASTE,
+        raw_text: rawText,
+        parse_error_reason: null,
+        parsed_text: null,
+      },
     );
     if (result.affected === 0) {
       throw new CustomHttpException(

@@ -7,7 +7,7 @@ import type { EventsService } from '@modules/events/events.service';
 import { PipelineGraphEngine } from '../graph.engine';
 import { NodeRegistry } from '../node-registry';
 import { RecoverySweep } from '../recovery.sweep';
-import { NodeRecoveryActions } from '../node-recovery.actions';
+import type { NodeRecoveryActions } from '@modules/requests/actions/node-recovery.actions';
 import type { NodeResult, PipelineNode } from '../types';
 
 // Graph order and the next-node map the fake nodes follow (parse -> ... -> score -> done).
