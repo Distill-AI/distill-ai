@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { RequestStatusBadge } from './RequestStatusBadge';
-import type { RequestStatus } from '../api/interface/request-status';
+import type { RequestStatus } from '../../api/interface/request-status';
 
 const cases: { status: RequestStatus; label: string }[] = [
   { status: 'received', label: 'Received' },

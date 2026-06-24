@@ -12,16 +12,22 @@ function tierFor(pct: number): Tier {
   return 'lo';
 }
 
+interface ConfidenceBadgeProps {
+  value: number | null;
+}
+
 /**
- * Confidence chip for the Inbox CONFIDENCE column. Renders an em dash when the
+ * Confidence chip for the Inbox CONFIDENCE column. Renders a dash when the
  * request has no overall_confidence yet (e.g. while parsing or on failure).
  */
-export function ConfidenceBadge({ value }: { value: number | null }) {
+export function ConfidenceBadge({ value }: ConfidenceBadgeProps) {
   if (value === null || value === undefined) {
-    return <span className="text-muted">—</span>;
+    return <span className="text-muted">-</span>;
   }
 
-  const pct = Math.round(value * 100);
+  // overall_confidence is a 0-1 fraction; clamp so an out-of-range value from an
+  // unexpected response can never render a misleading percentage.
+  const pct = Math.round(Math.min(Math.max(value, 0), 1) * 100);
   const { badge, dot } = tierClasses[tierFor(pct)];
 
   return (

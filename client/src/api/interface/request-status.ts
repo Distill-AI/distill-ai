@@ -24,6 +24,11 @@ export const requestStatusLabels: Record<RequestStatus, string> = {
   failed: 'Failed',
 };
 
+/** Runtime guard: true when `value` is one of the known RequestStatus values. */
+export function isRequestStatus(value: string): value is RequestStatus {
+  return Object.prototype.hasOwnProperty.call(requestStatusLabels, value);
+}
+
 export const requestTypeLabels: Record<RequestType, string> = {
   catalog_rfq: 'Catalog RFQ',
   service_quote: 'Service Quote',

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import client from './client';
 import { resolveServerError } from '../lib/errorMessages';
 import type { RequestStatus, RequestType } from './interface/request-status';
+import { isRequestStatus } from './interface/request-status';
 
 export const requestKeys = {
   all: () => ['requests'] as const,
@@ -91,6 +92,10 @@ export function buildOptimisticSummary(
       ? (variables.files[0]?.name ?? null)
       : variables.sourceBody.trim().slice(0, 80) || null;
 
+  // Validate the server status at runtime; fall back to 'parsing' for any
+  // missing or unrecognized value so the badge never indexes an unknown key.
+  const status: RequestStatus = isRequestStatus(data.status) ? data.status : 'parsing';
+
   return {
     id: data.request_id,
     sender_company: null,
@@ -98,7 +103,7 @@ export function buildOptimisticSummary(
     source_subject: sourceSubject,
     request_type: 'unknown',
     overall_confidence: null,
-    status: (data.status as RequestStatus) || 'parsing',
+    status,
     created_at: createdAt,
   };
 }

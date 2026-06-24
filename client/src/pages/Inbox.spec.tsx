@@ -232,6 +232,22 @@ describe('Inbox', () => {
     expect(screen.getByText(/no requests yet/i)).toBeInTheDocument();
   });
 
+  it('shows a no-match empty state when a filter excludes every request', async () => {
+    const user = userEvent.setup();
+    requestsState.value = {
+      data: [makeRequest({ id: 'r1', sender_company: 'Apex', status: 'ready' })],
+      isLoading: false,
+      isError: false,
+    };
+    renderInbox();
+
+    // filter to a tab the only request does not match
+    await user.click(screen.getByRole('tab', { name: /needs review/i }));
+
+    expect(screen.getByText(/no requests match the current filters/i)).toBeInTheDocument();
+    expect(screen.queryByText(/no requests yet/i)).not.toBeInTheDocument();
+  });
+
   it('shows the loading state while requests are loading', () => {
     requestsState.value = { data: [], isLoading: true, isError: false };
     renderInbox();
