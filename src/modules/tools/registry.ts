@@ -78,6 +78,7 @@ export class ToolRegistry implements OnModuleInit {
     rawArgs: unknown,
     requestId: string | null = null,
     attempt: number = 1,
+    orgId: string | null = null,
   ): Promise<{
     status: ToolStatus;
     latency: number;
@@ -103,7 +104,7 @@ export class ToolRegistry implements OnModuleInit {
         requestId: rid,
       });
       await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Tool not found');
-      await this.emitStageError(rid, node, StageErrorReason.TOOL_NOT_FOUND);
+      await this.emitStageError(rid, node, StageErrorReason.TOOL_NOT_FOUND, orgId);
       return { status: ToolStatus.ERROR, latency, error: SYS_MSG.TOOL_NOT_FOUND(name) };
     }
 
@@ -119,7 +120,7 @@ export class ToolRegistry implements OnModuleInit {
         requestId: rid,
       });
       await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Input validation failed');
-      await this.emitStageError(rid, node, StageErrorReason.TOOL_INPUT_INVALID);
+      await this.emitStageError(rid, node, StageErrorReason.TOOL_INPUT_INVALID, orgId);
       return {
         status: ToolStatus.VALIDATION_ERROR,
         latency,
@@ -149,7 +150,7 @@ export class ToolRegistry implements OnModuleInit {
         requestId: rid,
       });
       await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Execution failed');
-      await this.emitStageError(rid, node, StageErrorReason.TOOL_EXECUTION_FAILED);
+      await this.emitStageError(rid, node, StageErrorReason.TOOL_EXECUTION_FAILED, orgId);
       return { status: ToolStatus.ERROR, latency, error: msg };
     }
 
@@ -164,7 +165,7 @@ export class ToolRegistry implements OnModuleInit {
         requestId: rid,
       });
       await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Output validation failed');
-      await this.emitStageError(rid, node, StageErrorReason.TOOL_OUTPUT_INVALID);
+      await this.emitStageError(rid, node, StageErrorReason.TOOL_OUTPUT_INVALID, orgId);
       return {
         status: ToolStatus.VALIDATION_ERROR,
         latency,
@@ -236,11 +237,13 @@ export class ToolRegistry implements OnModuleInit {
     rid: string,
     node: string | null,
     reason: StageErrorReasonValue,
+    orgId: string | null = null,
   ): Promise<void> {
     if (!node) return;
     await this.events.emit({
       eventName: 'stage.error',
       requestId: rid,
+      orgId: orgId ?? undefined,
       attributes: { stage: node, reason, escalated_to_human: true },
     });
   }
