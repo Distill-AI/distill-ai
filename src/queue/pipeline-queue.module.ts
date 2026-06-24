@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ObjectStoreModule } from '@common/object-store/object-store.module';
 import { RequestsModule } from '@modules/requests/requests.module';
 import { EventsModule } from '@modules/events/events.module';
+import { PipelineEngineModule } from '@modules/pipeline/pipeline-engine.module';
 import { PipelineGraphEngine } from '@modules/pipeline/graph.engine';
 import { NodeRegistry } from '@modules/pipeline/node-registry';
 import { STUB_NODES } from '@modules/pipeline/stub-nodes';
@@ -25,6 +26,7 @@ import { PipelineProcessor } from './processors/pipeline.processor';
     QueueClientModule,
     RequestsModule,
     EventsModule,
+    PipelineEngineModule,
     ClassifyModule,
     ExtractionModule,
     ToolsModule,
@@ -39,5 +41,6 @@ import { PipelineProcessor } from './processors/pipeline.processor';
     ClassifyNode,
     PipelineProcessor,
   ],
+  exports: [PipelineEngineModule],
 })
 export class PipelineQueueModule {}
