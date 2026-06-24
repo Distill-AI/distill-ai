@@ -1,0 +1,41 @@
+{
+  "_meta": {
+    "sample_id": "rfq_05_catalog_large_order",
+    "label": "CLEAN - Catalog RFQ, high-volume restock, all fields present, auto-eligible",
+    "request_type": "catalog_rfq",
+    "expected_status": "priced",
+    "expected_routing": "auto_eligible",
+    "test_focus": "auto-eligible path with large quantities across matched SKUs"
+  },
+  "inbound_message": {
+    "channel": "email",
+    "received_at": "2025-06-16T08:20:00Z",
+    "from_name": "James Harlow",
+    "from_email": "j.harlow@ironfields-ind.com",
+    "subject": "Q3 Fastener Restock - Large Order",
+    "body": "Hi,\n\nPlease quote for Q3 restock:\n\n- 5000x M8 Hex Bolt, Zinc Plated, Grade 8.8\n- 5000x M8 Hex Nut, Zinc Plated\n- 2000x M8 Flat Washer, Zinc Plated\n\nDelivery by 15 July 2025. Net 30 payment.\n\nJames Harlow\nIronfields Industries Ltd"
+  },
+  "attachments": [],
+  "extracted_fields": {
+    "sender_contact": "James Harlow",
+    "sender_company": "Ironfields Industries Ltd",
+    "sender_email": "j.harlow@ironfields-ind.com",
+    "delivery_date": "2025-07-15",
+    "line_items": [
+      { "position": 1, "raw_text": "M8 Hex Bolt, Zinc Plated, Grade 8.8", "quantity": 5000, "unit": "each" },
+      { "position": 2, "raw_text": "M8 Hex Nut, Zinc Plated",             "quantity": 5000, "unit": "each" },
+      { "position": 3, "raw_text": "M8 Flat Washer, Zinc Plated",          "quantity": 2000, "unit": "each" }
+    ]
+  },
+  "expected_catalog_matches": [
+    { "position": 1, "raw_text": "M8 Hex Bolt, Zinc Plated, Grade 8.8", "sku_code": "SKU-101", "score": 0.97, "match_method": "fused", "rank": 1 },
+    { "position": 2, "raw_text": "M8 Hex Nut, Zinc Plated",             "sku_code": "SKU-102", "score": 0.96, "match_method": "fused", "rank": 1 },
+    { "position": 3, "raw_text": "M8 Flat Washer, Zinc Plated",          "sku_code": "SKU-103", "score": 0.95, "match_method": "fused", "rank": 1 }
+  ],
+  "expected_outcome": {
+    "status": "priced",
+    "routing": "auto_eligible",
+    "overall_confidence": 0.96,
+    "routing_reasons": []
+  }
+}

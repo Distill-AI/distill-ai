@@ -1,0 +1,39 @@
+{
+  "_meta": {
+    "sample_id": "rfq_06_catalog_upload_channel",
+    "label": "CLEAN - Catalog RFQ via PDF upload, all fields extracted cleanly, auto-eligible",
+    "request_type": "catalog_rfq",
+    "expected_status": "priced",
+    "expected_routing": "auto_eligible",
+    "test_focus": "upload-channel path: PDF source, no from_name/from_email/subject, two SKUs matched"
+  },
+  "inbound_message": {
+    "channel": "upload",
+    "received_at": "2025-06-17T09:05:00Z",
+    "filename": "purchase_order_scan.pdf",
+    "body": null
+  },
+  "attachments": [
+    { "filename": "purchase_order_scan.pdf", "mime_type": "application/pdf", "size_bytes": 210560 }
+  ],
+  "extracted_fields": {
+    "sender_contact": "Daniel Frost",
+    "sender_company": "Crestwood Engineering Ltd",
+    "sender_email": "d.frost@crestwood-eng.com",
+    "delivery_date": "2025-07-22",
+    "line_items": [
+      { "position": 1, "raw_text": "M8 Hex Bolt, Zinc Plated, Grade 8.8", "quantity": 800, "unit": "each" },
+      { "position": 2, "raw_text": "M10 Hex Bolt, Zinc Plated, Grade 8.8", "quantity": 400, "unit": "each" }
+    ]
+  },
+  "expected_catalog_matches": [
+    { "position": 1, "raw_text": "M8 Hex Bolt, Zinc Plated, Grade 8.8",  "sku_code": "SKU-101", "score": 0.97, "match_method": "fused", "rank": 1 },
+    { "position": 2, "raw_text": "M10 Hex Bolt, Zinc Plated, Grade 8.8", "sku_code": "SKU-111", "score": 0.97, "match_method": "fused", "rank": 1 }
+  ],
+  "expected_outcome": {
+    "status": "priced",
+    "routing": "auto_eligible",
+    "overall_confidence": 0.97,
+    "routing_reasons": []
+  }
+}
