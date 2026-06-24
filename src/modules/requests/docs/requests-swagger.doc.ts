@@ -75,6 +75,55 @@ export function RequestEventsDocs(): MethodDecorator {
   );
 }
 
+export function RequestResumeDocs(): MethodDecorator {
+  return applyDecorators(
+    ApiTags('Requests'),
+    ApiOperation({
+      summary: 'Manually resume a pipeline request from its current node',
+      description:
+        'Resumes pipeline processing for a request from its current checkpoint node. ' +
+        'Emits a `request.resumed` event with `reason=manual`. ' +
+        'Responds within 1 second for healthy requests.',
+    }),
+    ApiParam({
+      name: 'id',
+      description: 'UUID of the request to resume',
+      required: true,
+      type: 'string',
+      format: 'uuid',
+    }),
+    ApiResponse({
+      status: HttpStatus.OK,
+      description:
+        'Request resumed successfully.\n\n' +
+        '```json\n' +
+        '{\n' +
+        '  "statusCode": 200,\n' +
+        '  "message": "Request resumed successfully",\n' +
+        '  "data": {\n' +
+        '    "request_id": "uuid",\n' +
+        '    "resumed": true,\n' +
+        '    "resume_reason": "manual",\n' +
+        '    "current_node": "extract"\n' +
+        '  }\n' +
+        '}\n' +
+        '```',
+    }),
+    ApiResponse({
+      status: HttpStatus.NOT_FOUND,
+      description: SYS_MSG.REQUEST_NOT_FOUND('{id}'),
+    }),
+    ApiResponse({
+      status: HttpStatus.UNAUTHORIZED,
+      description: SYS_MSG.AUTH_UNAUTHORIZED,
+    }),
+    ApiResponse({
+      status: HttpStatus.FORBIDDEN,
+      description: SYS_MSG.AUTH_FORBIDDEN,
+    }),
+  );
+}
+
 export function DownloadAttachmentDocs(): MethodDecorator {
   return applyDecorators(
     ApiTags('Requests'),
@@ -85,13 +134,6 @@ export function DownloadAttachmentDocs(): MethodDecorator {
         'filename (via Content-Disposition). Access is scoped to the parent request: a request ' +
         'that does not exist, or that belongs to another organization, returns 404 (the same ' +
         'response as a missing attachment, so existence is not leaked across tenants).',
-    }),
-    ApiParam({
-      name: 'id',
-      description: 'UUID of the parent request',
-      required: true,
-      type: 'string',
-      format: 'uuid',
     }),
     ApiParam({
       name: 'attachmentId',
