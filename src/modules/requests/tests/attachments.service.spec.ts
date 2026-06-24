@@ -83,6 +83,53 @@ describe('AttachmentsService.getForDownload', () => {
   });
 });
 
+describe('AttachmentsService.listForRequest', () => {
+  it('returns only the safe metadata fields, excluding storage_url/parsed_text/raw_text', async () => {
+    const full = {
+      id: 'att-1',
+      request_id: 'req-1',
+      filename: 'rfq.pdf',
+      mime_type: 'application/pdf',
+      size_bytes: 5,
+      storage_url: 'attachments/req-1/rfq.pdf',
+      parsed_text: 'secret parsed text',
+      raw_text: 'secret raw text',
+      parse_status: 'unparsed',
+      parse_error_reason: null,
+      created_at: new Date('2026-06-24T10:00:00.000Z'),
+    } as unknown as Attachment;
+    const attachments = {
+      find: vi.fn().mockResolvedValue({ payload: [full], paginationMeta: { total: 1 } }),
+    };
+    const service = new AttachmentsService(
+      attachments as unknown as AttachmentModelAction,
+      { get: vi.fn(), put: vi.fn() } as unknown as ObjectStore,
+      {} as unknown as RequestModelAction,
+      { add: vi.fn() } as never,
+    );
+
+    const result = await service.listForRequest('req-1');
+
+    expect(attachments.find).toHaveBeenCalledWith({
+      findOptions: { request_id: 'req-1' },
+      transactionOptions: { useTransaction: false },
+      order: { created_at: 'ASC' },
+    });
+    expect(result[0]).toEqual({
+      id: 'att-1',
+      filename: 'rfq.pdf',
+      mime_type: 'application/pdf',
+      size_bytes: 5,
+      parse_status: 'unparsed',
+      parse_error_reason: null,
+      created_at: full.created_at,
+    });
+    expect(result[0]).not.toHaveProperty('storage_url');
+    expect(result[0]).not.toHaveProperty('parsed_text');
+    expect(result[0]).not.toHaveProperty('raw_text');
+  });
+});
+
 describe('AttachmentsService.paste', () => {
   const att = { id: 'att-1', request_id: 'req-1' } as Attachment;
 
