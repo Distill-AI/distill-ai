@@ -33,7 +33,9 @@ export const StageErrorPayloadSchema = z.object({
   event_type: z.literal('stage.error'),
   request_id: z.string().uuid(),
   stage: z.enum(STAGE_NAMES),
-  reason: z.enum(Object.values(StageErrorReason) as [string, ...string[]]),
+  reason: z.enum(
+    Object.values(StageErrorReason) as [StageErrorReasonValue, ...StageErrorReasonValue[]],
+  ),
   escalated_to_human: z.literal(true),
   occurred_at: z.string().datetime(),
 });
