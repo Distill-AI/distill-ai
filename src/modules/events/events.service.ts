@@ -31,14 +31,18 @@ export class EventsService implements OnModuleInit {
 
   onModuleInit(): void {
     const schemaPath = join(process.cwd(), 'events.schema.json');
+    let parsed: Record<string, unknown>;
     try {
-      const raw = readFileSync(schemaPath, 'utf8');
-      const parsed = JSON.parse(raw) as Record<string, unknown>;
-      if (parsed.$id !== 'stage.error') {
-        throw new Error('events.schema.json $id must be "stage.error"');
-      }
+      parsed = JSON.parse(readFileSync(schemaPath, 'utf8')) as Record<string, unknown>;
     } catch (err) {
-      throw new Error(`Failed to load events.schema.json: ${(err as Error).message}`);
+      throw new Error(
+        `Failed to load events.schema.json: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+    if (parsed.$id !== 'stage.error') {
+      throw new Error(
+        `Failed to load events.schema.json: $id must be "stage.error", got "${String(parsed.$id)}"`,
+      );
     }
   }
 
