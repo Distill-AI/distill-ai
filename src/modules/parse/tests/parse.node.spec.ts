@@ -116,6 +116,20 @@ describe('ParseNode', () => {
     expect(attachmentsAction.update).not.toHaveBeenCalled();
   });
 
+  it('marks UNSUPPORTED_FORMAT when extractText rejects with UnsupportedFileTypeError', async () => {
+    const { node, attachmentsAction } = setup([
+      makeAttachment({ id: 'a1', filename: 'contract.docx' }),
+    ]);
+
+    const result = await node.run(ctx);
+
+    expect(result).toEqual({ kind: 'clarify' });
+    expect(attachmentsAction.markUnparsed).toHaveBeenCalledWith(
+      'a1',
+      ParseErrorReason.UNSUPPORTED_FORMAT,
+    );
+  });
+
   it('fails fast on the first failing attachment and does not process remaining ones', async () => {
     const { node, store, attachmentsAction } = setup([
       makeAttachment({ id: 'bad', filename: 'bad.csv', storage_url: 'bad.csv' }),

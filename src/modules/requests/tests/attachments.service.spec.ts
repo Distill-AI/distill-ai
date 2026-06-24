@@ -120,10 +120,16 @@ describe('AttachmentsService.paste', () => {
 
     expect(attachments.markManualPaste).toHaveBeenCalledWith('att-1', 'pasted text');
     expect(requests.setCurrentNode).toHaveBeenCalledWith('req-1', CurrentNode.EXTRACT);
-    expect(queue.add).toHaveBeenCalledWith(
-      'pipeline:run',
-      { requestId: 'req-1' },
-      { jobId: 'pipeline:req-1' },
-    );
+    expect(queue.add).toHaveBeenCalledWith('pipeline:run', { requestId: 'req-1' });
+  });
+
+  it('succeeds when user is undefined (auth disabled path)', async () => {
+    const { service, requests, attachments, queue } = pasteSetup(baseRequest, att);
+
+    await service.paste(undefined, 'req-1', 'att-1', 'pasted text');
+
+    expect(attachments.markManualPaste).toHaveBeenCalledWith('att-1', 'pasted text');
+    expect(requests.setCurrentNode).toHaveBeenCalledWith('req-1', CurrentNode.EXTRACT);
+    expect(queue.add).toHaveBeenCalledWith('pipeline:run', { requestId: 'req-1' });
   });
 });
