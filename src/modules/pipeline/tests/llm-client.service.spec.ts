@@ -219,7 +219,7 @@ describe('LlmClientService', () => {
       const emitCall = eventsService.emit.mock.calls[0][0];
       expect(emitCall.attributes).not.toHaveProperty('error');
       expect(emitCall.attributes).toHaveProperty('reason');
-      expect(emitCall.attributes).toHaveProperty('node');
+      expect(emitCall.attributes).toHaveProperty('stage');
       expect(emitCall.attributes).toHaveProperty('escalated_to_human');
     });
   });
