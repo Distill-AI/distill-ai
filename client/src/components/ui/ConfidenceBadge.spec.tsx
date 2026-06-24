@@ -2,14 +2,19 @@ import { render, screen } from '@testing-library/react';
 import { ConfidenceBadge } from './ConfidenceBadge';
 
 describe('ConfidenceBadge', () => {
-  it('renders an em dash when value is null', () => {
+  it('renders a dash when value is null', () => {
     render(<ConfidenceBadge value={null} />);
-    expect(screen.getByText('—')).toBeInTheDocument();
+    expect(screen.getByText('-')).toBeInTheDocument();
   });
 
   it('rounds the fraction to a whole percentage', () => {
     render(<ConfidenceBadge value={0.846} />);
     expect(screen.getByText('85%')).toBeInTheDocument();
+  });
+
+  it('clamps out-of-range values to 0-100%', () => {
+    render(<ConfidenceBadge value={1.5} />);
+    expect(screen.getByText('100%')).toBeInTheDocument();
   });
 
   it('uses the high tier at or above 85%', () => {

@@ -6,7 +6,9 @@ export function formatRelativeTime(iso: string, now: number = Date.now()): strin
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return '';
 
-  const diffSec = Math.floor((now - then) / 1000);
+  // Clamp negatives so a future timestamp (clock skew, bad data) reads "just now"
+  // rather than producing a nonsensical negative age.
+  const diffSec = Math.max(0, Math.floor((now - then) / 1000));
   if (diffSec < 60) return 'just now';
 
   const diffMin = Math.floor(diffSec / 60);

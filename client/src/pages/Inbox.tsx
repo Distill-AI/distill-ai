@@ -31,6 +31,9 @@ export function Inbox() {
     return requests.filter((request) => matchesTab(request, tab) && matchesSearch(request, query));
   }, [data, tab, search]);
 
+  // A filter is narrowing the list only when there is underlying data to narrow.
+  const isFiltered = (data?.length ?? 0) > 0 && (tab !== 'all' || search.trim().length > 0);
+
   return (
     <div className="px-6 py-6">
       <div className="flex items-center justify-between mb-6">
@@ -61,7 +64,12 @@ export function Inbox() {
         <InboxTabs active={tab} onChange={setTab} />
       </div>
 
-      <InboxList requests={visibleRequests} isLoading={isLoading} isError={isError} />
+      <InboxList
+        requests={visibleRequests}
+        isLoading={isLoading}
+        isError={isError}
+        isFiltered={isFiltered}
+      />
 
       <NewRequestModal
         open={modalOpen}

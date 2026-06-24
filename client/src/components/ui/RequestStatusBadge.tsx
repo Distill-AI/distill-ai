@@ -1,5 +1,5 @@
-import type { RequestStatus } from '../api/interface/request-status';
-import { requestStatusLabels } from '../api/interface/request-status';
+import type { RequestStatus } from '../../api/interface/request-status';
+import { requestStatusLabels } from '../../api/interface/request-status';
 
 // Badge palette per status. Confidence tokens (hi/md/lo) are sacred and never
 // reused here; status uses the dedicated parse/sent tokens plus the standard
@@ -24,7 +24,11 @@ function WarningIcon() {
   );
 }
 
-export function RequestStatusBadge({ status }: { status: RequestStatus }) {
+interface RequestStatusBadgeProps {
+  status: RequestStatus;
+}
+
+export function RequestStatusBadge({ status }: RequestStatusBadgeProps) {
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${colours[status]}`}
