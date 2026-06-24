@@ -77,6 +77,6 @@ export class AttachmentsService {
 
     await this.attachments.markManualPaste(attachmentId, content);
     await this.requests.setCurrentNode(requestId, CurrentNode.EXTRACT);
-    await this.queue.add(PIPELINE_JOBS.RUN, { requestId }, { jobId: `pipeline:${requestId}` });
+    await this.queue.add(PIPELINE_JOBS.RUN, { requestId });
   }
 }
