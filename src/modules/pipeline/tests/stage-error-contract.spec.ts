@@ -104,7 +104,7 @@ describe('stage.error contract (EC-04)', () => {
     expect(events.calls.filter((c) => c.eventName === 'stage.error')).toHaveLength(0);
   });
 
-  it('infra error throw: stage.error emits and request finalizes as FAILED (not NEEDS_REVIEW)', async () => {
+  it('infra error throw: no stage.error emitted and request finalizes as FAILED (not NEEDS_REVIEW)', async () => {
     const record = fakeRequest();
     const events = makeEvents();
 
@@ -121,9 +121,7 @@ describe('stage.error contract (EC-04)', () => {
 
     await engine.run('req-1');
 
-    expect(events.calls.filter((c) => c.eventName === 'stage.error').length).toBeGreaterThanOrEqual(
-      1,
-    );
+    expect(events.calls.filter((c) => c.eventName === 'stage.error')).toHaveLength(0);
     expect(record.status).toBe(RequestStatus.FAILED);
   });
 });

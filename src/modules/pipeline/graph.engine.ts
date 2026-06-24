@@ -111,6 +111,13 @@ export class PipelineGraphEngine {
         const nodeDuration = elapsedMs(nodeStartedAt);
         const errorMsg = (err as Error).message;
 
+        if (infra) {
+          await this.emitNodeExited(requestId, node, 'failed', nodeDuration, errorMsg, orgId);
+          overallStatus = 'failed';
+          await this.checkpoint(requestId, CurrentNode.FAILED);
+          return this.finalize(orgId, requestId, RequestStatus.FAILED, overallStatus, startedAt);
+        }
+
         await this.events.emit({
           eventName: 'stage.error',
           orgId,
@@ -118,13 +125,6 @@ export class PipelineGraphEngine {
           attributes: { stage: node, escalated_to_human: true, reason: StageErrorReason.UNKNOWN },
         });
         await this.emitNodeExited(requestId, node, 'failed', nodeDuration, errorMsg, orgId);
-
-        if (infra) {
-          overallStatus = 'failed';
-          await this.checkpoint(requestId, CurrentNode.FAILED);
-          return this.finalize(orgId, requestId, RequestStatus.FAILED, overallStatus, startedAt);
-        }
-
         overallStatus = 'failed';
         return this.finalize(
           orgId,
