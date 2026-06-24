@@ -74,7 +74,7 @@ export class LlmClientService implements OnModuleInit {
     try {
       const seedDir = path.resolve(process.cwd(), 'src/database/seed');
       const filenames = await fs.promises.readdir(seedDir);
-      const jsonFiles = filenames.filter((f) => f.endsWith('.json'));
+      const jsonFiles = filenames.filter((f) => f.endsWith('.json')).sort();
       const fixtures: Record<string, unknown>[] = [];
       for (const file of jsonFiles) {
         const raw = await fs.promises.readFile(path.join(seedDir, file), 'utf8');

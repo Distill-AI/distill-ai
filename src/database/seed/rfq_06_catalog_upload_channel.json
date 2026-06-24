@@ -14,7 +14,7 @@
     "body": null
   },
   "attachments": [
-    { "filename": "purchase_order_scan.pdf", "mime_type": "application/pdf", "size_bytes": 210560 }
+    { "filename": "purchase_order_scan.pdf", "mime_type": "application/pdf", "size_bytes": 1510 }
   ],
   "extracted_fields": {
     "sender_contact": "Daniel Frost",
