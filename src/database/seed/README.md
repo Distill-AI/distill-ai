@@ -1,0 +1,28 @@
+# Seed corpus
+
+15 JSON fixtures used by two consumers:
+
+1. **Demo mode replay** - `LlmClientService.loadFixtures()` scans this directory when `DEMO_MODE=true` and the circuit breaker is open, returning a matching fixture in place of a live LLM response.
+2. **M2 integration test harness** - the test runner submits each `inbound_message` through the pipeline and compares the actual outcome against `expected_outcome`.
+
+Each file is a single JSON object. See `test-data.md` in the project root for field-level documentation.
+
+## Corpus
+
+| sample_id | request_type | expected_status | behaviour |
+| --- | --- | --- | --- |
+| rfq_01_catalog_clean | catalog_rfq | priced | Happy path: all fields present, all SKUs matched, auto-eligible routing |
+| rfq_02_catalog_needs_review | catalog_rfq | needs_review | Close-tie match on line 1 + margin-floor policy breach, both independently trigger needs_review |
+| rfq_03_catalog_malformed | catalog_rfq | needs_review | LLM returns string for line_items; both re-asks fail; fail-closed escalation (US-E2-3) |
+| rfq_04_catalog_missing_fields | catalog_rfq | needs_clarification | delivery_date null + quantity null on line 2; classify detects gaps |
+| rfq_05_catalog_large_order | catalog_rfq | priced | High-volume restock (5000+ units); auto-eligible path |
+| rfq_06_catalog_upload_channel | catalog_rfq | priced | PDF upload channel; no from_name/from_email/subject; two SKUs matched |
+| rfq_07_catalog_no_match | catalog_rfq | needs_review | Bespoke stainless items with non-standard thread; no SKU match on any line |
+| rfq_08_catalog_multi_line | catalog_rfq | priced | 7 line items across M8 and M10 ranges; all matched; tests extraction faithfulness on long lists |
+| rfq_09_catalog_second_missing_fields | catalog_rfq | needs_clarification | Three simultaneous gaps: delivery_date null, sender_company null, line 2 quantity null |
+| rfq_10_catalog_partial_extraction | catalog_rfq | needs_review | Lines 1-2 extracted and matched cleanly; line 3 raw_text garbled from corrupt PDF field |
+| sq_01_service_clean | service_quote | needs_review | Service quote happy path: all fields present, no catalog SKUs, routed to human review |
+| sq_02_service_missing_fields | service_quote | needs_clarification | delivery_date null, all quantities null; classify routes to clarification |
+| sq_03_service_multi_scope | service_quote | needs_review | 4 distinct service lines (maintenance, inspection, parts, emergency); all fields present |
+| sq_04_service_labour_rates | service_quote | needs_review | Time-and-materials quote; day rates for 2 electricians + 1 PM; quantities in days |
+| sq_05_service_upload | service_quote | needs_review | Service brief submitted as PDF upload; two service lines; clean extraction |
