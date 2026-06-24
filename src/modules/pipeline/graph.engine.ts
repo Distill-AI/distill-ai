@@ -8,6 +8,7 @@ import { NodeRegistry } from './node-registry';
 import { isInfraError, CircuitBreakerOpenError } from './pipeline.errors';
 import type { NodeResult } from './types';
 import { getTimestamp } from '@common/utils/timestamp';
+import { StageErrorReason } from '@constants/events.constants';
 
 const MAX_NODE_TRANSITIONS = 50;
 
@@ -114,7 +115,7 @@ export class PipelineGraphEngine {
           eventName: 'stage.error',
           orgId,
           requestId,
-          attributes: { node, escalated_to_human: !infra, error: errorMsg },
+          attributes: { stage: node, escalated_to_human: true, reason: StageErrorReason.UNKNOWN },
         });
         await this.emitNodeExited(requestId, node, 'failed', nodeDuration, errorMsg, orgId);
 
