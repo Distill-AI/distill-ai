@@ -1,3 +1,5 @@
+import type { RefObject } from 'react';
+
 const REASON_LABELS: Record<string, string> = {
   corrupt: 'This file appears to be password-protected or corrupt.',
   no_text_layer: 'This file contains only scanned images with no readable text.',
@@ -12,6 +14,7 @@ interface AttachmentPanelProps {
   parseErrorReason?: string;
   isModalOpen?: boolean;
   onPasteClick: () => void;
+  triggerRef?: RefObject<HTMLButtonElement | null>;
 }
 
 export function AttachmentPanel({
@@ -20,6 +23,7 @@ export function AttachmentPanel({
   parseErrorReason,
   isModalOpen = false,
   onPasteClick,
+  triggerRef,
 }: AttachmentPanelProps) {
   if (parseStatus !== 'unparsed') return null;
 
@@ -36,6 +40,7 @@ export function AttachmentPanel({
           <p className="mt-0.5 text-body-text">{reasonLabel}</p>
         </div>
         <button
+          ref={triggerRef}
           type="button"
           aria-expanded={isModalOpen}
           aria-controls="paste-modal"

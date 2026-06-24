@@ -27,6 +27,7 @@ export function PasteFallbackDemo() {
           parseErrorReason="corrupt"
           isModalOpen={modalOpen}
           onPasteClick={() => setModalOpen(true)}
+          triggerRef={triggerRef}
         />
       )}
       <PasteModal
