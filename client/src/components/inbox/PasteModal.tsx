@@ -8,6 +8,7 @@ const CHAR_WARNING_THRESHOLD = 5_000;
 interface PasteModalProps {
   open: boolean;
   onClose: () => void;
+  onPasteSuccess?: () => void;
   requestId: string;
   attachmentId: string;
   triggerRef: RefObject<HTMLButtonElement | null>;
@@ -16,6 +17,7 @@ interface PasteModalProps {
 export function PasteModal({
   open,
   onClose,
+  onPasteSuccess,
   requestId,
   attachmentId,
   triggerRef,
@@ -55,11 +57,11 @@ export function PasteModal({
     mutate(
       { requestId, attachmentId, content },
       {
-        onSuccess: () => handleClose(),
+        onSuccess: () => { onPasteSuccess?.(); handleClose(); },
         onError: () => setErrorMessage(GENERIC_ERROR),
       },
     );
-  }, [requestId, attachmentId, content, mutate, handleClose]);
+  }, [requestId, attachmentId, content, mutate, handleClose, onPasteSuccess]);
 
   if (!open) return null;
 
