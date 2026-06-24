@@ -153,7 +153,7 @@ describe('graph-resume', () => {
       expect.objectContaining({
         eventName: 'stage.error',
         attributes: expect.objectContaining({
-          node: CurrentNode.CLASSIFY,
+          stage: CurrentNode.CLASSIFY,
           escalated_to_human: true,
         }),
       }),
