@@ -24,7 +24,6 @@ import { IngestionModule } from '@modules/ingestion/ingestion.module';
 import { EventsModule } from '@modules/events/events.module';
 import { SseModule } from './sse/sse.module';
 import { RequestsModule } from '@modules/requests/requests.module';
-import { CatalogModule } from '@modules/catalog/catalog.module';
 
 // ── Auth ───────────────────────────────────────────────────────
 import { AuthModule } from '@modules/auth';
@@ -70,7 +69,6 @@ import { RlsContextMiddleware } from '@modules/auth/middleware/rls-context.middl
     SseModule,
     EventsModule,
     RequestsModule,
-    CatalogModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpExceptionFilter },

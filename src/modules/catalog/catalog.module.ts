@@ -4,13 +4,8 @@ import { LineItem } from './entities/line-item.entity';
 import { Sku } from './entities/sku.entity';
 import { CandidateMatch } from './entities/candidate-match.entity';
 
-/**
- * Registers the catalog entities (Sku, LineItem, CandidateMatch) with the
- * connection. With `autoLoadEntities`, an entity is only loaded where it is
- * registered via `forFeature`; Sku and CandidateMatch had no home, so the
- * LineItem -> Sku relation could not be built and the app failed to boot once
- * the RequestsModule <-> ExtractionModule cycle was resolved.
- */
+/** Registers LineItem, Sku, and CandidateMatch so the LineItem -> Sku relation resolves under autoLoadEntities. */
+// Sku also relates to Organization, which is registered in RequestsDataModule (in the import graph alongside this).
 @Module({
   imports: [TypeOrmModule.forFeature([LineItem, Sku, CandidateMatch])],
   exports: [TypeOrmModule],
