@@ -1,0 +1,39 @@
+{
+  "_meta": {
+    "sample_id": "rfq_07_catalog_no_match",
+    "label": "NEEDS REVIEW - Catalog RFQ with bespoke items not in the SKU catalog; all lines unmatched",
+    "request_type": "catalog_rfq",
+    "expected_status": "needs_review",
+    "expected_routing": "needs_review",
+    "test_focus": "no_catalog_match on all lines: bespoke stainless brackets, non-standard thread"
+  },
+  "inbound_message": {
+    "channel": "email",
+    "received_at": "2025-06-18T13:40:00Z",
+    "from_name": "Helen Marsh",
+    "from_email": "h.marsh@bridgepoint-struct.com",
+    "subject": "RFQ - Bespoke Structural Brackets",
+    "body": "Hi,\n\nWe require quotes for two bespoke items for a structural project:\n\n- 150x Stainless A4 Bracket, 200x80mm, 6mm plate, non-standard M14 fixing holes\n- 150x Stainless A4 Gusset Plate, 120x60mm, 5mm plate, M14 clearance\n\nDelivery needed by 10 August 2025 to our Leeds site.\n\nHelen Marsh\nBridgepoint Structural Ltd"
+  },
+  "attachments": [],
+  "extracted_fields": {
+    "sender_contact": "Helen Marsh",
+    "sender_company": "Bridgepoint Structural Ltd",
+    "sender_email": "h.marsh@bridgepoint-struct.com",
+    "delivery_date": "2025-08-10",
+    "line_items": [
+      { "position": 1, "raw_text": "Stainless A4 Bracket, 200x80mm, 6mm plate, non-standard M14 fixing holes", "quantity": 150, "unit": "each" },
+      { "position": 2, "raw_text": "Stainless A4 Gusset Plate, 120x60mm, 5mm plate, M14 clearance",            "quantity": 150, "unit": "each" }
+    ]
+  },
+  "expected_catalog_matches": [],
+  "expected_outcome": {
+    "status": "needs_review",
+    "routing": "needs_review",
+    "overall_confidence": null,
+    "routing_reasons": [
+      "line_item_1: no_catalog_match",
+      "line_item_2: no_catalog_match"
+    ]
+  }
+}

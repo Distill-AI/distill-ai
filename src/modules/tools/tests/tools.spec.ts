@@ -150,6 +150,51 @@ describe('ToolRegistry – Core / Integration', () => {
     });
   });
 
+  describe('stage.error contract', () => {
+    it('tool not found emits stage.error with reason tool_not_found for known node', async () => {
+      await registry.invoke('extract_request' as ToolName, {});
+      const stageErrorCall = (mockEvents.emit as ReturnType<typeof vi.fn>).mock.calls.find(
+        (call: unknown[]) => (call[0] as { eventName: string }).eventName === 'stage.error',
+      );
+      expect(stageErrorCall).toBeDefined();
+      expect(stageErrorCall![0]).toMatchObject({
+        eventName: 'stage.error',
+        attributes: { stage: 'extract', reason: 'tool_not_found' },
+      });
+    });
+
+    it('execution failed emits stage.error with reason tool_execution_failed', async () => {
+      const FailTool: ToolContract<z.ZodTypeAny, z.ZodTypeAny> = {
+        toolName: 'extract_request',
+        description: 'always throws',
+        inputSchema: z.object({}),
+        outputSchema: z.object({}),
+        async execute() {
+          throw new Error('boom');
+        },
+      };
+      registry = new ToolRegistry(mockActions, mockEvents);
+      registry.register(FailTool);
+      await registry.invoke('extract_request' as ToolName, {});
+      const stageErrorCall = (mockEvents.emit as ReturnType<typeof vi.fn>).mock.calls.find(
+        (call: unknown[]) => (call[0] as { eventName: string }).eventName === 'stage.error',
+      );
+      expect(stageErrorCall).toBeDefined();
+      expect(stageErrorCall![0]).toMatchObject({
+        eventName: 'stage.error',
+        attributes: { stage: 'extract', reason: 'tool_execution_failed' },
+      });
+    });
+
+    it('tool with no TOOL_NODE_MAP entry does NOT emit stage.error', async () => {
+      await registry.invoke('echo_tool' as ToolName, null);
+      const stageErrorCalls = (mockEvents.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
+        (call: unknown[]) => (call[0] as { eventName: string }).eventName === 'stage.error',
+      );
+      expect(stageErrorCalls).toHaveLength(0);
+    });
+  });
+
   describe('SEC – Security / Sanitisation', () => {
     it('SEC-1: redacts password fields before persisting', async () => {
       const sanitizer = (data: unknown) => {
