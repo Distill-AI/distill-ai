@@ -4,7 +4,7 @@ import { DataSource } from 'typeorm';
 
 import { env } from '../src/config/env';
 
-const BATCH_SIZE = 20;
+const BATCH_SIZE = 10;
 
 async function embed(client: OpenAI, texts: string[]): Promise<number[][]> {
   const res = await client.embeddings.create({ model: env.EMBEDDINGS_MODEL, input: texts });
