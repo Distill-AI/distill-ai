@@ -7,6 +7,8 @@ import { PipelineGraphEngine } from '@modules/pipeline/graph.engine';
 
 interface PipelineJobData {
   requestId: string;
+  reason?: string;
+  skipExtract?: boolean;
 }
 
 /**
@@ -21,8 +23,8 @@ export class PipelineProcessor {
 
   @Process({ name: PIPELINE_JOBS.RUN, concurrency: env.PIPELINE_CONCURRENCY })
   async handle(job: BullJob<PipelineJobData>): Promise<void> {
-    const { requestId } = job.data;
+    const { requestId, reason, skipExtract } = job.data;
     this.logger.log({ event: 'pipeline_job_received', requestId, bullJobId: job.id });
-    await this.engine.run(requestId);
+    await this.engine.run(requestId, reason, skipExtract);
   }
 }

@@ -79,7 +79,8 @@ flowchart TB
 | `EventsModule` | E7 | `EventsService`, `SseGateway` | writes `audit_events`, bridges sanitized events to SSE |
 | `IngestionModule` | E1 | `RequestsController`, `IngestionService`, `ObjectStore` | `POST /v1/requests`, persistence, `current_node='parse'` |
 | `ParserModule` | E1 | `ParseNode`, `DocumentParser` | parse node → `parsed_text` |
-| `ExtractionModule` | E2 | `ExtractNode`, `ClassifyNode`, `extract_request` tool, `ExtractionV1` schema, `reconcile()` | the bounded loop |
+| `ExtractionModule` | E2 | `ExtractNode`, `extract_request` tool, `ExtractionV1` schema, `reconcile()` | the bounded loop |
+| `ClassifyModule` | E2 | `ClassifyNode`, `ClassifyService` | standalone: classify lives outside ExtractionModule; ClassifyService wraps the LLM call |
 | `CatalogModule` | E3 | `MatchNode`, `search_catalog` tool, `VectorStore` port, `CatalogController` | hybrid match |
 | `PricingModule` | E4 | `PriceNode`, `PolicyNode`, `PricingService`, `PolicyService` | pure code, no tools |
 | `ScoringModule` | E5 | `ScoreNode`, `ScorerService` | deterministic routing source |
@@ -96,25 +97,39 @@ flowchart TB
 ## 4. Core types
 
 ```ts
-// src/modules/pipeline/types.ts
-export type NodeName =
-  | 'parse' | 'extract' | 'classify' | 'match' | 'price' | 'policy' | 'score'
-  | 'done' | 'failed';
-
-export type NodeResult =
-  | { next: NodeName }                                   // advance
-  | { next: 'done'; routing: 'priced' | 'needs_review' } // terminal happy
-  | { next: 'needs_clarification' }                      // interrupt
-  | { next: 'failed'; error: ErrorInfo };                // infra error only
-
-export interface PipelineNode {
-  readonly name: NodeName;
-  run(ctx: { requestId: string }): Promise<NodeResult>;
+// src/modules/requests/enums/current-node.enum.ts
+export enum CurrentNode {
+  PARSE = 'parse', EXTRACT = 'extract', CLASSIFY = 'classify',
+  MATCH = 'match', PRICE = 'price', POLICY = 'policy', SCORE = 'score',
+  DONE = 'done', FAILED = 'failed',
 }
 
-export type ToolName =
-  | 'extract_request' | 'search_catalog' | 'render_quote_pdf' | 'explain_routing';
-// price / policy / score are deliberately NOT ToolNames — the boundary is the type.
+// src/modules/pipeline/types.ts
+export interface ErrorInfo { message: string; code?: string; }
+
+// Discriminated on `kind` — avoids ambiguity between terminal and non-terminal advance results.
+export type NodeResult =
+  | { kind: 'advance'; next: CurrentNode }   // normal transition (including score -> done)
+  | { kind: 'clarify' }                      // interrupt: wait for human-gated clarification
+  | { kind: 'failed'; error: ErrorInfo };    // infra error only; logical errors flow to score
+
+// Both requestId and orgId are required — nodes need orgId for multi-tenant model-action lookups.
+export interface NodeContext { requestId: string; orgId: string; }
+
+export interface PipelineNode {
+  readonly name: CurrentNode;
+  run(ctx: NodeContext): Promise<NodeResult>;
+}
+
+// Branded string enforces the boundary at compile time; toToolName() rejects reserved names.
+export const RESERVED_NAMES = new Set(['price', 'policy', 'score']);
+export type ToolName = string & { readonly __brand: unique symbol };
+export function toToolName(name: string): ToolName {
+  if (RESERVED_NAMES.has(name.toLowerCase())) throw new Error(`'${name}' is a reserved tool name`);
+  return name as ToolName;
+}
+// price / policy / score are deliberately NOT ToolNames — the boundary is the type, not a runtime check.
+export const TOOL_NAMES = ['extract_request', 'search_catalog', 'render_quote_pdf', 'explain_routing'] as const;
 ```
 
 ---
@@ -128,50 +143,68 @@ The whole orchestrator is this class plus a Bull producer (API process) and a `@
 @Injectable()
 export class PipelineGraphEngine {
   constructor(
-    private nodes: NodeRegistry,
-    private db: Db,
-    private events: EventsService,
+    private readonly nodes: NodeRegistry,
+    private readonly requests: RequestModelAction,
+    private readonly events: EventsService,
   ) {}
 
   async run(requestId: string): Promise<void> {
-    const req = await this.db.requests.get(requestId);
-    if (req.current_node !== 'parse') {
-      await this.events.emit('request.resumed', requestId, { resumed_from_node: req.current_node, reason: 'crash_recovery' });
-    }
-    let node = req.current_node as NodeName;
+    const req = await this.requests.get({ identifierOptions: { id: requestId } });
+    if (!req) return;
+    const orgId = req.org_id;
 
-    while (node !== 'done' && node !== 'failed') {
+    if (req.current_node !== CurrentNode.PARSE) {
+      await this.events.emit({ eventName: 'request.resumed', orgId, requestId,
+        attributes: { resumed_from_node: req.current_node, reason: 'crash_recovery' } });
+    }
+    await this.requests.markProcessing(requestId);       // sets processing_started_at for the sweep
+
+    let node = req.current_node;
+    let steps = 0;
+
+    while (node !== CurrentNode.DONE && node !== CurrentNode.FAILED) {
+      if (++steps > MAX_NODE_TRANSITIONS) { /* guard against infinite loops */ break; }
       const impl = this.nodes.get(node);
-      await this.events.emit('node.entered', requestId, { node });
+      await this.emitNodeEntered(requestId, node, orgId);
+
       let result: NodeResult;
       try {
-        result = await impl.run({ requestId });               // node writes its OWN outputs to DB
-      } catch (e) {
-        await this.events.emit('stage.error', requestId, { node, escalated_to_human: true });
-        result = isInfra(e) ? { next: 'failed', error: toErr(e) } : { next: 'score' }; // logical errors flow on; score routes to review
+        result = await impl.run({ requestId, orgId });         // node writes its OWN outputs via its own model-actions
+      } catch (err) {
+        const infra = isInfraError(err);
+        await this.events.emit({ eventName: 'stage.error', orgId, requestId,
+          attributes: { node, escalated_to_human: !infra, error: (err as Error).message } });
+        // Infra errors terminate as FAILED; logical errors route to NEEDS_REVIEW via finalize
+        const status = infra ? RequestStatus.FAILED : RequestStatus.NEEDS_REVIEW;
+        return this.finalize(orgId, requestId, status, startedAt);
       }
 
-      const next = this.routeOf(node, result);
-      await this.db.tx(async (t) => {                          // checkpoint BETWEEN nodes
-        await t.requests.setCurrentNode(requestId, next);
-      });
-      await this.events.emit('node.exited', requestId, { node, next });
+      if (result.kind === 'clarify') {
+        return this.finalize(orgId, requestId, RequestStatus.NEEDS_CLARIFICATION, startedAt);
+      }
+      if (result.kind === 'failed') {
+        await this.checkpoint(requestId, CurrentNode.FAILED);
+        return this.finalize(orgId, requestId, RequestStatus.FAILED, startedAt);
+      }
 
-      if (next === 'needs_clarification') return this.finalize(requestId, 'needs_clarification');
-      node = next as NodeName;
+      // kind === 'advance': checkpoint BETWEEN nodes, then continue
+      await this.checkpoint(requestId, result.next);
+      node = result.next;
     }
-    await this.finalize(requestId, node);
+
+    const terminalStatus = await this.computeTerminalStatus(requestId, node);
+    await this.finalize(orgId, requestId, terminalStatus, startedAt);
   }
 
-  // routing is DETERMINISTIC — pure function of node result + persisted state. No LLM here.
-  private routeOf(from: NodeName, r: NodeResult): NodeName | 'needs_clarification' {
-    if ('routing' in r) return 'done';
-    return r.next as NodeName | 'needs_clarification';
+  private async checkpoint(requestId: string, next: CurrentNode): Promise<void> {
+    await this.requests.setCurrentNode(requestId, next);
   }
 
-  private async finalize(requestId: string, end: string) {
-    const status = await this.computeTerminalStatus(requestId, end); // priced | needs_review | needs_clarification | failed
-    await this.db.requests.setStatus(requestId, status);
+  private async computeTerminalStatus(requestId: string, endNode: CurrentNode): Promise<RequestStatus> {
+    if (endNode === CurrentNode.FAILED) return RequestStatus.FAILED;
+    // Re-fetch: score node writes routing during this run; the entry-loaded req still has routing: null.
+    const req = await this.requests.get({ identifierOptions: { id: requestId } });
+    return req?.routing === RequestRouting.AUTO_ELIGIBLE ? RequestStatus.PRICED : RequestStatus.NEEDS_REVIEW;
   }
 }
 ```
@@ -351,24 +384,29 @@ Full DDL is TRD §4.2 — unchanged. V1 build needs, specifically: the `requests
 ## 9. Endpoints (TRD §3.2) + SSE
 
 ```ts
-@Controller('v1')
-export class RequestsController {
-  @Post('requests')
+// Global prefix: app.setGlobalPrefix('api/v1') in src/main.ts
+// All endpoints below are therefore at /api/v1/<path>
+@Controller('requests')
+export class IngestionController {
+  @Post()
   async create(@Body() dto, @UploadedFiles() files) {
     const req = await this.ingestion.create(dto, files);  // status=parsing, current_node=parse, processing_started_at=now()
     await this.runner.enqueue(req.id);                    // adds to Bull queue — fast; the pipeline runs in the worker
     return { request_id: req.id, status: 'parsing', current_node: 'parse' }; // 202
   }
+}
 
-  @Sse('requests/:id/events')                              // sanitized live trace — node + tool events only, no CoT
+@Controller('requests')
+export class RequestsController {
+  @Sse(':id/events')                                       // sanitized live trace — node + tool events only, no CoT
   events(@Param('id') id: string): Observable<MessageEvent> {
     return this.events.sanitizedStream(id);
   }
 }
 
-@Controller('v1')
+@Controller('requests')
 export class ReviewController {
-  @Post('requests/:id/resume')                            // manual/demo resume (US-E2-6-T3)
+  @Post(':id/resume')                                     // manual/demo resume (US-E2-6-T3)
   async resume(@Param('id') id: string) {
     await this.runner.enqueue(id);
     await this.events.emit('request.resumed', id, { reason: 'manual' });
