@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { LLMModule } from '@modules/llm/llm.module';
 import { ToolsModule } from '@modules/tools/tools.module';
 import { ToolRegistry } from '@modules/tools/registry';
-import { RequestsModule } from '@modules/requests/requests.module';
+import { RequestsDataModule } from '@modules/requests/requests-data.module';
 import { LineItem } from '@modules/catalog/entities/line-item.entity';
 import { Extraction } from './entities/extraction.entity';
 import { ExtractionActions } from './actions/extraction.actions';
@@ -15,7 +15,7 @@ import { ExtractRequestToolFactory } from './tools/extract-request.tool';
   imports: [
     LLMModule,
     ToolsModule,
-    RequestsModule,
+    RequestsDataModule,
     TypeOrmModule.forFeature([Extraction, LineItem]),
   ],
   providers: [
