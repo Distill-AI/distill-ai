@@ -62,6 +62,8 @@ export async function postRequest(payload: CreateRequestPayload): Promise<Create
   return res.data.data;
 }
 
+// MVP: reads the first page only (server defaults: page 1, limit 50). Pagination metadata under
+// `meta` is ignored until the Inbox grows a pagination UI; see #42 for the server contract.
 export async function fetchRequests(): Promise<RequestSummary[]> {
   const res = await client.get<{ data: RequestSummary[] }>('/requests');
   return res.data.data;
