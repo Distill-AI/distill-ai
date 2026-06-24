@@ -14,7 +14,7 @@
     "body": null
   },
   "attachments": [
-    { "filename": "order_form_scan.pdf", "mime_type": "application/pdf", "size_bytes": 184320 }
+    { "filename": "order_form_scan.pdf", "mime_type": "application/pdf", "size_bytes": 820 }
   ],
   "extracted_fields": {
     "sender_contact": "Jenny Hoffman",
