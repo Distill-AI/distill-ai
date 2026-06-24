@@ -84,5 +84,6 @@ Maps every seed-RFQ line item to its expected matching SKU(s).
 - `pnpm seed:embeddings` must NOT run in CI. It requires a live `LLM_API_KEY` and time
   proportional to SKU count. Run it manually once after `pnpm migration:run` when the
   embedding API is available. Set `LLM_BASE_URL` if the provider is not OpenAI, and
-  `EMBEDDINGS_MODEL` to override the default (`text-embedding-v4`).
+  `EMBEDDINGS_MODEL` to override the default (`text-embedding-v4`). The script sends
+  10 texts per API call (DashScope `text-embedding-v4` max batch size).
 - To re-populate all embeddings: `UPDATE skus SET embedding = NULL` then re-run the script.

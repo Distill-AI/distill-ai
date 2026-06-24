@@ -19,7 +19,7 @@ async function main() {
     username: env.DATABASE_USER,
     password: env.DATABASE_PASSWORD,
     database: env.DATABASE_NAME,
-    entities: [__dirname + '/../src/**/*.entity.{ts,js}'],
+    entities: [],
     synchronize: false,
     ssl: env.DATABASE_SSL ? { rejectUnauthorized: false } : false,
   });
