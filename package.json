@@ -31,6 +31,7 @@
     "db:reset": "ts-node -r tsconfig-paths/register scripts/reset-db.ts",
     "seed:db": "ts-node -r tsconfig-paths/register scripts/seed-db.ts",
     "seed:live": "ts-node scripts/seed-live.ts",
+    "seed:embeddings": "ts-node -r tsconfig-paths/register scripts/seed-embeddings.ts",
     "perf": "ts-node scripts/perf-test.ts",
     "prepare": "husky || true"
   },
