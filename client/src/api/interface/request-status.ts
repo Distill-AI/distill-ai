@@ -34,3 +34,8 @@ export const requestTypeLabels: Record<RequestType, string> = {
   service_quote: 'Service Quote',
   unknown: 'Unknown',
 };
+
+/** Runtime guard: true when `value` is one of the known RequestType values. */
+export function isRequestType(value: string): value is RequestType {
+  return Object.prototype.hasOwnProperty.call(requestTypeLabels, value);
+}
