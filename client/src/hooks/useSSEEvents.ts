@@ -20,11 +20,12 @@ export interface SseToolEvent {
 }
 
 export interface SseErrorEvent {
-  type: 'stage.error';
-  timestamp: string;
-  node: string;
-  error: string;
-  status?: string;
+  event_type: 'stage.error';
+  request_id: string;
+  stage: string;
+  reason: string;
+  escalated_to_human: true;
+  occurred_at: string;
 }
 
 export interface SseCompleteEvent {
@@ -168,7 +169,7 @@ export function useSSEEvents(requestId: string | null): {
         const data = JSON.parse(e.data) as SseErrorEvent;
         setNodes((prev) =>
           prev.map((n) =>
-            n.name === data.node ? { ...n, status: 'failed', error: data.error } : n,
+            n.name === data.stage ? { ...n, status: 'failed', error: data.reason } : n,
           ),
         );
       } catch {
