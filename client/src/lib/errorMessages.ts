@@ -7,6 +7,7 @@ export const CLIENT_ERROR_MESSAGES: Record<string, string> = {
 };
 
 export const GENERIC_ERROR = 'Something went wrong. Please try again.';
+export const ATTACHMENT_DOWNLOAD_FAILED = 'Could not download the attachment. Please try again.';
 
 export function resolveServerError(errorCode: string | undefined): string {
   if (!errorCode) return GENERIC_ERROR;

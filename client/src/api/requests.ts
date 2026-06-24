@@ -12,6 +12,46 @@ export const requestKeys = {
   detail: (id: string) => [...requestKeys.all(), 'detail', id] as const,
 };
 
+// Mirror of the server read model in src/modules/requests/interfaces/request-response.interface.ts (source of truth); keep field names in sync.
+/** Attachment metadata returned by GET /requests/:id (no internal storage fields). */
+export interface AttachmentSummary {
+  id: string;
+  filename: string;
+  mime_type: string;
+  size_bytes: number;
+  created_at: string;
+}
+
+/** A single request's detail, returned by GET /requests/:id, for the Review screen. */
+export interface RequestDetail {
+  id: string;
+  sender_company: string | null;
+  sender_contact: string | null;
+  sender_email: string | null;
+  source_subject: string | null;
+  source_body: string | null;
+  request_type: string;
+  status: string;
+  overall_confidence: number | null;
+  current_node: string;
+  created_at: string;
+  attachments: AttachmentSummary[];
+}
+
+export async function fetchRequest(id: string): Promise<RequestDetail> {
+  const res = await client.get<{ data: RequestDetail }>(`/requests/${id}`);
+  return res.data.data;
+}
+
+/** Loads a single request's detail for the Review screen. */
+export function useRequest(id: string | undefined) {
+  return useQuery({
+    queryKey: requestKeys.detail(id ?? ''),
+    queryFn: () => fetchRequest(id as string),
+    enabled: Boolean(id),
+  });
+}
+
 interface CreateRequestFilePayload {
   kind: 'file';
   files: File[];
