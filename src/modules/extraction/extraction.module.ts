@@ -3,8 +3,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { LLMModule } from '@modules/llm/llm.module';
 import { ToolsModule } from '@modules/tools/tools.module';
 import { ToolRegistry } from '@modules/tools/registry';
-import { RequestsModule } from '@modules/requests/requests.module';
-import { LineItem } from '@modules/catalog/entities/line-item.entity';
+import { RequestsDataModule } from '@modules/requests/requests-data.module';
+import { CatalogModule } from '@modules/catalog/catalog.module';
 import { Extraction } from './entities/extraction.entity';
 import { ExtractionActions } from './actions/extraction.actions';
 import { ExtractionModelAction } from './extraction.model-action';
@@ -15,8 +15,10 @@ import { ExtractRequestToolFactory } from './tools/extract-request.tool';
   imports: [
     LLMModule,
     ToolsModule,
-    RequestsModule,
-    TypeOrmModule.forFeature([Extraction, LineItem]),
+    RequestsDataModule,
+    // CatalogModule owns the catalog entity registration so the worker graph also gets it via PipelineQueueModule.
+    CatalogModule,
+    TypeOrmModule.forFeature([Extraction]),
   ],
   providers: [
     ExtractionModelAction,
