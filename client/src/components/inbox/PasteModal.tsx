@@ -4,6 +4,8 @@ import { GENERIC_ERROR } from '../../lib/errorMessages';
 
 const MAX_LENGTH = 50_000;
 const CHAR_WARNING_THRESHOLD = 5_000;
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 interface PasteModalProps {
   open: boolean;
@@ -64,9 +66,6 @@ export function PasteModal({
   }, [requestId, attachmentId, content, mutate, handleClose, onPasteSuccess]);
 
   if (!open) return null;
-
-  const FOCUSABLE =
-    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
   return (
     <div
@@ -138,7 +137,7 @@ export function PasteModal({
           className="w-full rounded border border-border px-3 py-2 text-[13px] text-slate-900 font-mono resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400"
         />
         {showCharWarning && (
-          <p className="mt-1 text-[12px] text-body-text">
+          <p role="status" className="mt-1 text-[12px] text-body-text">
             {remaining.toLocaleString()} characters remaining
           </p>
         )}
