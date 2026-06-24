@@ -7,8 +7,6 @@ const REASON_LABELS: Record<string, string> = {
 };
 
 interface AttachmentPanelProps {
-  attachmentId: string;
-  requestId: string;
   filename: string;
   parseStatus: string;
   parseErrorReason?: string;

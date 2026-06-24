@@ -114,4 +114,29 @@ describe('PasteModal', () => {
 
     await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
   });
+
+  it('traps focus: Tab on last focusable element wraps to first', async () => {
+    const user = userEvent.setup();
+    renderModal();
+
+    const buttons = screen.getAllByRole('button');
+    const lastButton = buttons[buttons.length - 1];
+    lastButton.focus();
+
+    await user.tab();
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /close/i }));
+  });
+
+  it('traps focus: Shift+Tab on first focusable element wraps to last', async () => {
+    const user = userEvent.setup();
+    renderModal();
+
+    screen.getByRole('button', { name: /close/i }).focus();
+
+    await user.tab({ shift: true });
+
+    const buttons = screen.getAllByRole('button');
+    expect(document.activeElement).toBe(buttons[buttons.length - 1]);
+  });
 });

@@ -14,8 +14,6 @@ function renderPanel(parseStatus: string, parseErrorReason?: string, isModalOpen
   const onPasteClick = vi.fn();
   render(
     <AttachmentPanel
-      attachmentId="att-1"
-      requestId="req-1"
       filename="rfq.pdf"
       parseStatus={parseStatus}
       parseErrorReason={parseErrorReason}
@@ -29,13 +27,7 @@ function renderPanel(parseStatus: string, parseErrorReason?: string, isModalOpen
 describe('AttachmentPanel', () => {
   it('renders nothing when parseStatus is "parsed"', () => {
     const { container } = render(
-      <AttachmentPanel
-        attachmentId="att-1"
-        requestId="req-1"
-        filename="rfq.pdf"
-        parseStatus="parsed"
-        onPasteClick={vi.fn()}
-      />,
+      <AttachmentPanel filename="rfq.pdf" parseStatus="parsed" onPasteClick={vi.fn()} />,
     );
     expect(container.firstChild).toBeNull();
   });
@@ -49,8 +41,6 @@ describe('AttachmentPanel', () => {
     for (const [reason, label] of Object.entries(REASON_LABELS)) {
       const { unmount } = render(
         <AttachmentPanel
-          attachmentId="att-1"
-          requestId="req-1"
           filename="rfq.pdf"
           parseStatus="unparsed"
           parseErrorReason={reason}
