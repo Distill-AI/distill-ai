@@ -5,7 +5,7 @@ import { AttachmentModelAction } from '../attachments.model-action';
 function setup() {
   const repository = {
     findOne: vi.fn(),
-    update: vi.fn().mockResolvedValue(undefined),
+    update: vi.fn().mockResolvedValue({ affected: 1 }),
   };
   const action = new AttachmentModelAction(repository as never);
   return { action, repository };

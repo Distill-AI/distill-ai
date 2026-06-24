@@ -47,12 +47,7 @@ export class AttachmentsService {
     return { attachment, bytes };
   }
 
-  /**
-   * Accept pasted content, update the attachment, re-checkpoint the request to EXTRACT, and
-   * re-enqueue the pipeline. The engine calls markProcessing() at run-start, so no explicit
-   * status update is needed here. Bull jobId deduplication is safe: completed jobs allow
-   * re-add with the same jobId; only waiting/active jobs are deduplicated.
-   */
+  /** Accept pasted content, mark the attachment, re-checkpoint to EXTRACT, and re-enqueue the pipeline. */
   async paste(
     user: AuthUser | undefined,
     requestId: string,

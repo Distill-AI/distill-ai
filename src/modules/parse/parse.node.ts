@@ -56,7 +56,7 @@ export class ParseNode implements PipelineNode {
       try {
         const bytes = await this.store.get(attachment.storage_url);
         parsedText = await extractText(bytes, attachment.filename);
-      } catch {
+      } catch (err) {
         await this.attachments.markUnparsed(attachment.id, ParseErrorReason.UNKNOWN);
         await this.events.emit({
           eventName: 'stage.error',
@@ -73,6 +73,7 @@ export class ParseNode implements PipelineNode {
           requestId,
           attachmentId: attachment.id,
           filename: attachment.filename,
+          error: (err as Error).message,
         });
         return { kind: 'clarify' };
       }
