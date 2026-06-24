@@ -58,7 +58,7 @@ export const PARSE_UNSUPPORTED_TYPE = (ext: string) =>
 
 // Paste fallback
 export const ATTACHMENT_PASTE_ACCEPTED = 'Content accepted; extraction re-queued';
-export const ATTACHMENT_PASTE_CONFLICT = 'Extraction is already in progress for this request';
+export const ATTACHMENT_PASTE_CONFLICT = 'Request is already being parsed';
 export const ATTACHMENT_PASTE_EMPTY = 'Paste content must not be empty';
 
 // Ingestion
