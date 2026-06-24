@@ -95,6 +95,9 @@ export const EXTRACTION_UPSERT_FAILED = (requestId: string) =>
 export const EXTRACTION_JSON_PARSE_FAILED = (detail: string) =>
   `Failed to parse extraction JSON: ${detail}`;
 
+// Scoring (US-E2-3 / US-E5)
+export const SCORE_ROUTING_APPLIED = (routing: string) => `Routing set to ${routing}`;
+
 // Auth
 export const AUTH_PROFILE_FETCHED = 'Profile fetched successfully';
 export const AUTH_LOGIN_SUCCESS = 'Login successful';
