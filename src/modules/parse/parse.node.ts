@@ -9,7 +9,7 @@ import { OBJECT_STORE, type ObjectStore } from '@common/object-store/object-stor
 import { NodeRegistry } from '@modules/pipeline/node-registry';
 import { EventsService } from '@modules/events/events.service';
 import type { NodeContext, NodeResult, PipelineNode } from '@modules/pipeline/types';
-import { extractText } from './text-extractor';
+import { extractText, UnsupportedFileTypeError } from './text-extractor';
 
 /**
  * Parse node (US-E1-1-T3): reads each attachment's bytes from the object store, extracts text,
@@ -58,7 +58,7 @@ export class ParseNode implements PipelineNode {
         parsedText = await extractText(bytes, attachment.filename);
       } catch (err) {
         const reason =
-          err instanceof Error && err.message.includes('unsupported file type')
+          err instanceof UnsupportedFileTypeError
             ? ParseErrorReason.UNSUPPORTED_FORMAT
             : ParseErrorReason.UNKNOWN;
         await this.attachments.markUnparsed(attachment.id, reason);
