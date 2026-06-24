@@ -10,6 +10,7 @@ import { DuplicateToolError, ReservedToolNameError } from './errors/tools.errors
 import { ToolCallsActions, ToolCallLogParams } from './actions/tool-calls.actions';
 import { ToolName, RESERVED_NAMES } from '../pipeline/types';
 import { getTimestamp } from '@common/utils/timestamp';
+import { StageErrorReason } from '@constants/events.constants';
 
 type Sanitizer = (data: unknown) => unknown;
 
@@ -102,6 +103,17 @@ export class ToolRegistry implements OnModuleInit {
         requestId: rid,
       });
       await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Tool not found');
+      if (node) {
+        await this.events.emit({
+          eventName: 'stage.error',
+          requestId: rid,
+          attributes: {
+            stage: node,
+            reason: StageErrorReason.TOOL_NOT_FOUND,
+            escalated_to_human: true,
+          },
+        });
+      }
       return { status: ToolStatus.ERROR, latency, error: SYS_MSG.TOOL_NOT_FOUND(name) };
     }
 
@@ -117,6 +129,17 @@ export class ToolRegistry implements OnModuleInit {
         requestId: rid,
       });
       await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Input validation failed');
+      if (node) {
+        await this.events.emit({
+          eventName: 'stage.error',
+          requestId: rid,
+          attributes: {
+            stage: node,
+            reason: StageErrorReason.TOOL_INPUT_INVALID,
+            escalated_to_human: true,
+          },
+        });
+      }
       return {
         status: ToolStatus.VALIDATION_ERROR,
         latency,
@@ -146,6 +169,17 @@ export class ToolRegistry implements OnModuleInit {
         requestId: rid,
       });
       await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Execution failed');
+      if (node) {
+        await this.events.emit({
+          eventName: 'stage.error',
+          requestId: rid,
+          attributes: {
+            stage: node,
+            reason: StageErrorReason.TOOL_EXECUTION_FAILED,
+            escalated_to_human: true,
+          },
+        });
+      }
       return { status: ToolStatus.ERROR, latency, error: msg };
     }
 
@@ -160,6 +194,17 @@ export class ToolRegistry implements OnModuleInit {
         requestId: rid,
       });
       await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Output validation failed');
+      if (node) {
+        await this.events.emit({
+          eventName: 'stage.error',
+          requestId: rid,
+          attributes: {
+            stage: node,
+            reason: StageErrorReason.TOOL_OUTPUT_INVALID,
+            escalated_to_human: true,
+          },
+        });
+      }
       return {
         status: ToolStatus.VALIDATION_ERROR,
         latency,
