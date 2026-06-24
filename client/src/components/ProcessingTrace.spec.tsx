@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ProcessingTrace } from './ProcessingTrace';
 import type { NodeState, SseConnectionState } from '../hooks/useSSEEvents';
+import type { MatchedLine } from '../api/interface/line-item';
 
 const mockNodes: NodeState[] = [
   { id: 'parse', name: 'parse', status: 'success', duration_ms: 500 },
@@ -21,6 +22,12 @@ const emptyNodes: NodeState[] = [
   { id: 'price', name: 'price', status: 'pending' },
   { id: 'policy', name: 'policy', status: 'pending' },
   { id: 'score', name: 'score', status: 'pending' },
+];
+
+const sampleLineItems: MatchedLine[] = [
+  { position: 1, rawText: 'M12 Bolt x 50', skuLabel: 'BOLT-M12', confidence: 0.98 },
+  { position: 2, rawText: 'Custom assembly', skuLabel: null, confidence: 0.64 },
+  { position: 3, rawText: 'Nylon washer pack', skuLabel: 'WSHR-NYLON', confidence: 0.85 },
 ];
 
 let mockHook = {
@@ -101,5 +108,31 @@ describe('ProcessingTrace', () => {
     };
     render(<ProcessingTrace requestId="test-uuid" />);
     expect(screen.getByText('Connecting to live trace...')).toBeInTheDocument();
+  });
+
+  it('renders Matched Lines section when lineItems are provided', () => {
+    render(<ProcessingTrace requestId="test-uuid" lineItems={sampleLineItems} />);
+    expect(screen.getByText('Matched Lines')).toBeInTheDocument();
+    expect(screen.getByText('M12 Bolt x 50')).toBeInTheDocument();
+    expect(screen.getByText('Custom assembly')).toBeInTheDocument();
+    expect(screen.getByText('Nylon washer pack')).toBeInTheDocument();
+  });
+
+  it('renders confidence chips for each matched line', () => {
+    render(<ProcessingTrace requestId="test-uuid" lineItems={sampleLineItems} />);
+    expect(screen.getByText('98%')).toBeInTheDocument();
+    expect(screen.getByText('85%')).toBeInTheDocument();
+    expect(screen.getByText('64%')).toBeInTheDocument();
+    expect(screen.getByText('Review')).toBeInTheDocument();
+  });
+
+  it('does not render Matched Lines section when lineItems is empty', () => {
+    render(<ProcessingTrace requestId="test-uuid" lineItems={[]} />);
+    expect(screen.queryByText('Matched Lines')).not.toBeInTheDocument();
+  });
+
+  it('does not render Matched Lines section when lineItems is undefined', () => {
+    render(<ProcessingTrace requestId="test-uuid" />);
+    expect(screen.queryByText('Matched Lines')).not.toBeInTheDocument();
   });
 });
