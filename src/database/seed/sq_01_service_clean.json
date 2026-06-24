@@ -1,0 +1,39 @@
+{
+  "_meta": {
+    "sample_id": "sq_01_service_clean",
+    "label": "CLEAN - Service quote, all fields present; no catalog match; routes to needs_review for human pricing",
+    "request_type": "service_quote",
+    "expected_status": "needs_review",
+    "expected_routing": "needs_review",
+    "test_focus": "service_quote happy path: well-formed, no catalog SKUs, match node skipped, score routes to needs_review"
+  },
+  "inbound_message": {
+    "channel": "email",
+    "received_at": "2025-06-14T11:30:00Z",
+    "from_name": "Claire Donovan",
+    "from_email": "c.donovan@meridian-fm.co.uk",
+    "subject": "RFQ - HVAC Planned Maintenance Contract 2025-2026",
+    "body": "Hi team,\n\nWe would like to request a quote for our annual planned maintenance contract covering the following scope:\n\n- Annual HVAC system inspection and service (full site, 12 units)\n- Quarterly filter replacement (48 filters per visit, 4 visits)\n- Emergency callout allowance (up to 8 hours included)\n\nContract start date: 1 August 2025. Site: Manchester city centre office, 6 floors.\n\nKind regards,\nClaire Donovan\nFacilities Manager - Meridian FM Ltd\nPhone: +44 161 800 4422"
+  },
+  "attachments": [],
+  "extracted_fields": {
+    "sender_contact": "Claire Donovan",
+    "sender_company": "Meridian FM Ltd",
+    "sender_email": "c.donovan@meridian-fm.co.uk",
+    "delivery_date": "2025-08-01",
+    "line_items": [
+      { "position": 1, "raw_text": "Annual HVAC system inspection and service - 12 units", "quantity": 1, "unit": "visit" },
+      { "position": 2, "raw_text": "Quarterly filter replacement - 48 filters per visit",  "quantity": 4, "unit": "visit" },
+      { "position": 3, "raw_text": "Emergency callout allowance",                          "quantity": 8, "unit": "hours" }
+    ]
+  },
+  "expected_catalog_matches": [],
+  "expected_outcome": {
+    "status": "needs_review",
+    "routing": "needs_review",
+    "overall_confidence": null,
+    "routing_reasons": [
+      "classify: request_type=service_quote - catalog match skipped, routed to human review"
+    ]
+  }
+}

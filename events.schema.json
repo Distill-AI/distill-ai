@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "stage.error",
+  "title": "stage.error",
+  "description": "Emitted on every handled pipeline failure that escalates to human review",
+  "type": "object",
+  "required": [
+    "event_type",
+    "request_id",
+    "stage",
+    "reason",
+    "escalated_to_human",
+    "occurred_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "const": "stage.error"
+    },
+    "request_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "stage": {
+      "type": "string",
+      "enum": [
+        "parse",
+        "extract",
+        "classify",
+        "match",
+        "price",
+        "policy",
+        "score"
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "enum": [
+        "corrupt",
+        "no_text_layer",
+        "unsupported_format",
+        "size_limit_exceeded",
+        "tool_not_found",
+        "tool_input_invalid",
+        "tool_execution_failed",
+        "tool_output_invalid",
+        "llm_circuit_open",
+        "llm_timeout",
+        "llm_error",
+        "vector_store_unavailable",
+        "pricing_rule_missing",
+        "unknown"
+      ]
+    },
+    "escalated_to_human": {
+      "type": "boolean",
+      "const": true
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
