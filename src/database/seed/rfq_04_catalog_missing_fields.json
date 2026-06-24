@@ -4,6 +4,7 @@
     "label": "MISSING FIELDS - Catalog RFQ with no delivery date and a null quantity; classify routes to needs_clarification",
     "request_type": "catalog_rfq",
     "expected_status": "needs_clarification",
+    "expected_routing": "needs_clarification",
     "test_focus": "clarification path: delivery_date null + quantity null on line 2 - gaps detected at classify node"
   },
   "inbound_message": {
@@ -28,6 +29,7 @@
   "expected_catalog_matches": [],
   "expected_outcome": {
     "status": "needs_clarification",
+    "routing": "needs_clarification",
     "overall_confidence": null,
     "routing_reasons": [
       "classify: delivery_date is null",

@@ -4,6 +4,7 @@
     "label": "MISSING FIELDS - Catalog RFQ with null delivery_date, null sender_company, and null quantity on line 2",
     "request_type": "catalog_rfq",
     "expected_status": "needs_clarification",
+    "expected_routing": "needs_clarification",
     "test_focus": "clarification path: three simultaneous gaps - delivery_date, sender_company, and quantity null"
   },
   "inbound_message": {
@@ -28,6 +29,7 @@
   "expected_catalog_matches": [],
   "expected_outcome": {
     "status": "needs_clarification",
+    "routing": "needs_clarification",
     "overall_confidence": null,
     "routing_reasons": [
       "classify: delivery_date is null",

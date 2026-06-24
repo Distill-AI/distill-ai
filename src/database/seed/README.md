@@ -5,7 +5,9 @@
 1. **Demo mode replay** - `LlmClientService.loadFixtures()` scans this directory when `DEMO_MODE=true` and the circuit breaker is open, returning a matching fixture in place of a live LLM response.
 2. **M2 integration test harness** - the test runner submits each `inbound_message` through the pipeline and compares the actual outcome against `expected_outcome`.
 
-Each file is a single JSON object. See `test-data.md` in the project root for field-level documentation.
+Each file is a single JSON object with four top-level keys: `_meta` (fixture contract), `inbound_message`, `extracted_fields`, and `expected_outcome`.
+
+> **Note for M2 harness authors:** fixtures `rfq_01_catalog_clean` and `rfq_05_catalog_large_order` assert `expected_routing: auto_eligible` / `expected_status: priced`. US-E2-3 (PR #36, not yet on dev) intentionally routes all valid extractions to `needs_review` until E5 confidence routing lands. Demo replay is unaffected (fixtures drive LLM output), but end-to-end status/routing assertions against a dev+E2-3 worker will diverge on these two fixtures until E5 merges.
 
 ## Corpus
 
