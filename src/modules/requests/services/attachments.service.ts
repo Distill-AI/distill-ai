@@ -54,7 +54,7 @@ export class AttachmentsService {
    * re-add with the same jobId; only waiting/active jobs are deduplicated.
    */
   async paste(
-    user: AuthUser,
+    user: AuthUser | undefined,
     requestId: string,
     attachmentId: string,
     content: string,
@@ -64,7 +64,7 @@ export class AttachmentsService {
       throw new CustomHttpException(SYS_MSG.REQUEST_NOT_FOUND(requestId), HttpStatus.NOT_FOUND);
     }
 
-    if (user.orgId && request.org_id !== user.orgId) {
+    if (user?.orgId && request.org_id !== user.orgId) {
       throw new CustomHttpException(SYS_MSG.REQUEST_NOT_FOUND(requestId), HttpStatus.NOT_FOUND);
     }
 

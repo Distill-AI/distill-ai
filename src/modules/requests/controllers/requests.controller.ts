@@ -110,7 +110,7 @@ export class RequestsController {
     @Body() dto: PasteAttachmentDto,
     @Req() req: { user?: AuthUser },
   ): Promise<{ statusCode: number; message: string }> {
-    await this.attachmentsService.paste(req.user!, requestId, attachmentId, dto.content);
+    await this.attachmentsService.paste(req.user, requestId, attachmentId, dto.content);
     return { statusCode: HttpStatus.OK, message: SYS_MSG.ATTACHMENT_PASTE_ACCEPTED };
   }
 }
