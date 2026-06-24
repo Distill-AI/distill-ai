@@ -1,0 +1,38 @@
+{
+  "_meta": {
+    "sample_id": "rfq_09_catalog_second_missing_fields",
+    "label": "MISSING FIELDS - Catalog RFQ with null delivery_date, null sender_company, and null quantity on line 2",
+    "request_type": "catalog_rfq",
+    "expected_status": "needs_clarification",
+    "test_focus": "clarification path: three simultaneous gaps - delivery_date, sender_company, and quantity null"
+  },
+  "inbound_message": {
+    "channel": "email",
+    "received_at": "2025-06-20T14:30:00Z",
+    "from_name": "Chris Payne",
+    "from_email": "chris.payne@anonymous-buyer.co.uk",
+    "subject": "Quick Quote Needed",
+    "body": "Hi,\n\nCould you quote on:\n\n- 300x M6 Hex Bolt, Zinc Plated, Grade 4.6\n- Some M6 Hex Nuts (not sure on quantity yet)\n\nNo delivery date confirmed - will advise.\n\nChris"
+  },
+  "attachments": [],
+  "extracted_fields": {
+    "sender_contact": "Chris Payne",
+    "sender_company": null,
+    "sender_email": "chris.payne@anonymous-buyer.co.uk",
+    "delivery_date": null,
+    "line_items": [
+      { "position": 1, "raw_text": "M6 Hex Bolt, Zinc Plated, Grade 4.6", "quantity": 300,  "unit": "each" },
+      { "position": 2, "raw_text": "M6 Hex Nut, Zinc Plated",             "quantity": null, "unit": "each" }
+    ]
+  },
+  "expected_catalog_matches": [],
+  "expected_outcome": {
+    "status": "needs_clarification",
+    "overall_confidence": null,
+    "routing_reasons": [
+      "classify: delivery_date is null",
+      "classify: sender_company is null",
+      "classify: line_item_2 quantity is null"
+    ]
+  }
+}

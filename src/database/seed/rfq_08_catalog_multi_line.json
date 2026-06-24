@@ -1,0 +1,49 @@
+{
+  "_meta": {
+    "sample_id": "rfq_08_catalog_multi_line",
+    "label": "CLEAN - Catalog RFQ with 7 line items across M8 and M10 ranges; all items matched, auto-eligible",
+    "request_type": "catalog_rfq",
+    "expected_status": "priced",
+    "expected_routing": "auto_eligible",
+    "test_focus": "extraction faithfulness for long item lists: 7 lines, mixed M8 and M10"
+  },
+  "inbound_message": {
+    "channel": "email",
+    "received_at": "2025-06-19T10:15:00Z",
+    "from_name": "Stuart Keane",
+    "from_email": "s.keane@vantage-fabrication.com",
+    "subject": "Annual Fastener Order - Full M8 and M10 Range",
+    "body": "Hi,\n\nPlease quote for our annual fastener order:\n\n- 1000x M8 Hex Bolt, Zinc Plated, Grade 8.8\n- 1000x M8 Hex Nut, Zinc Plated\n- 500x M8 Flat Washer, Zinc Plated\n- 500x M8 Spring Washer, Zinc Plated\n- 1000x M10 Hex Bolt, Zinc Plated, Grade 8.8\n- 1000x M10 Hex Nut, Zinc Plated\n- 500x M10 Flat Washer, Zinc Plated\n\nDelivery by 1 August 2025 to our Sheffield site. Net 60 terms.\n\nStuart Keane\nVantage Fabrication Ltd"
+  },
+  "attachments": [],
+  "extracted_fields": {
+    "sender_contact": "Stuart Keane",
+    "sender_company": "Vantage Fabrication Ltd",
+    "sender_email": "s.keane@vantage-fabrication.com",
+    "delivery_date": "2025-08-01",
+    "line_items": [
+      { "position": 1, "raw_text": "M8 Hex Bolt, Zinc Plated, Grade 8.8",  "quantity": 1000, "unit": "each" },
+      { "position": 2, "raw_text": "M8 Hex Nut, Zinc Plated",               "quantity": 1000, "unit": "each" },
+      { "position": 3, "raw_text": "M8 Flat Washer, Zinc Plated",            "quantity": 500,  "unit": "each" },
+      { "position": 4, "raw_text": "M8 Spring Washer, Zinc Plated",          "quantity": 500,  "unit": "each" },
+      { "position": 5, "raw_text": "M10 Hex Bolt, Zinc Plated, Grade 8.8",  "quantity": 1000, "unit": "each" },
+      { "position": 6, "raw_text": "M10 Hex Nut, Zinc Plated",              "quantity": 1000, "unit": "each" },
+      { "position": 7, "raw_text": "M10 Flat Washer, Zinc Plated",          "quantity": 500,  "unit": "each" }
+    ]
+  },
+  "expected_catalog_matches": [
+    { "position": 1, "raw_text": "M8 Hex Bolt, Zinc Plated, Grade 8.8",  "sku_code": "SKU-101", "score": 0.97, "match_method": "fused", "rank": 1 },
+    { "position": 2, "raw_text": "M8 Hex Nut, Zinc Plated",               "sku_code": "SKU-102", "score": 0.96, "match_method": "fused", "rank": 1 },
+    { "position": 3, "raw_text": "M8 Flat Washer, Zinc Plated",            "sku_code": "SKU-103", "score": 0.95, "match_method": "fused", "rank": 1 },
+    { "position": 4, "raw_text": "M8 Spring Washer, Zinc Plated",          "sku_code": "SKU-104", "score": 0.94, "match_method": "fused", "rank": 1 },
+    { "position": 5, "raw_text": "M10 Hex Bolt, Zinc Plated, Grade 8.8",  "sku_code": "SKU-111", "score": 0.97, "match_method": "fused", "rank": 1 },
+    { "position": 6, "raw_text": "M10 Hex Nut, Zinc Plated",              "sku_code": "SKU-112", "score": 0.96, "match_method": "fused", "rank": 1 },
+    { "position": 7, "raw_text": "M10 Flat Washer, Zinc Plated",          "sku_code": "SKU-113", "score": 0.95, "match_method": "fused", "rank": 1 }
+  ],
+  "expected_outcome": {
+    "status": "priced",
+    "routing": "auto_eligible",
+    "overall_confidence": 0.957,
+    "routing_reasons": []
+  }
+}

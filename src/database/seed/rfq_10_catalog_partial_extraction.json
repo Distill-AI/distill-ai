@@ -1,0 +1,42 @@
+{
+  "_meta": {
+    "sample_id": "rfq_10_catalog_partial_extraction",
+    "label": "NEEDS REVIEW - Catalog RFQ with partial extraction: first two lines clean and matched, third line garbled",
+    "request_type": "catalog_rfq",
+    "expected_status": "needs_review",
+    "expected_routing": "needs_review",
+    "test_focus": "partial extraction: lines 1-2 matched cleanly, line 3 raw_text unreadable from corrupt PDF field"
+  },
+  "inbound_message": {
+    "channel": "upload",
+    "received_at": "2025-06-21T11:00:00Z",
+    "filename": "rfq_partial_corrupt.pdf",
+    "body": null
+  },
+  "attachments": [
+    { "filename": "rfq_partial_corrupt.pdf", "mime_type": "application/pdf", "size_bytes": 98304 }
+  ],
+  "extracted_fields": {
+    "sender_contact": "Anna Griffiths",
+    "sender_company": "Bridford Components Ltd",
+    "sender_email": "a.griffiths@bridford-comp.co.uk",
+    "delivery_date": "2025-08-05",
+    "line_items": [
+      { "position": 1, "raw_text": "M8 Hex Bolt, Zinc Plated, Grade 8.8", "quantity": 600, "unit": "each" },
+      { "position": 2, "raw_text": "M8 Hex Nut, Zinc Plated",             "quantity": 600, "unit": "each" },
+      { "position": 3, "raw_text": "????",                                  "quantity": 200, "unit": "each" }
+    ]
+  },
+  "expected_catalog_matches": [
+    { "position": 1, "raw_text": "M8 Hex Bolt, Zinc Plated, Grade 8.8", "sku_code": "SKU-101", "score": 0.97, "match_method": "fused", "rank": 1 },
+    { "position": 2, "raw_text": "M8 Hex Nut, Zinc Plated",             "sku_code": "SKU-102", "score": 0.96, "match_method": "fused", "rank": 1 }
+  ],
+  "expected_outcome": {
+    "status": "needs_review",
+    "routing": "needs_review",
+    "overall_confidence": null,
+    "routing_reasons": [
+      "line_item_3: no_catalog_match - raw_text unreadable"
+    ]
+  }
+}
