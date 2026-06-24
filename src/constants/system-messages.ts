@@ -52,9 +52,14 @@ export const ATTACHMENT_NOT_FOUND = (id: string) => `Attachment ${id} not found`
 export const PIPELINE_ENQUEUED = 'Request enqueued for pipeline processing';
 export const PIPELINE_RESUMED = 'Request resumed for pipeline processing';
 
-// Parse node (US-E1-1-T3)
+// Parse node
 export const PARSE_UNSUPPORTED_TYPE = (ext: string) =>
   `Cannot extract text from unsupported file type "${ext}"`;
+
+// Paste fallback
+export const ATTACHMENT_PASTE_ACCEPTED = 'Content accepted; extraction re-queued';
+export const ATTACHMENT_PASTE_CONFLICT = 'Extraction is already in progress for this request';
+export const ATTACHMENT_PASTE_EMPTY = 'Paste content must not be empty';
 
 // Ingestion
 export const REQUEST_CREATED = 'Request created and queued for processing';
@@ -83,7 +88,7 @@ export const CLASSIFY_MALFORMED_INPUT =
 export const LLM_INVOCATION_FAILED = (status: number, body: string) =>
   `LLM invocation failed (${status}): ${body}`;
 
-// Extraction (US-E2)
+// Extraction
 export const EXTRACTION_COMPLETE = 'Extraction completed successfully';
 export const EXTRACTION_ESCALATED = 'Extraction failed validation after retry; escalated to review';
 export const EXTRACTION_SOURCE_TEXT_EMPTY = 'No source text available for extraction';

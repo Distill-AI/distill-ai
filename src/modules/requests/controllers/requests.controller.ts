@@ -1,10 +1,13 @@
 import {
+  Body,
   Controller,
   Get,
+  HttpCode,
   HttpStatus,
   Logger,
   NotFoundException,
   Param,
+  Post,
   Req,
   Res,
   Sse,
@@ -20,7 +23,12 @@ import * as SYS_MSG from '@constants/system-messages';
 import { RequestsService } from '../services/requests.service';
 import { StreamService } from '../services/stream.service';
 import { AttachmentsService } from '../services/attachments.service';
-import { RequestEventsDocs, DownloadAttachmentDocs } from '../docs/requests-swagger.doc';
+import { PasteAttachmentDto } from '../dto/paste-attachment.dto';
+import {
+  RequestEventsDocs,
+  DownloadAttachmentDocs,
+  PasteAttachmentDocs,
+} from '../docs/requests-swagger.doc';
 import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
 
 @Controller('requests')
@@ -90,5 +98,19 @@ export class RequestsController {
     }
 
     return this.streamService.subscribe(requestId);
+  }
+
+  @Post(':id/attachments/:attachmentId/paste')
+  @Roles(Role.ESTIMATOR, Role.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @PasteAttachmentDocs()
+  async pasteAttachment(
+    @Param('id') requestId: string,
+    @Param('attachmentId') attachmentId: string,
+    @Body() dto: PasteAttachmentDto,
+    @Req() req: { user?: AuthUser },
+  ): Promise<{ statusCode: number; message: string }> {
+    await this.attachmentsService.paste(req.user!, requestId, attachmentId, dto.content);
+    return { statusCode: HttpStatus.OK, message: SYS_MSG.ATTACHMENT_PASTE_ACCEPTED };
   }
 }
