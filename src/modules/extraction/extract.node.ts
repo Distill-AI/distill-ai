@@ -8,6 +8,7 @@ import { AttachmentModelAction } from '@modules/requests/attachments.model-actio
 import { LineItemModelAction } from '@modules/catalog/line-item.model-action';
 import { ToolRegistry } from '@modules/tools/registry';
 import { ToolStatus } from '@modules/tools/enums/tools.enums';
+import { ParseStatus } from '@modules/requests/enums/parse-status.enum';
 import { EventsService } from '@modules/events/events.service';
 import { NodeRegistry } from '@modules/pipeline/node-registry';
 import { toToolName } from '@modules/pipeline/types';
@@ -147,8 +148,12 @@ export class ExtractNode implements PipelineNode {
     });
 
     for (const attachment of attachmentRows) {
-      if (attachment.parsed_text?.trim()) {
-        parts.push(attachment.parsed_text.trim());
+      const text =
+        attachment.parse_status === ParseStatus.MANUAL_PASTE
+          ? attachment.raw_text?.trim()
+          : attachment.parsed_text?.trim();
+      if (text) {
+        parts.push(text);
       }
     }
 
