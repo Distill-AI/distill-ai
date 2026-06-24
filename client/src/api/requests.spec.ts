@@ -109,7 +109,11 @@ describe('buildOptimisticSummary', () => {
   it('truncates a pasted body to 80 chars for the subject', () => {
     const body = 'a'.repeat(120);
 
-    const summary = buildOptimisticSummary(response, { kind: 'paste', sourceBody: body }, createdAt);
+    const summary = buildOptimisticSummary(
+      response,
+      { kind: 'paste', sourceBody: body },
+      createdAt,
+    );
 
     expect(summary.source_subject).toHaveLength(80);
   });
