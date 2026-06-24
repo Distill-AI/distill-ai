@@ -4,6 +4,7 @@ import { CustomHttpException } from '@common/exceptions/custom-http.exception';
 import { OBJECT_STORE, type ObjectStore } from '@common/object-store/object-store.port';
 import { AttachmentModelAction } from '../attachments.model-action';
 import type { Attachment } from '../entities/attachment.entity';
+import type { AttachmentSummary } from '../interfaces/request-response.interface';
 
 /** The stored original of an attachment: its metadata plus the raw bytes from the object store. */
 export interface DownloadableAttachment {
@@ -36,5 +37,24 @@ export class AttachmentsService {
     }
     const bytes = await this.store.get(attachment.storage_url);
     return { attachment, bytes };
+  }
+
+  /**
+   * List the metadata of a request's attachments, oldest first (upload order). Returns only the
+   * fields the Review screen needs; `storage_url` and `parsed_text` are intentionally excluded.
+   */
+  async listForRequest(requestId: string): Promise<AttachmentSummary[]> {
+    const { payload } = await this.attachments.find({
+      findOptions: { request_id: requestId },
+      transactionOptions: { useTransaction: false },
+      order: { created_at: 'ASC' },
+    });
+    return payload.map((attachment) => ({
+      id: attachment.id,
+      filename: attachment.filename,
+      mime_type: attachment.mime_type,
+      size_bytes: attachment.size_bytes,
+      created_at: attachment.created_at,
+    }));
   }
 }

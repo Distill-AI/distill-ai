@@ -1,6 +1,118 @@
 import { applyDecorators, HttpStatus } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiProduces, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiOperation,
+  ApiParam,
+  ApiProduces,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import * as SYS_MSG from '@constants/system-messages';
+
+export function ListRequestsDocs(): MethodDecorator {
+  return applyDecorators(
+    ApiTags('Requests'),
+    ApiOperation({
+      summary: 'List requests for the Inbox',
+      description:
+        "Returns requests for the caller's organization, newest first, for the Inbox list. " +
+        'Each row carries the fields the Inbox renders: company, contact, subject, type, ' +
+        'confidence, status and created_at. Results are paginated via `page` and `limit`.',
+    }),
+    ApiQuery({ name: 'page', required: false, type: 'integer', description: 'Page number (>= 1)' }),
+    ApiQuery({
+      name: 'limit',
+      required: false,
+      type: 'integer',
+      description: 'Page size (1-100, default 50)',
+    }),
+    ApiResponse({
+      status: HttpStatus.OK,
+      description:
+        'Requests retrieved.\n\n' +
+        '```json\n' +
+        '{\n' +
+        '  "success": true,\n' +
+        '  "statusCode": 200,\n' +
+        '  "message": "Requests retrieved successfully",\n' +
+        '  "data": [\n' +
+        '    {\n' +
+        '      "id": "uuid",\n' +
+        '      "sender_company": "Apex Fabrication",\n' +
+        '      "sender_contact": "Dana Reyes",\n' +
+        '      "source_subject": "RFQ: 200x steel brackets",\n' +
+        '      "request_type": "catalog_rfq",\n' +
+        '      "overall_confidence": 0.96,\n' +
+        '      "status": "needs_review",\n' +
+        '      "created_at": "2026-06-24T10:00:00.000Z"\n' +
+        '    }\n' +
+        '  ],\n' +
+        '  "meta": { "total": 1, "limit": 50, "page": 1 }\n' +
+        '}\n' +
+        '```',
+    }),
+    ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: SYS_MSG.AUTH_UNAUTHORIZED }),
+    ApiResponse({ status: HttpStatus.FORBIDDEN, description: SYS_MSG.AUTH_FORBIDDEN }),
+  );
+}
+
+export function GetRequestDocs(): MethodDecorator {
+  return applyDecorators(
+    ApiTags('Requests'),
+    ApiOperation({
+      summary: 'Get a single request with its attachments',
+      description:
+        'Returns the full detail for one request (sender, body, status, confidence) plus the ' +
+        'metadata of its attachments, for the Review screen. A request that does not exist, or ' +
+        'belongs to another organization, returns 404 so existence is not leaked across tenants. ' +
+        'Internal attachment fields (storage location, parsed text) are not exposed.',
+    }),
+    ApiParam({
+      name: 'id',
+      description: 'UUID of the request',
+      required: true,
+      type: 'string',
+      format: 'uuid',
+    }),
+    ApiResponse({
+      status: HttpStatus.OK,
+      description:
+        'Request retrieved.\n\n' +
+        '```json\n' +
+        '{\n' +
+        '  "success": true,\n' +
+        '  "statusCode": 200,\n' +
+        '  "message": "Request retrieved successfully",\n' +
+        '  "data": {\n' +
+        '    "id": "uuid",\n' +
+        '    "sender_company": "Apex Fabrication",\n' +
+        '    "sender_contact": "Dana Reyes",\n' +
+        '    "sender_email": "dana@apex.example",\n' +
+        '    "source_subject": "RFQ: 200x steel brackets",\n' +
+        '    "source_body": "Hi, please quote...",\n' +
+        '    "request_type": "catalog_rfq",\n' +
+        '    "overall_confidence": 0.96,\n' +
+        '    "status": "needs_review",\n' +
+        '    "current_node": "extract",\n' +
+        '    "created_at": "2026-06-24T10:00:00.000Z",\n' +
+        '    "attachments": [\n' +
+        '      {\n' +
+        '        "id": "uuid",\n' +
+        '        "filename": "rfq_apex.pdf",\n' +
+        '        "mime_type": "application/pdf",\n' +
+        '        "size_bytes": 1258291,\n' +
+        '        "created_at": "2026-06-24T10:00:00.000Z"\n' +
+        '      }\n' +
+        '    ]\n' +
+        '  }\n' +
+        '}\n' +
+        '```',
+    }),
+    ApiResponse({ status: HttpStatus.NOT_FOUND, description: SYS_MSG.REQUEST_NOT_FOUND('{id}') }),
+    ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: SYS_MSG.AUTH_UNAUTHORIZED }),
+    ApiResponse({ status: HttpStatus.FORBIDDEN, description: SYS_MSG.AUTH_FORBIDDEN }),
+  );
+}
 
 export function RequestEventsDocs(): MethodDecorator {
   return applyDecorators(
