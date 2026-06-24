@@ -6,7 +6,7 @@ import { ResumeReason } from '@modules/requests/enums/resume-reason.enum';
 import { RequestModelAction } from '@modules/requests/requests.model-action';
 import { EventsService } from '@modules/events/events.service';
 import { NodeRegistry } from './node-registry';
-import { isInfraError } from './pipeline.errors';
+import { isInfraError, CircuitBreakerOpenError } from './pipeline.errors';
 import type { NodeResult } from './types';
 import { getTimestamp } from '@common/utils/timestamp';
 
@@ -105,6 +105,26 @@ export class PipelineGraphEngine {
       try {
         result = await impl.run({ requestId, orgId });
       } catch (err) {
+        // Circuit breaker open (FR-5, SEC-02): LlmClientService emits stage.error before
+        // throwing, so no duplicate event is needed here. Wired ahead of ClassifyNode
+        // switching from LLMProvider to LlmClientService (planned LlmModule milestone).
+        if (err instanceof CircuitBreakerOpenError) {
+          await this.events.emit({
+            eventName: 'node.exited',
+            orgId,
+            requestId,
+            attributes: { node, next: 'needs_review' },
+          });
+          overallStatus = 'failed';
+          return this.finalize(
+            orgId,
+            requestId,
+            RequestStatus.NEEDS_REVIEW,
+            overallStatus,
+            startedAt,
+          );
+        }
+
         const infra = isInfraError(err);
         const nodeDuration = elapsedMs(nodeStartedAt);
         const errorMsg = (err as Error).message;
