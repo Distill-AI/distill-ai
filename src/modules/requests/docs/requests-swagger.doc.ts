@@ -1,23 +1,57 @@
 import { applyDecorators, HttpStatus } from '@nestjs/common';
 import {
+  ApiBody,
+  ApiExtraModels,
+  ApiOkResponse,
   ApiOperation,
   ApiParam,
   ApiProduces,
   ApiQuery,
   ApiResponse,
   ApiTags,
+  getSchemaPath,
 } from '@nestjs/swagger';
+import { PasteAttachmentDto } from '../dto/paste-attachment.dto';
+import { RequestSummaryResponseDto, RequestDetailResponseDto } from './requests-response.dto';
 import * as SYS_MSG from '@constants/system-messages';
+
+const BASE_PATH = '/api/v1/requests/{id}/attachments/{attachmentId}/paste';
+const TIMESTAMP_EXAMPLE = '2026-06-19T00:00:00.000Z';
+
+function errorSchema(statusCode: HttpStatus, error: string, message: string | string[]) {
+  return {
+    example: {
+      success: false,
+      statusCode,
+      error,
+      message,
+      path: BASE_PATH,
+      timestamp: TIMESTAMP_EXAMPLE,
+    },
+  };
+}
+
+const PAGINATION_META_SCHEMA = {
+  type: 'object',
+  properties: {
+    total: { type: 'number' },
+    page: { type: 'number' },
+    limit: { type: 'number' },
+    total_pages: { type: 'number' },
+    has_next: { type: 'boolean' },
+    has_previous: { type: 'boolean' },
+  },
+};
 
 export function ListRequestsDocs(): MethodDecorator {
   return applyDecorators(
     ApiTags('Requests'),
+    ApiExtraModels(RequestSummaryResponseDto),
     ApiOperation({
       summary: 'List requests for the Inbox',
       description:
         "Returns requests for the caller's organization, newest first, for the Inbox list. " +
-        'Each row carries the fields the Inbox renders: company, contact, subject, type, ' +
-        'confidence, status and created_at. Results are paginated via `page` and `limit`.',
+        'Paginated via `page` and `limit`; pagination fields are returned under `meta`.',
     }),
     ApiQuery({ name: 'page', required: false, type: 'integer', description: 'Page number (>= 1)' }),
     ApiQuery({
@@ -28,28 +62,15 @@ export function ListRequestsDocs(): MethodDecorator {
     }),
     ApiResponse({
       status: HttpStatus.OK,
-      description:
-        'Requests retrieved.\n\n' +
-        '```json\n' +
-        '{\n' +
-        '  "success": true,\n' +
-        '  "statusCode": 200,\n' +
-        '  "message": "Requests retrieved successfully",\n' +
-        '  "data": [\n' +
-        '    {\n' +
-        '      "id": "uuid",\n' +
-        '      "sender_company": "Apex Fabrication",\n' +
-        '      "sender_contact": "Dana Reyes",\n' +
-        '      "source_subject": "RFQ: 200x steel brackets",\n' +
-        '      "request_type": "catalog_rfq",\n' +
-        '      "overall_confidence": 0.96,\n' +
-        '      "status": "needs_review",\n' +
-        '      "created_at": "2026-06-24T10:00:00.000Z"\n' +
-        '    }\n' +
-        '  ],\n' +
-        '  "meta": { "total": 1, "limit": 50, "page": 1 }\n' +
-        '}\n' +
-        '```',
+      schema: {
+        properties: {
+          success: { type: 'boolean', example: true },
+          statusCode: { type: 'number', example: HttpStatus.OK },
+          message: { type: 'string', example: SYS_MSG.REQUESTS_RETRIEVED },
+          data: { type: 'array', items: { $ref: getSchemaPath(RequestSummaryResponseDto) } },
+          meta: PAGINATION_META_SCHEMA,
+        },
+      },
     }),
     ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: SYS_MSG.AUTH_UNAUTHORIZED }),
     ApiResponse({ status: HttpStatus.FORBIDDEN, description: SYS_MSG.AUTH_FORBIDDEN }),
@@ -59,13 +80,13 @@ export function ListRequestsDocs(): MethodDecorator {
 export function GetRequestDocs(): MethodDecorator {
   return applyDecorators(
     ApiTags('Requests'),
+    ApiExtraModels(RequestDetailResponseDto),
     ApiOperation({
       summary: 'Get a single request with its attachments',
       description:
-        'Returns the full detail for one request (sender, body, status, confidence) plus the ' +
-        'metadata of its attachments, for the Review screen. A request that does not exist, or ' +
-        'belongs to another organization, returns 404 so existence is not leaked across tenants. ' +
-        'Internal attachment fields (storage location, parsed text) are not exposed.',
+        'Returns the full detail for one request plus its attachment metadata, for the Review screen. ' +
+        'A missing or cross-org request returns 404 so existence is not leaked across tenants. ' +
+        'Internal attachment fields (storage location, parsed/raw text) are not exposed.',
     }),
     ApiParam({
       name: 'id',
@@ -76,37 +97,14 @@ export function GetRequestDocs(): MethodDecorator {
     }),
     ApiResponse({
       status: HttpStatus.OK,
-      description:
-        'Request retrieved.\n\n' +
-        '```json\n' +
-        '{\n' +
-        '  "success": true,\n' +
-        '  "statusCode": 200,\n' +
-        '  "message": "Request retrieved successfully",\n' +
-        '  "data": {\n' +
-        '    "id": "uuid",\n' +
-        '    "sender_company": "Apex Fabrication",\n' +
-        '    "sender_contact": "Dana Reyes",\n' +
-        '    "sender_email": "dana@apex.example",\n' +
-        '    "source_subject": "RFQ: 200x steel brackets",\n' +
-        '    "source_body": "Hi, please quote...",\n' +
-        '    "request_type": "catalog_rfq",\n' +
-        '    "overall_confidence": 0.96,\n' +
-        '    "status": "needs_review",\n' +
-        '    "current_node": "extract",\n' +
-        '    "created_at": "2026-06-24T10:00:00.000Z",\n' +
-        '    "attachments": [\n' +
-        '      {\n' +
-        '        "id": "uuid",\n' +
-        '        "filename": "rfq_apex.pdf",\n' +
-        '        "mime_type": "application/pdf",\n' +
-        '        "size_bytes": 1258291,\n' +
-        '        "created_at": "2026-06-24T10:00:00.000Z"\n' +
-        '      }\n' +
-        '    ]\n' +
-        '  }\n' +
-        '}\n' +
-        '```',
+      schema: {
+        properties: {
+          success: { type: 'boolean', example: true },
+          statusCode: { type: 'number', example: HttpStatus.OK },
+          message: { type: 'string', example: SYS_MSG.REQUEST_RETRIEVED },
+          data: { $ref: getSchemaPath(RequestDetailResponseDto) },
+        },
+      },
     }),
     ApiResponse({ status: HttpStatus.NOT_FOUND, description: SYS_MSG.REQUEST_NOT_FOUND('{id}') }),
     ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: SYS_MSG.AUTH_UNAUTHORIZED }),
@@ -122,7 +120,7 @@ export function RequestEventsDocs(): MethodDecorator {
       description:
         'Opens a Server-Sent Events (SSE) connection that streams live processing trace events ' +
         'for the given request. Events are emitted as each pipeline stage executes: ' +
-        'parse → extract → match → score → price → policy. ' +
+        'parse -> extract -> match -> score -> price -> policy. ' +
         'Tool invocations (extract, match) are included with retry indicators. ' +
         'No raw model reasoning or chain-of-thought is emitted. ' +
         'The stream closes when processing completes (success or failure) or on client disconnect.',
@@ -138,27 +136,12 @@ export function RequestEventsDocs(): MethodDecorator {
     ApiResponse({
       status: 200,
       description:
-        'SSE event stream. Each event is formatted as:\n\n' +
-        '```\n' +
-        'event: node.entered\ndata: {"type":"node.entered","timestamp":"...","node":"parse","status":"processing"}\n\n' +
-        'event: node.exited\ndata: {"type":"node.exited","timestamp":"...","node":"parse","status":"success","duration_ms":500,"summary":"Parsed email + attachments"}\n\n' +
-        'event: tool.invoked\ndata: {"type":"tool.invoked","node":"extract","tool_name":"catalog_search","status":"running","attempt":1,"result_summary":"Invoking tool"}\n\n' +
-        'event: processing.complete\ndata: {"type":"processing.complete","timestamp":"...","status":"success","total_duration_ms":10000}\n\n' +
-        '```',
+        'SSE event stream of node.entered / node.exited / tool.invoked / processing.complete events.',
       content: { 'text/event-stream': { schema: { type: 'string' } } },
     }),
-    ApiResponse({
-      status: 404,
-      description: SYS_MSG.REQUEST_NOT_FOUND('{id}'),
-    }),
-    ApiResponse({
-      status: 401,
-      description: SYS_MSG.AUTH_UNAUTHORIZED,
-    }),
-    ApiResponse({
-      status: 403,
-      description: SYS_MSG.AUTH_FORBIDDEN,
-    }),
+    ApiResponse({ status: 404, description: SYS_MSG.REQUEST_NOT_FOUND('{id}') }),
+    ApiResponse({ status: 401, description: SYS_MSG.AUTH_UNAUTHORIZED }),
+    ApiResponse({ status: 403, description: SYS_MSG.AUTH_FORBIDDEN }),
   );
 }
 
@@ -181,33 +164,25 @@ export function RequestResumeDocs(): MethodDecorator {
     }),
     ApiResponse({
       status: HttpStatus.OK,
-      description:
-        'Request resumed successfully.\n\n' +
-        '```json\n' +
-        '{\n' +
-        '  "statusCode": 200,\n' +
-        '  "message": "Request resumed successfully",\n' +
-        '  "data": {\n' +
-        '    "request_id": "uuid",\n' +
-        '    "resumed": true,\n' +
-        '    "resume_reason": "manual",\n' +
-        '    "current_node": "extract"\n' +
-        '  }\n' +
-        '}\n' +
-        '```',
+      schema: {
+        properties: {
+          statusCode: { type: 'number', example: HttpStatus.OK },
+          message: { type: 'string', example: SYS_MSG.RESUME_SUCCESS },
+          data: {
+            type: 'object',
+            properties: {
+              request_id: { type: 'string', format: 'uuid' },
+              resumed: { type: 'boolean', example: true },
+              resume_reason: { type: 'string', example: 'manual' },
+              current_node: { type: 'string', example: 'extract' },
+            },
+          },
+        },
+      },
     }),
-    ApiResponse({
-      status: HttpStatus.NOT_FOUND,
-      description: SYS_MSG.REQUEST_NOT_FOUND('{id}'),
-    }),
-    ApiResponse({
-      status: HttpStatus.UNAUTHORIZED,
-      description: SYS_MSG.AUTH_UNAUTHORIZED,
-    }),
-    ApiResponse({
-      status: HttpStatus.FORBIDDEN,
-      description: SYS_MSG.AUTH_FORBIDDEN,
-    }),
+    ApiResponse({ status: HttpStatus.NOT_FOUND, description: SYS_MSG.REQUEST_NOT_FOUND('{id}') }),
+    ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: SYS_MSG.AUTH_UNAUTHORIZED }),
+    ApiResponse({ status: HttpStatus.FORBIDDEN, description: SYS_MSG.AUTH_FORBIDDEN }),
   );
 }
 
@@ -241,5 +216,73 @@ export function DownloadAttachmentDocs(): MethodDecorator {
     }),
     ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: SYS_MSG.AUTH_UNAUTHORIZED }),
     ApiResponse({ status: HttpStatus.FORBIDDEN, description: SYS_MSG.AUTH_FORBIDDEN }),
+  );
+}
+
+export function PasteAttachmentDocs(): MethodDecorator {
+  return applyDecorators(
+    ApiTags('Requests'),
+    ApiOperation({
+      summary: 'Submit pasted text for an unparsed attachment',
+      description:
+        'Accepts manually pasted content for an attachment that could not be parsed automatically. ' +
+        'Re-checkpoints the request to the extract node and re-enqueues the pipeline. ' +
+        'Returns 409 if the pipeline is already actively processing this request.',
+    }),
+    ApiParam({
+      name: 'id',
+      description: 'UUID of the parent request',
+      required: true,
+      type: 'string',
+      format: 'uuid',
+    }),
+    ApiParam({
+      name: 'attachmentId',
+      description: 'UUID of the attachment to paste into',
+      required: true,
+      type: 'string',
+      format: 'uuid',
+    }),
+    ApiBody({ type: PasteAttachmentDto }),
+    ApiOkResponse({
+      description: SYS_MSG.ATTACHMENT_PASTE_ACCEPTED,
+      schema: {
+        properties: {
+          success: { type: 'boolean', example: true },
+          statusCode: { type: 'number', example: HttpStatus.OK },
+          message: { type: 'string', example: SYS_MSG.ATTACHMENT_PASTE_ACCEPTED },
+          data: { type: 'object', example: null, nullable: true },
+        },
+      },
+    }),
+    ApiResponse({
+      status: HttpStatus.CONFLICT,
+      description: SYS_MSG.ATTACHMENT_PASTE_CONFLICT,
+      schema: errorSchema(HttpStatus.CONFLICT, 'Conflict', SYS_MSG.ATTACHMENT_PASTE_CONFLICT),
+    }),
+    ApiResponse({
+      status: HttpStatus.NOT_FOUND,
+      description: `${SYS_MSG.REQUEST_NOT_FOUND('{id}')} / ${SYS_MSG.ATTACHMENT_NOT_FOUND('{attachmentId}')}`,
+      schema: errorSchema(
+        HttpStatus.NOT_FOUND,
+        'Not Found',
+        SYS_MSG.ATTACHMENT_NOT_FOUND('{attachmentId}'),
+      ),
+    }),
+    ApiResponse({
+      status: HttpStatus.BAD_REQUEST,
+      description: SYS_MSG.ATTACHMENT_PASTE_EMPTY,
+      schema: errorSchema(HttpStatus.BAD_REQUEST, 'Bad Request', [SYS_MSG.ATTACHMENT_PASTE_EMPTY]),
+    }),
+    ApiResponse({
+      status: HttpStatus.UNAUTHORIZED,
+      description: SYS_MSG.AUTH_UNAUTHORIZED,
+      schema: errorSchema(HttpStatus.UNAUTHORIZED, 'Unauthorized', SYS_MSG.AUTH_UNAUTHORIZED),
+    }),
+    ApiResponse({
+      status: HttpStatus.FORBIDDEN,
+      description: SYS_MSG.AUTH_FORBIDDEN,
+      schema: errorSchema(HttpStatus.FORBIDDEN, 'Forbidden', SYS_MSG.AUTH_FORBIDDEN),
+    }),
   );
 }

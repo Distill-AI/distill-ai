@@ -1,8 +1,9 @@
 import {
+  Body,
   Controller,
   Get,
-  HttpStatus,
   HttpCode,
+  HttpStatus,
   Logger,
   NotFoundException,
   Param,
@@ -30,8 +31,11 @@ import {
   DownloadAttachmentDocs,
   ListRequestsDocs,
   GetRequestDocs,
+  PasteAttachmentDocs,
 } from '../docs/requests-swagger.doc';
 import { AttachmentsService } from '../services/attachments.service';
+import { PasteAttachmentDto } from '../dto/paste-attachment.dto';
+import { parsePagination } from '@common/pagination/parse-pagination';
 import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
 import type { ResumeResponsePayload } from '../interfaces/resume.interface';
 
@@ -46,10 +50,7 @@ export class RequestsController {
     private readonly attachmentsService: AttachmentsService,
   ) {}
 
-  /**
-   * List requests for the Inbox, newest first. Scoped to the caller's org when auth is enabled
-   * (the @Roles guard guarantees an authenticated user in that mode); unscoped in single-tenant dev.
-   */
+  /** Lists requests for the calling org, newest first; unscoped in single-tenant dev mode. */
   @Get()
   @Roles(Role.ESTIMATOR, Role.ADMIN)
   @ListRequestsDocs()
@@ -58,9 +59,21 @@ export class RequestsController {
     @Query('page') rawPage?: string,
     @Query('limit') rawLimit?: string,
   ) {
-    const page = Math.max(parseInt(rawPage ?? '1', 10) || 1, 1);
-    const limit = Math.min(Math.max(parseInt(rawLimit ?? '50', 10) || 50, 1), 100);
-    const orgId = authConfig.enabled ? req.user?.orgId : undefined;
+    const { page, limit } = parsePagination(rawPage, rawLimit);
+
+    // Fail closed: when auth is on, a caller with no org gets an empty list, never an unscoped one.
+    let orgId: string | undefined;
+    if (authConfig.enabled) {
+      if (!req.user?.orgId) {
+        return {
+          statusCode: HttpStatus.OK,
+          message: SYS_MSG.REQUESTS_RETRIEVED,
+          data: [],
+          total: 0,
+        };
+      }
+      orgId = req.user.orgId;
+    }
 
     const result = await this.requestsService.listForOrg({ orgId, page, limit });
 
@@ -68,14 +81,11 @@ export class RequestsController {
       statusCode: HttpStatus.OK,
       message: SYS_MSG.REQUESTS_RETRIEVED,
       data: result.payload,
-      ...result.paginationMeta,
+      ...(result.paginationMeta as Record<string, unknown>),
     };
   }
 
-  /**
-   * Get a single request with its attachments for the Review screen. Access is gated the same way as
-   * the attachment download: a missing or cross-org request returns 404 so existence is not leaked.
-   */
+  /** Returns full request detail including attachments; 404s for cross-org or missing requests. */
   @Get(':id')
   @Roles(Role.ESTIMATOR, Role.ADMIN)
   @GetRequestDocs()
@@ -185,5 +195,19 @@ export class RequestsController {
       message: SYS_MSG.RESUME_SUCCESS,
       data: result,
     };
+  }
+
+  @Post(':id/attachments/:attachmentId/paste')
+  @Roles(Role.ESTIMATOR, Role.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @PasteAttachmentDocs()
+  async pasteAttachment(
+    @Param('id') requestId: string,
+    @Param('attachmentId') attachmentId: string,
+    @Body() dto: PasteAttachmentDto,
+    @Req() req: { user?: AuthUser },
+  ): Promise<{ statusCode: number; message: string }> {
+    await this.attachmentsService.paste(req.user, requestId, attachmentId, dto.content);
+    return { statusCode: HttpStatus.OK, message: SYS_MSG.ATTACHMENT_PASTE_ACCEPTED };
   }
 }
