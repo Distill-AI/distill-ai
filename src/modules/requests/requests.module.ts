@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ObjectStoreModule } from '@common/object-store/object-store.module';
 import { SseModule } from '../../sse/sse.module';
 import { EventsModule } from '../events/events.module';
+import { QueueClientModule } from '../../queue/queue-client.module';
 import { Request } from './entities/request.entity';
 import { Attachment } from './entities/attachment.entity';
 import { Organization } from '../organizations/entities/organization.entity';
@@ -19,6 +20,7 @@ import { RequestsController } from './controllers/requests.controller';
     SseModule,
     EventsModule,
     ObjectStoreModule,
+    QueueClientModule,
   ],
   controllers: [RequestsController],
   providers: [
@@ -28,6 +30,12 @@ import { RequestsController } from './controllers/requests.controller';
     StreamService,
     AttachmentsService,
   ],
-  exports: [RequestModelAction, AttachmentModelAction, RequestsService, StreamService],
+  exports: [
+    RequestModelAction,
+    AttachmentModelAction,
+    RequestsService,
+    StreamService,
+    AttachmentsService,
+  ],
 })
 export class RequestsModule {}
