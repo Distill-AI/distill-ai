@@ -1,9 +1,12 @@
 import { CurrentNode } from '@modules/requests/enums/current-node.enum';
+import { ParseStatus } from '@modules/requests/enums/parse-status.enum';
+import { ParseErrorReason } from '@modules/requests/enums/parse-error-reason.enum';
 import type { Request } from '@modules/requests/entities/request.entity';
 import type { Attachment } from '@modules/requests/entities/attachment.entity';
 import type { RequestModelAction } from '@modules/requests/requests.model-action';
 import type { AttachmentModelAction } from '@modules/requests/attachments.model-action';
 import type { ObjectStore } from '@common/object-store/object-store.port';
+import type { EventsService } from '@modules/events/events.service';
 import { NodeRegistry } from '@modules/pipeline/node-registry';
 import { ParseNode } from '../parse.node';
 
@@ -16,6 +19,9 @@ function makeAttachment(over: Partial<Attachment>): Attachment {
     size_bytes: 10,
     storage_url: 'attachments/req-1/items.csv',
     parsed_text: null,
+    parse_status: ParseStatus.UNPARSED,
+    parse_error_reason: null,
+    raw_text: null,
     ...over,
   } as Attachment;
 }
@@ -31,40 +37,27 @@ function setup(attachments: Attachment[], reqExists = true) {
       .fn()
       .mockResolvedValue({ payload: attachments, paginationMeta: { total: attachments.length } }),
     update: vi.fn().mockResolvedValue(null),
+    markUnparsed: vi.fn().mockResolvedValue(undefined),
   };
   const store = {
     get: vi.fn().mockResolvedValue(Buffer.from('sku,qty\nBOLT,1\n', 'utf8')),
     put: vi.fn(),
   };
+  const events = { emit: vi.fn().mockResolvedValue(undefined) };
   const node = new ParseNode(
     new NodeRegistry(),
     requests as unknown as RequestModelAction,
     attachmentsAction as unknown as AttachmentModelAction,
     store as unknown as ObjectStore,
+    events as unknown as EventsService,
   );
-  return { node, requests, attachmentsAction, store };
+  return { node, requests, attachmentsAction, store, events };
 }
 
 const ctx = { requestId: 'req-1', orgId: 'org-1' };
 
 describe('ParseNode', () => {
-  it('extracts each attachment and writes parsed_text, then advances to extract', async () => {
-    const { node, attachmentsAction, store } = setup([
-      makeAttachment({ id: 'a1', filename: 'a.csv' }),
-      makeAttachment({ id: 'a2', filename: 'b.txt', storage_url: 'attachments/req-1/b.txt' }),
-    ]);
-
-    const result = await node.run(ctx);
-
-    expect(result).toEqual({ kind: 'advance', next: CurrentNode.EXTRACT });
-    expect(store.get).toHaveBeenCalledTimes(2);
-    expect(attachmentsAction.update).toHaveBeenCalledTimes(2);
-    const firstUpdate = attachmentsAction.update.mock.calls[0][0];
-    expect(firstUpdate.identifierOptions).toEqual({ id: 'a1' });
-    expect(firstUpdate.updatePayload.parsed_text).toContain('sku,qty');
-  });
-
-  it('advances with no work when the request has no attachments (paste-only)', async () => {
+  it('advances to EXTRACT with no work when the request has no attachments (paste-only)', async () => {
     const { node, store, attachmentsAction } = setup([]);
 
     const result = await node.run(ctx);
@@ -74,40 +67,83 @@ describe('ParseNode', () => {
     expect(attachmentsAction.update).not.toHaveBeenCalled();
   });
 
-  it('is best-effort: a failing attachment is stored as null and does not sink the request', async () => {
-    const { node, attachmentsAction, store } = setup([
-      makeAttachment({ id: 'good', filename: 'a.csv' }),
+  it('skips object-store fetch for manual_paste attachments and advances to EXTRACT', async () => {
+    const { node, store, attachmentsAction } = setup([
       makeAttachment({
-        id: 'bad',
-        filename: 'b.csv',
-        storage_url: 'attachments/req-1/missing.csv',
+        id: 'a1',
+        parse_status: ParseStatus.MANUAL_PASTE,
+        raw_text: 'pasted content',
       }),
     ]);
+
+    const result = await node.run(ctx);
+
+    expect(result).toEqual({ kind: 'advance', next: CurrentNode.EXTRACT });
+    expect(store.get).not.toHaveBeenCalled();
+    expect(attachmentsAction.update).not.toHaveBeenCalled();
+  });
+
+  it('writes parsed_text and parse_status PARSED when extraction succeeds', async () => {
+    const { node, attachmentsAction } = setup([makeAttachment({ id: 'a1', filename: 'a.csv' })]);
+
+    const result = await node.run(ctx);
+
+    expect(result).toEqual({ kind: 'advance', next: CurrentNode.EXTRACT });
+    expect(attachmentsAction.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        identifierOptions: { id: 'a1' },
+        updatePayload: expect.objectContaining({ parse_status: ParseStatus.PARSED }),
+      }),
+    );
+  });
+
+  it('calls markUnparsed, emits stage.error, and returns clarify when extraction fails', async () => {
+    const { node, attachmentsAction, store, events } = setup([
+      makeAttachment({ id: 'a1', filename: 'a.csv' }),
+    ]);
+    store.get.mockRejectedValueOnce(new Error('ENOENT'));
+
+    const result = await node.run(ctx);
+
+    expect(result).toEqual({ kind: 'clarify' });
+    expect(attachmentsAction.markUnparsed).toHaveBeenCalledWith('a1', ParseErrorReason.UNKNOWN);
+    expect(events.emit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventName: 'stage.error',
+        attributes: expect.objectContaining({ stage: 'parse', escalated_to_human: true }),
+      }),
+    );
+    expect(attachmentsAction.update).not.toHaveBeenCalled();
+  });
+
+  it('fails fast on the first failing attachment and does not process remaining ones', async () => {
+    const { node, store, attachmentsAction } = setup([
+      makeAttachment({ id: 'bad', filename: 'bad.csv', storage_url: 'bad.csv' }),
+      makeAttachment({ id: 'good', filename: 'good.csv', storage_url: 'good.csv' }),
+    ]);
     store.get.mockImplementation((url: string) =>
-      url.includes('missing')
+      url === 'bad.csv'
         ? Promise.reject(new Error('ENOENT'))
         : Promise.resolve(Buffer.from('ok', 'utf8')),
     );
 
     const result = await node.run(ctx);
 
-    expect(result).toEqual({ kind: 'advance', next: CurrentNode.EXTRACT });
-    const badUpdate = attachmentsAction.update.mock.calls.find(
-      (c) => c[0].identifierOptions.id === 'bad',
-    );
-    expect(badUpdate?.[0].updatePayload.parsed_text).toBeNull();
+    expect(result).toEqual({ kind: 'clarify' });
+    expect(attachmentsAction.markUnparsed).toHaveBeenCalledTimes(1);
+    expect(attachmentsAction.markUnparsed).toHaveBeenCalledWith('bad', ParseErrorReason.UNKNOWN);
+    expect(store.get).toHaveBeenCalledTimes(1);
   });
 
   it('fails when the request does not exist', async () => {
-    const { node, store } = setup([], false);
+    const { node } = setup([], false);
 
     const result = await node.run(ctx);
 
     expect(result.kind).toBe('failed');
-    expect(store.get).not.toHaveBeenCalled();
   });
 
-  it('surfaces a persistence fault (a DB write error is not swallowed as a parse failure)', async () => {
+  it('surfaces a persistence fault (DB write error is not swallowed as a parse failure)', async () => {
     const { node, attachmentsAction } = setup([makeAttachment({ id: 'a1', filename: 'a.csv' })]);
     attachmentsAction.update.mockRejectedValueOnce(new Error('db down'));
 
