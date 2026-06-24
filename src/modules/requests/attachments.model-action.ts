@@ -1,7 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AbstractModelAction } from '@common/model-action/abstract.model-action';
+import { CustomHttpException } from '@common/exceptions/custom-http.exception';
+import * as SYS_MSG from '@constants/system-messages';
 import { ParseErrorReason } from './enums/parse-error-reason.enum';
 import { ParseStatus } from './enums/parse-status.enum';
 import { Attachment } from './entities/attachment.entity';
@@ -24,17 +26,29 @@ export class AttachmentModelAction extends AbstractModelAction<Attachment> {
 
   /** Mark an attachment unparsed after a parse failure. */
   async markUnparsed(attachmentId: string, reason: ParseErrorReason): Promise<void> {
-    await this.repository.update(
+    const result = await this.repository.update(
       { id: attachmentId },
       { parse_status: ParseStatus.UNPARSED, parse_error_reason: reason },
     );
+    if (result.affected === 0) {
+      throw new CustomHttpException(
+        SYS_MSG.ATTACHMENT_NOT_FOUND(attachmentId),
+        HttpStatus.NOT_FOUND,
+      );
+    }
   }
 
   /** Store pasted text and flip status to manual_paste. */
   async markManualPaste(attachmentId: string, rawText: string): Promise<void> {
-    await this.repository.update(
+    const result = await this.repository.update(
       { id: attachmentId },
       { parse_status: ParseStatus.MANUAL_PASTE, raw_text: rawText, parse_error_reason: null },
     );
+    if (result.affected === 0) {
+      throw new CustomHttpException(
+        SYS_MSG.ATTACHMENT_NOT_FOUND(attachmentId),
+        HttpStatus.NOT_FOUND,
+      );
+    }
   }
 }
