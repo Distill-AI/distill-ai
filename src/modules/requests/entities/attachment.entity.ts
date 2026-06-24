@@ -1,18 +1,11 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { BaseEntity } from '@common/entities/base.entity';
+import { ParseStatus } from '../enums/parse-status.enum';
+import { ParseErrorReason } from '../enums/parse-error-reason.enum';
 import { Request } from './request.entity';
 
 @Entity('attachments')
-export class Attachment {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
+export class Attachment extends BaseEntity {
   @Column({ type: 'uuid' })
   request_id: string;
 
@@ -35,6 +28,22 @@ export class Attachment {
   @Column({ type: 'text', nullable: true })
   parsed_text: string | null;
 
-  @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
-  created_at: Date;
+  @Column({
+    type: 'enum',
+    enum: ParseStatus,
+    enumName: 'attachment_parse_status',
+    default: ParseStatus.UNPARSED,
+  })
+  parse_status: ParseStatus;
+
+  @Column({
+    type: 'enum',
+    enum: ParseErrorReason,
+    enumName: 'attachment_parse_error_reason',
+    nullable: true,
+  })
+  parse_error_reason: ParseErrorReason | null;
+
+  @Column({ type: 'text', nullable: true })
+  raw_text: string | null;
 }
