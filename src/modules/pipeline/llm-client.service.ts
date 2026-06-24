@@ -3,6 +3,7 @@ import { CircuitBreakerService } from './circuit-breaker.service';
 import { BackoffService } from '@worker/backoff.service';
 import { EventsService } from '@modules/events/events.service';
 import { CircuitBreakerOpenError } from './pipeline.errors';
+import { StageErrorReason } from '@constants/events.constants';
 import { env } from '@config/env';
 import OpenAI from 'openai';
 import * as fs from 'fs';
@@ -165,7 +166,11 @@ export class LlmClientService implements OnModuleInit {
           eventName: 'stage.error',
           orgId,
           requestId,
-          attributes: { node, reason: 'llm_circuit_open', escalated_to_human: true },
+          attributes: {
+            stage: node,
+            reason: StageErrorReason.LLM_CIRCUIT_OPEN,
+            escalated_to_human: true,
+          },
         });
         throw new CircuitBreakerOpenError();
       }
@@ -198,7 +203,11 @@ export class LlmClientService implements OnModuleInit {
       eventName: 'stage.error',
       orgId,
       requestId,
-      attributes: { node, reason: 'llm_circuit_open', escalated_to_human: true },
+      attributes: {
+        stage: node,
+        reason: StageErrorReason.LLM_CIRCUIT_OPEN,
+        escalated_to_human: true,
+      },
     });
 
     throw new CircuitBreakerOpenError();
