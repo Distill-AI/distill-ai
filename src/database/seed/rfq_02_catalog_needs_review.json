@@ -1,0 +1,43 @@
+{
+  "_meta": {
+    "sample_id": "rfq_02_catalog_needs_review",
+    "label": "NEEDS REVIEW - Catalog RFQ with a close-tie match and a margin-floor policy breach",
+    "request_type": "catalog_rfq",
+    "expected_status": "needs_review",
+    "expected_routing": "needs_review",
+    "test_focus": "close-tie flag on line 1 + policy breach on line 1 both independently route to needs_review"
+  },
+  "inbound_message": {
+    "channel": "email",
+    "received_at": "2025-06-12T10:48:33Z",
+    "from_name": "Rachel Obi",
+    "from_email": "r.obi@greenfield-const.co.uk",
+    "subject": "Urgent RFQ - Structural Fixings Project GC-2025-088",
+    "body": "Hi,\n\nCould you quote urgently on the below for a structural fixings job?\n\n- 2000x M12 Stainless Hex Bolt (Grade A2)\n- 2000x M12 Stainless Hex Nut A2\n\nDelivery needed by 5 July 2025 to our Birmingham site. Please advise if Grade A4 is available at similar cost.\n\nThanks,\nRachel Obi\nProcurement - Greenfield Construction Ltd"
+  },
+  "attachments": [],
+  "extracted_fields": {
+    "sender_contact": "Rachel Obi",
+    "sender_company": "Greenfield Construction Ltd",
+    "sender_email": "r.obi@greenfield-const.co.uk",
+    "delivery_date": "2025-07-05",
+    "line_items": [
+      { "position": 1, "raw_text": "M12 Stainless Hex Bolt Grade A2", "quantity": 2000, "unit": "each" },
+      { "position": 2, "raw_text": "M12 Stainless Hex Nut A2",        "quantity": 2000, "unit": "each" }
+    ]
+  },
+  "expected_catalog_matches": [
+    { "position": 1, "raw_text": "M12 Stainless Hex Bolt Grade A2", "sku_code": "SKU-201", "score": 0.83, "match_method": "fused", "rank": 1 },
+    { "position": 1, "raw_text": "M12 Stainless Hex Bolt Grade A2", "sku_code": "SKU-202", "score": 0.81, "match_method": "fused", "rank": 2 },
+    { "position": 2, "raw_text": "M12 Stainless Hex Nut A2",        "sku_code": "SKU-203", "score": 0.94, "match_method": "fused", "rank": 1 }
+  ],
+  "expected_outcome": {
+    "status": "needs_review",
+    "routing": "needs_review",
+    "overall_confidence": 0.885,
+    "routing_reasons": [
+      "line_item_1: close_tie (score delta 0.02 within threshold)",
+      "policy: margin_floor_breach on SKU-201 at qty 2000"
+    ]
+  }
+}

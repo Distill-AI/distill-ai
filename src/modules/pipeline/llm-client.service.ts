@@ -3,6 +3,7 @@ import { CircuitBreakerService } from './circuit-breaker.service';
 import { BackoffService } from '@worker/backoff.service';
 import { EventsService } from '@modules/events/events.service';
 import { CircuitBreakerOpenError } from './pipeline.errors';
+import { StageErrorReason } from '@constants/events.constants';
 import { env } from '@config/env';
 import OpenAI from 'openai';
 import * as fs from 'fs';
@@ -72,9 +73,23 @@ export class LlmClientService implements OnModuleInit {
   private async loadFixtures(): Promise<void> {
     if (this.catalogFixtures) return;
     try {
-      const catalogPath = path.resolve(process.cwd(), 'catalog.json');
-      const data = await fs.promises.readFile(catalogPath, 'utf8');
-      this.catalogFixtures = JSON.parse(data) as Record<string, unknown>[];
+      const seedDir = path.resolve(process.cwd(), 'src/database/seed');
+      const filenames = await fs.promises.readdir(seedDir);
+      const jsonFiles = filenames.filter((f) => f.endsWith('.json')).sort();
+      const fixtures: Record<string, unknown>[] = [];
+      for (const file of jsonFiles) {
+        try {
+          const raw = await fs.promises.readFile(path.join(seedDir, file), 'utf8');
+          fixtures.push(JSON.parse(raw) as Record<string, unknown>);
+        } catch (err) {
+          this.logger.warn({
+            event: 'demo_fixture_file_parse_failed',
+            file,
+            error: (err as Error).message,
+          });
+        }
+      }
+      this.catalogFixtures = fixtures;
     } catch (err) {
       this.logger.warn({ event: 'demo_fixture_load_failed', error: (err as Error).message });
       this.catalogFixtures = [];
@@ -151,7 +166,11 @@ export class LlmClientService implements OnModuleInit {
           eventName: 'stage.error',
           orgId,
           requestId,
-          attributes: { node, reason: 'llm_circuit_open', escalated_to_human: true },
+          attributes: {
+            stage: node,
+            reason: StageErrorReason.LLM_CIRCUIT_OPEN,
+            escalated_to_human: true,
+          },
         });
         throw new CircuitBreakerOpenError();
       }
@@ -184,7 +203,11 @@ export class LlmClientService implements OnModuleInit {
       eventName: 'stage.error',
       orgId,
       requestId,
-      attributes: { node, reason: 'llm_circuit_open', escalated_to_human: true },
+      attributes: {
+        stage: node,
+        reason: StageErrorReason.LLM_CIRCUIT_OPEN,
+        escalated_to_human: true,
+      },
     });
 
     throw new CircuitBreakerOpenError();

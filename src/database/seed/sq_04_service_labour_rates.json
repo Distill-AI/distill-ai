@@ -1,0 +1,38 @@
+{
+  "_meta": {
+    "sample_id": "sq_04_service_labour_rates",
+    "label": "NEEDS REVIEW - Time-and-materials service quote; day rates for skilled labour; all fields present",
+    "request_type": "service_quote",
+    "expected_status": "needs_review",
+    "expected_routing": "needs_review",
+    "test_focus": "T&M service_quote: day-rate labour lines, quantities in days, delivery_date is project start"
+  },
+  "inbound_message": {
+    "channel": "email",
+    "received_at": "2025-06-23T08:45:00Z",
+    "from_name": "Nathan Ellis",
+    "from_email": "n.ellis@thornbury-dev.com",
+    "subject": "Labour Rate Request - Electrical and PM",
+    "body": "Hi,\n\nWe need day rates for the following resource types for a 6-week project starting 4 August 2025:\n\n- 2x Electricians (qualified, 18th edition) for 30 days each\n- 1x Project Manager for 30 days\n\nPlease quote on a day-rate basis. Site is Bristol city centre.\n\nNathan Ellis\nThornbury Developments Ltd"
+  },
+  "attachments": [],
+  "extracted_fields": {
+    "sender_contact": "Nathan Ellis",
+    "sender_company": "Thornbury Developments Ltd",
+    "sender_email": "n.ellis@thornbury-dev.com",
+    "delivery_date": "2025-08-04",
+    "line_items": [
+      { "position": 1, "raw_text": "Electrician (qualified, 18th edition) - 2 resources", "quantity": 60, "unit": "days" },
+      { "position": 2, "raw_text": "Project Manager",                                       "quantity": 30, "unit": "days" }
+    ]
+  },
+  "expected_catalog_matches": [],
+  "expected_outcome": {
+    "status": "needs_review",
+    "routing": "needs_review",
+    "overall_confidence": null,
+    "routing_reasons": [
+      "classify: request_type=service_quote - catalog match skipped, routed to human review"
+    ]
+  }
+}

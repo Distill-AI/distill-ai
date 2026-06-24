@@ -27,11 +27,7 @@ export class RequestsService {
     return req;
   }
 
-  /**
-   * Lists requests for the Inbox, newest first. When `orgId` is provided (auth enabled) the list is
-   * scoped to that organization; when omitted (auth disabled, single-tenant dev) all requests are
-   * returned. Always paginated so the result set stays bounded.
-   */
+  /** Lists requests newest-first (id DESC tie-breaker), scoped to orgId when set; returns all when orgId is undefined. */
   async listForOrg(options: {
     orgId?: string;
     page: number;
@@ -40,7 +36,8 @@ export class RequestsService {
     const result = await this.modelAction.list({
       filterRecordOptions: options.orgId ? { org_id: options.orgId } : undefined,
       paginationPayload: { page: options.page, limit: options.limit },
-      order: { created_at: 'DESC' },
+      // id DESC is a unique tie-breaker so page boundaries stay stable when created_at collides.
+      order: { created_at: 'DESC', id: 'DESC' },
     });
     return { payload: result.payload.map(toRequestSummary), paginationMeta: result.paginationMeta };
   }

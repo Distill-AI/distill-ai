@@ -224,7 +224,8 @@ describe('RequestsController', () => {
       });
     });
 
-    it('falls back to safe defaults for non-numeric query values', async () => {
+    it('clamps out-of-range and defaults non-numeric query values', async () => {
+      // 'abc' is non-numeric -> default page 1; '-5' is a valid but out-of-range integer -> clamp to 1
       await controller.list({ user: mockUser }, 'abc', '-5');
 
       expect(requestsService.listForOrg).toHaveBeenCalledWith({
@@ -232,6 +233,16 @@ describe('RequestsController', () => {
         page: 1,
         limit: 1,
       });
+    });
+
+    it('fails closed with an empty list when auth is on and the caller has no orgId', async () => {
+      const result = await controller.list({
+        user: { userId: 'u', roles: [], email: 'e' } as AuthUser,
+      });
+
+      expect(requestsService.listForOrg).not.toHaveBeenCalled();
+      expect(result.data).toEqual([]);
+      expect(result.total).toBe(0);
     });
   });
 
@@ -265,10 +276,11 @@ describe('RequestsController', () => {
       expect(requestsService.getDetail).not.toHaveBeenCalled();
     });
 
-    it('throws NotFoundException when the user has no orgId', async () => {
-      await expect(controller.getOne('req-1', { user: undefined })).rejects.toThrow(
-        NotFoundException,
-      );
+    it('throws NotFoundException for an authenticated user without an orgId', async () => {
+      await expect(
+        controller.getOne('req-1', { user: { userId: 'u', roles: [], email: 'e' } as AuthUser }),
+      ).rejects.toThrow(NotFoundException);
+      expect(requestsService.getDetail).not.toHaveBeenCalled();
     });
   });
 
