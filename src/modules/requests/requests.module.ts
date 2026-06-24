@@ -14,9 +14,7 @@ import { NodeRecoveryActions } from './actions/node-recovery.actions';
 
 @Module({
   imports: [
-    // The request/attachment model-actions live in the leaf RequestsDataModule so
-    // Extraction can depend on them without importing RequestsModule (which imports
-    // ExtractionModule). Re-exported below so existing consumers are unaffected.
+    // RequestsDataModule is the leaf; re-exported below so downstream consumers of RequestsModule are unaffected.
     RequestsDataModule,
     SseModule,
     EventsModule,
