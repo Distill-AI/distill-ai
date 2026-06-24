@@ -60,11 +60,7 @@ export function ProcessingTrace({ requestId, lineItems, thresholds }: Processing
           </h2>
           <div className="space-y-0.5">
             {lineItems.map((line, idx) => (
-              <MatchedLineRow
-                key={`${line.position}-${idx}`}
-                line={line}
-                thresholds={thresholds}
-              />
+              <MatchedLineRow key={`${line.position}-${idx}`} line={line} thresholds={thresholds} />
             ))}
           </div>
         </div>
