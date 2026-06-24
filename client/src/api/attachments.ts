@@ -1,5 +1,7 @@
-import { useMutation } from '@tanstack/react-query';
+import type { AxiosError } from 'axios';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import client from './client';
+import { requestKeys } from './requests';
 
 export interface PastePayload {
   content: string;
@@ -8,6 +10,14 @@ export interface PastePayload {
 export interface PasteResult {
   message: string;
 }
+
+type PasteVariables = {
+  requestId: string;
+  attachmentId: string;
+  content: string;
+};
+
+export type PasteError = AxiosError<{ message?: string; error?: string }>;
 
 export const attachmentKeys = {
   paste: (requestId: string, attachmentId: string) =>
@@ -27,15 +37,13 @@ export async function pasteAttachment(
 }
 
 export function usePasteAttachment() {
-  return useMutation({
-    mutationFn: ({
-      requestId,
-      attachmentId,
-      content,
-    }: {
-      requestId: string;
-      attachmentId: string;
-      content: string;
-    }) => pasteAttachment(requestId, attachmentId, { content }),
+  const queryClient = useQueryClient();
+
+  return useMutation<PasteResult, PasteError, PasteVariables>({
+    mutationFn: ({ requestId, attachmentId, content }) =>
+      pasteAttachment(requestId, attachmentId, { content }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: requestKeys.detail(variables.requestId) });
+    },
   });
 }

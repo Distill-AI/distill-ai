@@ -35,7 +35,9 @@ export default function App() {
             }
           />
           <Route path="/settings" element={<Settings />} />
-          <Route path="/demo/paste-fallback" element={<PasteFallbackDemo />} />
+          {import.meta.env.DEV && (
+            <Route path="/demo/paste-fallback" element={<PasteFallbackDemo />} />
+          )}
         </Routes>
       </AppShell>
     </RoleProvider>
