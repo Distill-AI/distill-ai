@@ -16,6 +16,10 @@ export interface ScoringResult {
 export class ScorerService {
   /**
    * E2-3: fail closed when extraction is invalid. Confidence-based auto-eligible routing is E5.
+   *
+   * Valid extraction interim: all requests route to needs_review with an empty routing_reasons
+   * array (DB default `[]`; no HITL UI consumer yet). overall_confidence mirrors
+   * classification_confidence until E5 computes a true aggregate score.
    */
   score(request: Request, extraction: Extraction | null): ScoringResult {
     if (!extraction?.schema_valid) {
