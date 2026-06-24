@@ -14,7 +14,7 @@ import * as SYS_MSG from '@constants/system-messages';
 const BASE_PATH = '/api/v1/requests/{id}/attachments/{attachmentId}/paste';
 const TIMESTAMP_EXAMPLE = '2026-06-19T00:00:00.000Z';
 
-function errorSchema(statusCode: HttpStatus, error: string, message: string) {
+function errorSchema(statusCode: HttpStatus, error: string, message: string | string[]) {
   return {
     example: {
       success: false,
@@ -201,16 +201,16 @@ export function PasteAttachmentDocs(): MethodDecorator {
     ApiResponse({
       status: HttpStatus.NOT_FOUND,
       description: `${SYS_MSG.REQUEST_NOT_FOUND('{id}')} / ${SYS_MSG.ATTACHMENT_NOT_FOUND('{attachmentId}')}`,
-      schema: errorSchema(HttpStatus.NOT_FOUND, 'Not Found', SYS_MSG.REQUEST_NOT_FOUND('{id}')),
+      schema: errorSchema(
+        HttpStatus.NOT_FOUND,
+        'Not Found',
+        SYS_MSG.ATTACHMENT_NOT_FOUND('{attachmentId}'),
+      ),
     }),
     ApiResponse({
-      status: HttpStatus.UNPROCESSABLE_ENTITY,
+      status: HttpStatus.BAD_REQUEST,
       description: SYS_MSG.ATTACHMENT_PASTE_EMPTY,
-      schema: errorSchema(
-        HttpStatus.UNPROCESSABLE_ENTITY,
-        'Unprocessable Entity',
-        SYS_MSG.ATTACHMENT_PASTE_EMPTY,
-      ),
+      schema: errorSchema(HttpStatus.BAD_REQUEST, 'Bad Request', [SYS_MSG.ATTACHMENT_PASTE_EMPTY]),
     }),
     ApiResponse({
       status: HttpStatus.UNAUTHORIZED,

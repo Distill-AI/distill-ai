@@ -57,14 +57,18 @@ export class ParseNode implements PipelineNode {
         const bytes = await this.store.get(attachment.storage_url);
         parsedText = await extractText(bytes, attachment.filename);
       } catch (err) {
-        await this.attachments.markUnparsed(attachment.id, ParseErrorReason.UNKNOWN);
+        const reason =
+          err instanceof Error && err.message.includes('unsupported file type')
+            ? ParseErrorReason.UNSUPPORTED_FORMAT
+            : ParseErrorReason.UNKNOWN;
+        await this.attachments.markUnparsed(attachment.id, reason);
         await this.events.emit({
           eventName: 'stage.error',
           orgId,
           requestId,
           attributes: {
             stage: 'parse',
-            reason: ParseErrorReason.UNKNOWN,
+            reason,
             escalated_to_human: true,
           },
         });
@@ -80,7 +84,11 @@ export class ParseNode implements PipelineNode {
 
       await this.attachments.update({
         identifierOptions: { id: attachment.id },
-        updatePayload: { parsed_text: parsedText, parse_status: ParseStatus.PARSED },
+        updatePayload: {
+          parsed_text: parsedText,
+          parse_status: ParseStatus.PARSED,
+          parse_error_reason: null,
+        },
         transactionOptions: { useTransaction: false },
       });
     }
