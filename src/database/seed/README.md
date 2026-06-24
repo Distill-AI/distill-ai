@@ -9,6 +9,24 @@ Each file is a single JSON object with four top-level keys: `_meta` (fixture con
 
 > **Note for M2 harness authors:** fixtures `rfq_01_catalog_clean` and `rfq_05_catalog_large_order` assert `expected_routing: auto_eligible` / `expected_status: priced`. US-E2-3 (PR #36, not yet on dev) intentionally routes all valid extractions to `needs_review` until E5 confidence routing lands. Demo replay is unaffected (fixtures drive LLM output), but end-to-end status/routing assertions against a dev+E2-3 worker will diverge on these two fixtures until E5 merges.
 
+## Loading the seed data
+
+Run `pnpm migration:run` — the catalog and pricing rules are delivered as TypeScript
+migrations (`SeedSkuCatalog`, `SeedPricingRules`) and apply automatically after the
+schema migrations. They are idempotent: running `migration:run` a second time is a no-op.
+
+## Routing thresholds
+
+Three env vars control match and auto-routing behaviour:
+
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `MATCH_THRESHOLD` | `0.70` | Minimum fused score for a candidate match to be kept |
+| `AUTO_THRESHOLD` | `0.95` | Overall confidence above which the quote auto-routes (skips HITL) |
+| `AUTO_SEND_CAP_MINOR` | unset | Max line-item amount eligible for auto-send (unset = no cap) |
+
+These are read at boot via `src/config/env.ts`; no DB table is needed.
+
 ## Corpus
 
 | sample_id | request_type | expected_status | behaviour |
@@ -28,3 +46,44 @@ Each file is a single JSON object with four top-level keys: `_meta` (fixture con
 | sq_03_service_multi_scope | service_quote | needs_review | 4 distinct service lines (maintenance, inspection, parts, emergency); all fields present |
 | sq_04_service_labour_rates | service_quote | needs_review | Time-and-materials quote; day rates for 2 electricians + 1 PM; quantities in days |
 | sq_05_service_upload | service_quote | needs_review | Service brief submitted as PDF upload; two service lines; clean extraction |
+
+## RFQ line-item coverage (AC-03 / EC-01)
+
+Maps every seed-RFQ line item to its expected matching SKU(s).
+
+| Fixture | Line item description | Expected SKU | Notes |
+| --- | --- | --- | --- |
+| rfq_01 | M8 Hex Bolt, ZP, 8.8 | SKU-101 | clean match |
+| rfq_01 | M8 Hex Nut, ZP | SKU-102 | clean match |
+| rfq_01 | M10 Hex Bolt, ZP, 8.8 | SKU-111 | clean match |
+| rfq_01 | M10 Hex Nut, ZP | SKU-112 | clean match |
+| rfq_02 | M12 Stainless Bolt A2-70 | SKU-201 / SKU-202 | intentional close-tie (review trigger) |
+| rfq_03 | (malformed scan) | n/a | intentional unreadable - UNKNOWN |
+| rfq_04 | M8 Hex Bolt, ZP | SKU-101 | missing qty field |
+| rfq_05 | M8 Hex Bolt, ZP, 8.8 | SKU-101 | large order |
+| rfq_05 | M8 Hex Nut, ZP | SKU-102 | large order |
+| rfq_05 | M8 Flat Washer, ZP | SKU-103 | large order |
+| rfq_06 | M8 Hex Bolt, ZP, 8.8 | SKU-101 | upload channel |
+| rfq_06 | M10 Hex Bolt, ZP, 8.8 | SKU-111 | upload channel |
+| rfq_07 | Self-Healing Bio-Polymer Coupling | none | intentional NO_MATCH |
+| rfq_08 | M8 Hex Bolt, ZP, Grade 8.8 | SKU-101 | multi-line |
+| rfq_08 | M8 Spring Washer, ZP | SKU-104 | multi-line |
+| rfq_08 | M10 Flat Washer, ZP | SKU-113 | multi-line |
+| rfq_09 | M10 Hex Bolt, ZP | SKU-111 | missing delivery date |
+| rfq_10 | M8 Hex Bolt, ZP, Grade 8.8 | SKU-101 | corrupt PDF |
+| rfq_10 | M8 Hex Nut, ZP | SKU-102 | corrupt PDF |
+| rfq_10 | ???? | none | intentional EC-01 - unreadable |
+| sq_01 | Annual HVAC maintenance | none | service quote - no catalog match by design |
+| sq_02 | CCTV installation | none | service quote |
+| sq_03 | Electrical rewiring | none | service quote |
+| sq_04 | Labour for installation | none | service quote |
+| sq_05 | Boiler servicing | none | service quote |
+
+## Notes
+
+- `pnpm seed:embeddings` must NOT run in CI. It requires a live `LLM_API_KEY` and time
+  proportional to SKU count. Run it manually once after `pnpm migration:run` when the
+  embedding API is available. Set `LLM_BASE_URL` if the provider is not OpenAI, and
+  `EMBEDDINGS_MODEL` to override the default (`text-embedding-v4`). The script sends
+  10 texts per API call (DashScope `text-embedding-v4` max batch size).
+- To re-populate all embeddings: `UPDATE skus SET embedding = NULL` then re-run the script.
