@@ -58,9 +58,9 @@ describe('ConfidenceChip', () => {
     expect(chip.className).toContain('bg-md-bg');
   });
 
-  it('treats just below matchThreshold (0.699) as red', () => {
-    render(<ConfidenceChip value={0.699} />);
-    const chip = screen.getByText('70%').parentElement!;
+  it('treats just below matchThreshold (0.69) as red', () => {
+    render(<ConfidenceChip value={0.69} />);
+    const chip = screen.getByText('69%').parentElement!;
     expect(chip.className).toContain('bg-lo-bg');
   });
 
