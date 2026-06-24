@@ -1,0 +1,40 @@
+{
+  "_meta": {
+    "sample_id": "sq_03_service_multi_scope",
+    "label": "NEEDS REVIEW - Service quote covering 4 distinct service lines; all fields present; routed to human review",
+    "request_type": "service_quote",
+    "expected_status": "needs_review",
+    "expected_routing": "needs_review",
+    "test_focus": "multi-scope service_quote: on-site maintenance, inspection, parts supply, emergency response"
+  },
+  "inbound_message": {
+    "channel": "email",
+    "received_at": "2025-06-22T09:00:00Z",
+    "from_name": "Oliver Kane",
+    "from_email": "o.kane@ashfield-plant.co.uk",
+    "subject": "Annual Maintenance Contract RFQ - Multi-Scope",
+    "body": "Hi,\n\nWe are seeking quotes for our annual site maintenance contract, covering the following scope:\n\n1. On-site planned maintenance visits (monthly, 12 visits per year)\n2. Scheduled safety inspection (quarterly, 4 visits per year)\n3. Parts supply allowance (estimated 20 line items across the year)\n4. Emergency response callout (up to 40 hours on-call coverage)\n\nContract start date: 1 September 2025.\n\nOliver Kane\nAshfield Plant Services Ltd"
+  },
+  "attachments": [],
+  "extracted_fields": {
+    "sender_contact": "Oliver Kane",
+    "sender_company": "Ashfield Plant Services Ltd",
+    "sender_email": "o.kane@ashfield-plant.co.uk",
+    "delivery_date": "2025-09-01",
+    "line_items": [
+      { "position": 1, "raw_text": "On-site planned maintenance visits, monthly",     "quantity": 12, "unit": "visit" },
+      { "position": 2, "raw_text": "Scheduled safety inspection, quarterly",           "quantity": 4,  "unit": "visit" },
+      { "position": 3, "raw_text": "Parts supply allowance, estimated 20 line items",  "quantity": 20, "unit": "each"  },
+      { "position": 4, "raw_text": "Emergency response callout, on-call coverage",     "quantity": 40, "unit": "hours" }
+    ]
+  },
+  "expected_catalog_matches": [],
+  "expected_outcome": {
+    "status": "needs_review",
+    "routing": "needs_review",
+    "overall_confidence": null,
+    "routing_reasons": [
+      "classify: request_type=service_quote - catalog match skipped, routed to human review"
+    ]
+  }
+}

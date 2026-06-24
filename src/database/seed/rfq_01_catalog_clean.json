@@ -1,0 +1,45 @@
+{
+  "_meta": {
+    "sample_id": "rfq_01_catalog_clean",
+    "label": "CLEAN - Catalog RFQ, all required fields present, high-confidence auto-eligible path",
+    "request_type": "catalog_rfq",
+    "expected_status": "priced",
+    "expected_routing": "auto_eligible",
+    "test_focus": "happy-path extraction and auto-eligible routing"
+  },
+  "inbound_message": {
+    "channel": "email",
+    "received_at": "2025-06-10T09:14:22Z",
+    "from_name": "Marcus Webb",
+    "from_email": "m.webb@deltaridge-mfg.com",
+    "subject": "RFQ - Fastener Restock Order #DR-2025-441",
+    "body": "Hi team,\n\nWe need to restock our fastener inventory before end of month. Please quote on the following:\n\n- 500x M8 Hex Bolt, Zinc Plated, Grade 8.8\n- 500x M8 Hex Nut, Zinc Plated\n- 200x M8 Flat Washer, Zinc Plated\n- 100x M10 Hex Bolt, Zinc Plated, Grade 8.8\n- 100x M10 Hex Nut, Zinc Plated\n\nDelivery required by 27 June 2025 to our Coventry warehouse. Standard payment terms (Net 30) apply.\n\nThanks,\nMarcus Webb\nProcurement Manager - Delta Ridge Manufacturing\nPhone: +44 2477 009 312"
+  },
+  "attachments": [],
+  "extracted_fields": {
+    "sender_contact": "Marcus Webb",
+    "sender_company": "Delta Ridge Manufacturing",
+    "sender_email": "m.webb@deltaridge-mfg.com",
+    "delivery_date": "2025-06-27",
+    "line_items": [
+      { "position": 1, "raw_text": "M8 Hex Bolt, Zinc Plated, Grade 8.8",  "quantity": 500, "unit": "each" },
+      { "position": 2, "raw_text": "M8 Hex Nut, Zinc Plated",               "quantity": 500, "unit": "each" },
+      { "position": 3, "raw_text": "M8 Flat Washer, Zinc Plated",            "quantity": 200, "unit": "each" },
+      { "position": 4, "raw_text": "M10 Hex Bolt, Zinc Plated, Grade 8.8",  "quantity": 100, "unit": "each" },
+      { "position": 5, "raw_text": "M10 Hex Nut, Zinc Plated",              "quantity": 100, "unit": "each" }
+    ]
+  },
+  "expected_catalog_matches": [
+    { "position": 1, "raw_text": "M8 Hex Bolt, Zinc Plated, Grade 8.8",  "sku_code": "SKU-101", "score": 0.97, "match_method": "fused", "rank": 1 },
+    { "position": 2, "raw_text": "M8 Hex Nut, Zinc Plated",               "sku_code": "SKU-102", "score": 0.96, "match_method": "fused", "rank": 1 },
+    { "position": 3, "raw_text": "M8 Flat Washer, Zinc Plated",            "sku_code": "SKU-103", "score": 0.95, "match_method": "fused", "rank": 1 },
+    { "position": 4, "raw_text": "M10 Hex Bolt, Zinc Plated, Grade 8.8",  "sku_code": "SKU-111", "score": 0.97, "match_method": "fused", "rank": 1 },
+    { "position": 5, "raw_text": "M10 Hex Nut, Zinc Plated",              "sku_code": "SKU-112", "score": 0.96, "match_method": "fused", "rank": 1 }
+  ],
+  "expected_outcome": {
+    "status": "priced",
+    "routing": "auto_eligible",
+    "overall_confidence": 0.962,
+    "routing_reasons": []
+  }
+}
