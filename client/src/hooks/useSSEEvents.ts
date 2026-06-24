@@ -19,6 +19,14 @@ export interface SseToolEvent {
   result_summary?: string;
 }
 
+export interface SseErrorEvent {
+  type: 'stage.error';
+  timestamp: string;
+  node: string;
+  error: string;
+  status?: string;
+}
+
 export interface SseCompleteEvent {
   type: 'processing.complete';
   timestamp: string;
@@ -26,7 +34,7 @@ export interface SseCompleteEvent {
   total_duration_ms?: number;
 }
 
-export type SseEvent = SseNodeEvent | SseToolEvent | SseCompleteEvent;
+export type SseEvent = SseNodeEvent | SseToolEvent | SseErrorEvent | SseCompleteEvent;
 
 export interface NodeState {
   id: string;
@@ -44,7 +52,7 @@ export interface SseConnectionState {
   error?: string;
 }
 
-const NODE_ORDER = ['parse', 'extract', 'match', 'score', 'price', 'policy'];
+const NODE_ORDER = ['parse', 'extract', 'classify', 'match', 'price', 'policy', 'score'];
 
 export function useSSEEvents(requestId: string | null): {
   nodes: NodeState[];
@@ -71,6 +79,10 @@ export function useSSEEvents(requestId: string | null): {
   const resetInactivity = useCallback(() => {
     clearInactivity();
     inactivityRef.current = setTimeout(() => {
+      if (esRef.current) {
+        esRef.current.close();
+        esRef.current = null;
+      }
       setConnection({ status: 'error', error: 'Node timeout: no activity for 60s' });
     }, 60_000);
   }, [clearInactivity]);
@@ -150,6 +162,20 @@ export function useSSEEvents(requestId: string | null): {
         // Ignore malformed events; connection remains active
       }
     });
+    es.addEventListener('stage.error', (e: MessageEvent) => {
+      resetInactivity();
+      try {
+        const data = JSON.parse(e.data) as SseErrorEvent;
+        setNodes((prev) =>
+          prev.map((n) =>
+            n.name === data.node ? { ...n, status: 'failed', error: data.error } : n,
+          ),
+        );
+      } catch {
+        // Ignore malformed events; connection remains active
+      }
+    });
+
     es.addEventListener('processing.complete', (e: MessageEvent) => {
       try {
         const data = JSON.parse(e.data) as SseCompleteEvent;

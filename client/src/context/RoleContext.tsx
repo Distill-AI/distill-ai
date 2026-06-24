@@ -8,9 +8,9 @@ export const DEFAULT_ROLE: Role = 'RevOps';
 export const STORAGE_KEY = 'distill.role';
 
 export const RoleContext = createContext<{
-  role: Role;
+  role: Role | null;
   setRole: (r: Role) => void;
-}>({ role: DEFAULT_ROLE, setRole: () => {} });
+}>({ role: null, setRole: () => {} });
 
 function readStoredRole(): Role {
   try {
