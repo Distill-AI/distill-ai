@@ -152,13 +152,13 @@ export function useSSEEvents(requestId: string | null): {
     });
     es.addEventListener('processing.complete', (e: MessageEvent) => {
       try {
-      const data = JSON.parse(e.data) as SseCompleteEvent;
-      setFinalOutput({ status: data.status, total_duration_ms: data.total_duration_ms });
-      close();
-      setConnection({ status: 'disconnected' });
-    } catch {
-      // Ignore malformed events; connection remains active
-    }  
+        const data = JSON.parse(e.data) as SseCompleteEvent;
+        setFinalOutput({ status: data.status, total_duration_ms: data.total_duration_ms });
+        close();
+        setConnection({ status: 'disconnected' });
+      } catch {
+        // Ignore malformed events; connection remains active
+      }
     });
 
     es.onerror = () => {
