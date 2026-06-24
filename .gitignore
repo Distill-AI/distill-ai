@@ -6,6 +6,9 @@ dist/
 # local filesystem object store (attachments/quotes written by the object-store adapter)
 var/
 
+# local UI verification evidence (never committed)
+.pptr-evidence/
+
 # local planning / scratch files
 plan.md
 deploy-plan.md
