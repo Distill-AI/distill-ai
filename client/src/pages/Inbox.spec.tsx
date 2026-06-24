@@ -5,10 +5,15 @@ import { MemoryRouter } from 'react-router-dom';
 import { RoleProvider } from '../context/RoleContext';
 import { Inbox } from './Inbox';
 
-const { mockMutateAsync, mockIsPending, capturedOnError } = vi.hoisted(() => ({
+import type { RequestSummary } from '../api/requests';
+
+const { mockMutateAsync, mockIsPending, capturedOnError, requestsState } = vi.hoisted(() => ({
   mockMutateAsync: vi.fn(),
   mockIsPending: { value: false },
   capturedOnError: { current: null as ((msg: string) => void) | null },
+  requestsState: {
+    value: { data: [] as RequestSummary[], isLoading: false, isError: false },
+  },
 }));
 
 vi.mock('../api/requests', () => ({
@@ -19,7 +24,22 @@ vi.mock('../api/requests', () => ({
       isPending: mockIsPending.value,
     };
   },
+  useRequests: () => requestsState.value,
 }));
+
+function makeRequest(overrides: Partial<RequestSummary> = {}): RequestSummary {
+  return {
+    id: '11111111-1111-1111-1111-111111111111',
+    sender_company: 'Apex Fabrication',
+    sender_contact: 'Dana Reyes',
+    source_subject: 'RFQ for steel brackets',
+    request_type: 'catalog_rfq',
+    overall_confidence: 0.96,
+    status: 'needs_review',
+    created_at: '2026-06-24T10:00:00.000Z',
+    ...overrides,
+  };
+}
 
 function renderInbox() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -38,6 +58,7 @@ describe('Inbox', () => {
   beforeEach(() => {
     mockMutateAsync.mockReset();
     mockIsPending.value = false;
+    requestsState.value = { data: [], isLoading: false, isError: false };
   });
 
   it('opens the new request dialog when clicking + New request', async () => {
@@ -204,5 +225,102 @@ describe('Inbox', () => {
     await user.click(screen.getByRole('tab', { name: /paste email/i }));
     expect(screen.getByLabelText(/email body/i)).toHaveValue('hello world');
     expect(screen.getByRole('button', { name: /process request/i })).toBeEnabled();
+  });
+
+  it('shows the empty state when there are no requests', () => {
+    renderInbox();
+    expect(screen.getByText(/no requests yet/i)).toBeInTheDocument();
+  });
+
+  it('shows a no-match empty state when a filter excludes every request', async () => {
+    const user = userEvent.setup();
+    requestsState.value = {
+      data: [makeRequest({ id: 'r1', sender_company: 'Apex', status: 'ready' })],
+      isLoading: false,
+      isError: false,
+    };
+    renderInbox();
+
+    // filter to a tab the only request does not match
+    await user.click(screen.getByRole('tab', { name: /needs review/i }));
+
+    expect(screen.getByText(/no requests match the current filters/i)).toBeInTheDocument();
+    expect(screen.queryByText(/no requests yet/i)).not.toBeInTheDocument();
+  });
+
+  it('shows the loading state while requests are loading', () => {
+    requestsState.value = { data: [], isLoading: true, isError: false };
+    renderInbox();
+    expect(screen.getByText(/loading requests/i)).toBeInTheDocument();
+  });
+
+  it('shows the error state when the list fails to load', () => {
+    requestsState.value = { data: [], isLoading: false, isError: true };
+    renderInbox();
+    expect(screen.getByText(/could not load requests/i)).toBeInTheDocument();
+  });
+
+  it('renders a row with company, subject and status badge', () => {
+    // status 'sent' has no matching tab, so its label is unambiguous in the DOM
+    requestsState.value = {
+      data: [makeRequest({ status: 'sent' })],
+      isLoading: false,
+      isError: false,
+    };
+    renderInbox();
+
+    expect(screen.getByRole('link', { name: /apex fabrication/i })).toBeInTheDocument();
+    expect(screen.getByText(/rfq for steel brackets/i)).toBeInTheDocument();
+    expect(screen.getByText('Sent')).toBeInTheDocument();
+  });
+
+  it('links each row to its processing screen', () => {
+    requestsState.value = {
+      data: [makeRequest({ id: 'abc-id', sender_company: 'Apex' })],
+      isLoading: false,
+      isError: false,
+    };
+    renderInbox();
+
+    expect(screen.getByRole('link', { name: /apex/i })).toHaveAttribute('href', '/requests/abc-id');
+  });
+
+  it('filters rows by the active tab', async () => {
+    const user = userEvent.setup();
+    requestsState.value = {
+      data: [
+        makeRequest({ id: 'r1', sender_company: 'Review Co', status: 'needs_review' }),
+        makeRequest({ id: 'r2', sender_company: 'Ready Co', status: 'ready' }),
+      ],
+      isLoading: false,
+      isError: false,
+    };
+    renderInbox();
+
+    expect(screen.getByText('Review Co')).toBeInTheDocument();
+    expect(screen.getByText('Ready Co')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: /^ready$/i }));
+
+    expect(screen.queryByText('Review Co')).not.toBeInTheDocument();
+    expect(screen.getByText('Ready Co')).toBeInTheDocument();
+  });
+
+  it('filters rows by the search query', async () => {
+    const user = userEvent.setup();
+    requestsState.value = {
+      data: [
+        makeRequest({ id: 'r1', sender_company: 'Apex Fabrication' }),
+        makeRequest({ id: 'r2', sender_company: 'Globex Industries' }),
+      ],
+      isLoading: false,
+      isError: false,
+    };
+    renderInbox();
+
+    await user.type(screen.getByRole('searchbox', { name: /search requests/i }), 'globex');
+
+    expect(screen.queryByText('Apex Fabrication')).not.toBeInTheDocument();
+    expect(screen.getByText('Globex Industries')).toBeInTheDocument();
   });
 });
