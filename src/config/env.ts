@@ -76,6 +76,14 @@ const envSchema = z
 
     // ── Classify (US-E2-4) ────────────────────────────────────────────────────
     CLASSIFY_THRESHOLD: z.coerce.number().min(0).max(1).default(0.8),
+
+    // ── Matching and routing (US-E3-1, US-E5-1, US-E5-3) ─────────────────────
+    MATCH_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),
+    AUTO_THRESHOLD: z.coerce.number().min(0).max(1).default(0.95),
+    AUTO_SEND_CAP_MINOR: z.coerce.number().int().nonnegative().optional(),
+
+    // ── Embeddings ────────────────────────────────────────────────────────────
+    EMBEDDINGS_MODEL: z.string().default('text-embedding-v4'),
     // ── Object storage ─────────────────────────────────────────────────────────
     // Bare path or file:// URL for the local adapter; other schemes are rejected at boot for now.
     OBJECT_STORE_URL: z.string().trim().min(1).default('file://./var/object-store'),
