@@ -59,8 +59,12 @@ export function ProcessingTrace({ requestId, lineItems, thresholds }: Processing
             Matched Lines
           </h2>
           <div className="space-y-0.5">
-            {lineItems.map((line) => (
-              <MatchedLineRow key={line.position} line={line} thresholds={thresholds} />
+            {lineItems.map((line, idx) => (
+              <MatchedLineRow
+                key={`${line.position}-${idx}`}
+                line={line}
+                thresholds={thresholds}
+              />
             ))}
           </div>
         </div>
