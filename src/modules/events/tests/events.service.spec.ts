@@ -24,21 +24,29 @@ describe('EventsService', () => {
   let service: EventsService;
   let auditEvents: ReturnType<typeof makeAuditEvents>;
   let sse: ReturnType<typeof makeSse>;
-  let originalSchema: string | null = null;
+  let schemaBackup: string | null = null;
+
+  beforeAll(() => {
+    schemaBackup = existsSync(SCHEMA_PATH) ? readFileSync(SCHEMA_PATH, 'utf8') : null;
+  });
+
+  afterAll(() => {
+    if (schemaBackup !== null) {
+      writeFileSync(SCHEMA_PATH, schemaBackup, 'utf8');
+    } else if (existsSync(SCHEMA_PATH)) {
+      unlinkSync(SCHEMA_PATH);
+    }
+  });
 
   beforeEach(() => {
-    if (existsSync(SCHEMA_PATH)) {
-      originalSchema = readFileSync(SCHEMA_PATH, 'utf8');
+    if (schemaBackup !== null) {
+      writeFileSync(SCHEMA_PATH, schemaBackup, 'utf8');
+    } else if (existsSync(SCHEMA_PATH)) {
+      unlinkSync(SCHEMA_PATH);
     }
     auditEvents = makeAuditEvents();
     sse = makeSse();
     service = new EventsService(auditEvents, sse);
-  });
-
-  afterEach(() => {
-    if (originalSchema !== null) {
-      writeFileSync(SCHEMA_PATH, originalSchema, 'utf8');
-    }
   });
 
   describe('onModuleInit', () => {
@@ -49,7 +57,6 @@ describe('EventsService', () => {
 
     it('throws when events.schema.json is missing', () => {
       if (existsSync(SCHEMA_PATH)) unlinkSync(SCHEMA_PATH);
-      originalSchema = null;
       expect(() => service.onModuleInit()).toThrow(/Failed to load events\.schema\.json/);
     });
 
