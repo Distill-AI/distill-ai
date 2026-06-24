@@ -1,6 +1,7 @@
 import { createRef } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { AxiosError } from 'axios';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PasteModal } from './PasteModal';
 
@@ -32,6 +33,9 @@ function renderModal(open = true) {
   );
   return { onClose, triggerRef };
 }
+
+type OnErrorFn = (e: AxiosError<{ message?: string; error?: string }>) => void;
+type MutateOpts = { onSuccess: () => void; onError: OnErrorFn };
 
 describe('PasteModal', () => {
   beforeEach(() => {
@@ -69,6 +73,29 @@ describe('PasteModal', () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
+  it('disables submit when the textarea is empty', () => {
+    renderModal();
+    expect(screen.getByRole('button', { name: /submit/i })).toBeDisabled();
+  });
+
+  it('enables submit when the textarea has non-whitespace content', async () => {
+    const user = userEvent.setup();
+    renderModal();
+
+    await user.type(screen.getByLabelText(/paste content/i), 'hello');
+
+    expect(screen.getByRole('button', { name: /submit/i })).not.toBeDisabled();
+  });
+
+  it('keeps submit disabled when the textarea contains only whitespace', async () => {
+    const user = userEvent.setup();
+    renderModal();
+
+    await user.type(screen.getByLabelText(/paste content/i), '   ');
+
+    expect(screen.getByRole('button', { name: /submit/i })).toBeDisabled();
+  });
+
   it('calls mutate with requestId, attachmentId, and content on submit', async () => {
     const user = userEvent.setup();
     renderModal();
@@ -102,10 +129,44 @@ describe('PasteModal', () => {
     expect(screen.getByText(/characters remaining/i)).toBeInTheDocument();
   });
 
-  it('shows an inline error when the mutation fails', async () => {
+  it('shows the server message for 4xx errors', async () => {
     const user = userEvent.setup();
-    mockMutate.mockImplementation((_vars: unknown, opts: { onError: (e: Error) => void }) => {
-      opts.onError(new Error('Server error'));
+    mockMutate.mockImplementation((_vars: unknown, opts: MutateOpts) => {
+      opts.onError({
+        response: { status: 422, data: { message: 'Extraction is already in progress' } },
+      } as AxiosError<{ message?: string; error?: string }>);
+    });
+    renderModal();
+
+    await user.type(screen.getByLabelText(/paste content/i), 'some content');
+    await user.click(screen.getByRole('button', { name: /submit/i }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('Extraction is already in progress'),
+    );
+  });
+
+  it('shows a generic error for 5xx errors', async () => {
+    const user = userEvent.setup();
+    mockMutate.mockImplementation((_vars: unknown, opts: MutateOpts) => {
+      opts.onError({
+        response: { status: 503, data: {} },
+      } as AxiosError<{ message?: string; error?: string }>);
+    });
+    renderModal();
+
+    await user.type(screen.getByLabelText(/paste content/i), 'some content');
+    await user.click(screen.getByRole('button', { name: /submit/i }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('Something went wrong'),
+    );
+  });
+
+  it('shows a generic error when the mutation fails with no response', async () => {
+    const user = userEvent.setup();
+    mockMutate.mockImplementation((_vars: unknown, opts: MutateOpts) => {
+      opts.onError({ response: undefined } as AxiosError<{ message?: string; error?: string }>);
     });
     renderModal();
 
@@ -119,6 +180,8 @@ describe('PasteModal', () => {
     const user = userEvent.setup();
     renderModal();
 
+    await user.type(screen.getByLabelText(/paste content/i), 'x');
+
     const buttons = screen.getAllByRole('button');
     const lastButton = buttons[buttons.length - 1];
     lastButton.focus();
@@ -131,6 +194,8 @@ describe('PasteModal', () => {
   it('traps focus: Shift+Tab on first focusable element wraps to last', async () => {
     const user = userEvent.setup();
     renderModal();
+
+    await user.type(screen.getByLabelText(/paste content/i), 'x');
 
     screen.getByRole('button', { name: /close/i }).focus();
 

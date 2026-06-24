@@ -2,7 +2,15 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AttachmentPanel } from './AttachmentPanel';
 
-const REASON_LABELS: Record<string, string> = {
+type ParseStatus = 'parsed' | 'unparsed' | 'manual_paste';
+type ParseErrorReason =
+  | 'corrupt'
+  | 'no_text_layer'
+  | 'unsupported_format'
+  | 'size_limit_exceeded'
+  | 'unknown';
+
+const REASON_LABELS: Record<ParseErrorReason, string> = {
   corrupt: 'This file appears to be password-protected or corrupt.',
   no_text_layer: 'This file contains only scanned images with no readable text.',
   unsupported_format: 'This file format is not supported.',
@@ -10,7 +18,11 @@ const REASON_LABELS: Record<string, string> = {
   unknown: 'This file could not be read.',
 };
 
-function renderPanel(parseStatus: string, parseErrorReason?: string, isModalOpen = false) {
+function renderPanel(
+  parseStatus: ParseStatus,
+  parseErrorReason?: ParseErrorReason,
+  isModalOpen = false,
+) {
   const onPasteClick = vi.fn();
   render(
     <AttachmentPanel
@@ -38,7 +50,9 @@ describe('AttachmentPanel', () => {
   });
 
   it('shows the correct reason label for each error reason', () => {
-    for (const [reason, label] of Object.entries(REASON_LABELS)) {
+    const reasons = Object.keys(REASON_LABELS) as ParseErrorReason[];
+    for (const reason of reasons) {
+      const label = REASON_LABELS[reason];
       const { unmount } = render(
         <AttachmentPanel
           filename="rfq.pdf"
@@ -74,6 +88,21 @@ describe('AttachmentPanel', () => {
     expect(screen.getByRole('button', { name: /paste content instead/i })).toHaveAttribute(
       'aria-expanded',
       'true',
+    );
+  });
+
+  it('threads pasteModalId into aria-controls on the paste button', () => {
+    render(
+      <AttachmentPanel
+        filename="rfq.pdf"
+        parseStatus="unparsed"
+        onPasteClick={vi.fn()}
+        pasteModalId="dialog-:r0:"
+      />,
+    );
+    expect(screen.getByRole('button', { name: /paste content instead/i })).toHaveAttribute(
+      'aria-controls',
+      'dialog-:r0:',
     );
   });
 });

@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type RefObject } from 'react';
+import type { AxiosError } from 'axios';
 import { usePasteAttachment } from '../../api/attachments';
-import { GENERIC_ERROR } from '../../lib/errorMessages';
+import { GENERIC_ERROR, resolveServerError } from '../../lib/errorMessages';
 
 const MAX_LENGTH = 50_000;
 const CHAR_WARNING_THRESHOLD = 5_000;
@@ -14,6 +15,7 @@ interface PasteModalProps {
   requestId: string;
   attachmentId: string;
   triggerRef: RefObject<HTMLButtonElement | null>;
+  dialogId?: string;
 }
 
 export function PasteModal({
@@ -23,14 +25,20 @@ export function PasteModal({
   requestId,
   attachmentId,
   triggerRef,
+  dialogId: dialogIdProp,
 }: PasteModalProps) {
   const [content, setContent] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const { mutate, isPending } = usePasteAttachment();
+  const generatedId = useId();
+  const dialogId = dialogIdProp ?? generatedId;
+  const contentId = `${dialogId}-content`;
+  const titleId = `${dialogId}-title`;
 
   const remaining = MAX_LENGTH - content.length;
   const showCharWarning = remaining < CHAR_WARNING_THRESHOLD;
+  const canSubmit = content.trim().length > 0;
 
   const handleClose = useCallback(() => {
     setContent('');
@@ -59,8 +67,23 @@ export function PasteModal({
     mutate(
       { requestId, attachmentId, content },
       {
-        onSuccess: () => { onPasteSuccess?.(); handleClose(); },
-        onError: () => setErrorMessage(GENERIC_ERROR),
+        onSuccess: () => {
+          onPasteSuccess?.();
+          handleClose();
+        },
+        onError: (error: AxiosError<{ message?: string; error?: string }>) => {
+          const status = error.response?.status;
+          if (status && status >= 500) {
+            setErrorMessage(GENERIC_ERROR);
+            return;
+          }
+          const serverMessage = error.response?.data?.message;
+          if (serverMessage) {
+            setErrorMessage(serverMessage);
+            return;
+          }
+          setErrorMessage(resolveServerError(error.response?.data?.error));
+        },
       },
     );
   }, [requestId, attachmentId, content, mutate, handleClose, onPasteSuccess]);
@@ -71,8 +94,8 @@ export function PasteModal({
     <div
       role="dialog"
       aria-modal="true"
-      aria-labelledby="paste-modal-title"
-      id="paste-modal"
+      aria-labelledby={titleId}
+      id={dialogId}
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50"
       onKeyDown={(e) => {
         if (e.key !== 'Tab') return;
@@ -95,7 +118,7 @@ export function PasteModal({
     >
       <div className="w-full max-w-lg rounded-card bg-surface p-6 shadow-xl">
         <div className="flex items-center justify-between mb-4">
-          <h2 id="paste-modal-title" className="text-[15px] font-semibold text-slate-900">
+          <h2 id={titleId} className="text-[15px] font-semibold text-slate-900">
             Paste attachment content
           </h2>
           <button
@@ -122,14 +145,11 @@ export function PasteModal({
           </div>
         )}
 
-        <label
-          htmlFor="paste-content"
-          className="block text-[13px] font-medium text-body-text mb-1"
-        >
+        <label htmlFor={contentId} className="block text-[13px] font-medium text-body-text mb-1">
           Paste content
         </label>
         <textarea
-          id="paste-content"
+          id={contentId}
           rows={10}
           maxLength={MAX_LENGTH}
           value={content}
@@ -153,7 +173,7 @@ export function PasteModal({
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={isPending}
+            disabled={isPending || !canSubmit}
             className="rounded bg-indigo-600 px-3 py-1.5 text-[13px] text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
           >
             Submit
