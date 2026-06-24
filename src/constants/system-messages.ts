@@ -95,6 +95,9 @@ export const EXTRACTION_UPSERT_FAILED = (requestId: string) =>
 export const EXTRACTION_JSON_PARSE_FAILED = (detail: string) =>
   `Failed to parse extraction JSON: ${detail}`;
 
+// Scoring (US-E2-3 / US-E5)
+export const SCORE_ROUTING_APPLIED = (routing: string) => `Routing set to ${routing}`;
+
 // Auth
 export const AUTH_PROFILE_FETCHED = 'Profile fetched successfully';
 export const AUTH_LOGIN_SUCCESS = 'Login successful';
@@ -115,3 +118,7 @@ export const TOOL_LIST_SUCCESS = 'Tools retrieved successfully';
 export const TOOL_ALREADY_REGISTERED = (name: string) => `Tool "${name}" is already registered`;
 export const TOOL_NAME_RESERVED = (name: string) =>
   `Tool name "${name}" is reserved and cannot be used`;
+
+// Resume / Crash Recovery
+export const RESUME_SUCCESS = 'Request resumed successfully';
+export const RESUME_FROM_NODE = (node: string) => `Resuming pipeline from node "${node}"`;

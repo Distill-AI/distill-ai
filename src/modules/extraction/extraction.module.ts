@@ -6,6 +6,7 @@ import { ToolRegistry } from '@modules/tools/registry';
 import { RequestsModule } from '@modules/requests/requests.module';
 import { LineItem } from '@modules/catalog/entities/line-item.entity';
 import { Extraction } from './entities/extraction.entity';
+import { ExtractionActions } from './actions/extraction.actions';
 import { ExtractionModelAction } from './extraction.model-action';
 import { LineItemModelAction } from '@modules/catalog/line-item.model-action';
 import { ExtractRequestToolFactory } from './tools/extract-request.tool';
@@ -17,8 +18,18 @@ import { ExtractRequestToolFactory } from './tools/extract-request.tool';
     RequestsModule,
     TypeOrmModule.forFeature([Extraction, LineItem]),
   ],
-  providers: [ExtractionModelAction, LineItemModelAction, ExtractRequestToolFactory],
-  exports: [ExtractionModelAction, LineItemModelAction, ExtractRequestToolFactory],
+  providers: [
+    ExtractionModelAction,
+    ExtractionActions,
+    LineItemModelAction,
+    ExtractRequestToolFactory,
+  ],
+  exports: [
+    ExtractionModelAction,
+    ExtractionActions,
+    LineItemModelAction,
+    ExtractRequestToolFactory,
+  ],
 })
 export class ExtractionModule implements OnModuleInit {
   constructor(
