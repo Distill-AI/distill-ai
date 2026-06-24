@@ -1,8 +1,9 @@
 import {
+  Body,
   Controller,
   Get,
-  HttpStatus,
   HttpCode,
+  HttpStatus,
   Logger,
   NotFoundException,
   Param,
@@ -27,8 +28,10 @@ import {
   RequestEventsDocs,
   RequestResumeDocs,
   DownloadAttachmentDocs,
+  PasteAttachmentDocs,
 } from '../docs/requests-swagger.doc';
 import { AttachmentsService } from '../services/attachments.service';
+import { PasteAttachmentDto } from '../dto/paste-attachment.dto';
 import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
 import type { ResumeResponsePayload } from '../interfaces/resume.interface';
 
@@ -130,5 +133,19 @@ export class RequestsController {
       message: SYS_MSG.RESUME_SUCCESS,
       data: result,
     };
+  }
+
+  @Post(':id/attachments/:attachmentId/paste')
+  @Roles(Role.ESTIMATOR, Role.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @PasteAttachmentDocs()
+  async pasteAttachment(
+    @Param('id') requestId: string,
+    @Param('attachmentId') attachmentId: string,
+    @Body() dto: PasteAttachmentDto,
+    @Req() req: { user?: AuthUser },
+  ): Promise<{ statusCode: number; message: string }> {
+    await this.attachmentsService.paste(req.user, requestId, attachmentId, dto.content);
+    return { statusCode: HttpStatus.OK, message: SYS_MSG.ATTACHMENT_PASTE_ACCEPTED };
   }
 }

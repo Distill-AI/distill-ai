@@ -1,6 +1,31 @@
 import { applyDecorators, HttpStatus } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiProduces, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiProduces,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+import { PasteAttachmentDto } from '../dto/paste-attachment.dto';
 import * as SYS_MSG from '@constants/system-messages';
+
+const BASE_PATH = '/api/v1/requests/{id}/attachments/{attachmentId}/paste';
+const TIMESTAMP_EXAMPLE = '2026-06-19T00:00:00.000Z';
+
+function errorSchema(statusCode: HttpStatus, error: string, message: string | string[]) {
+  return {
+    example: {
+      success: false,
+      statusCode,
+      error,
+      message,
+      path: BASE_PATH,
+      timestamp: TIMESTAMP_EXAMPLE,
+    },
+  };
+}
 
 export function RequestEventsDocs(): MethodDecorator {
   return applyDecorators(
@@ -129,5 +154,73 @@ export function DownloadAttachmentDocs(): MethodDecorator {
     }),
     ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: SYS_MSG.AUTH_UNAUTHORIZED }),
     ApiResponse({ status: HttpStatus.FORBIDDEN, description: SYS_MSG.AUTH_FORBIDDEN }),
+  );
+}
+
+export function PasteAttachmentDocs(): MethodDecorator {
+  return applyDecorators(
+    ApiTags('Requests'),
+    ApiOperation({
+      summary: 'Submit pasted text for an unparsed attachment',
+      description:
+        'Accepts manually pasted content for an attachment that could not be parsed automatically. ' +
+        'Re-checkpoints the request to the extract node and re-enqueues the pipeline. ' +
+        'Returns 409 if the pipeline is already actively processing this request.',
+    }),
+    ApiParam({
+      name: 'id',
+      description: 'UUID of the parent request',
+      required: true,
+      type: 'string',
+      format: 'uuid',
+    }),
+    ApiParam({
+      name: 'attachmentId',
+      description: 'UUID of the attachment to paste into',
+      required: true,
+      type: 'string',
+      format: 'uuid',
+    }),
+    ApiBody({ type: PasteAttachmentDto }),
+    ApiOkResponse({
+      description: SYS_MSG.ATTACHMENT_PASTE_ACCEPTED,
+      schema: {
+        properties: {
+          success: { type: 'boolean', example: true },
+          statusCode: { type: 'number', example: HttpStatus.OK },
+          message: { type: 'string', example: SYS_MSG.ATTACHMENT_PASTE_ACCEPTED },
+          data: { type: 'object', example: null, nullable: true },
+        },
+      },
+    }),
+    ApiResponse({
+      status: HttpStatus.CONFLICT,
+      description: SYS_MSG.ATTACHMENT_PASTE_CONFLICT,
+      schema: errorSchema(HttpStatus.CONFLICT, 'Conflict', SYS_MSG.ATTACHMENT_PASTE_CONFLICT),
+    }),
+    ApiResponse({
+      status: HttpStatus.NOT_FOUND,
+      description: `${SYS_MSG.REQUEST_NOT_FOUND('{id}')} / ${SYS_MSG.ATTACHMENT_NOT_FOUND('{attachmentId}')}`,
+      schema: errorSchema(
+        HttpStatus.NOT_FOUND,
+        'Not Found',
+        SYS_MSG.ATTACHMENT_NOT_FOUND('{attachmentId}'),
+      ),
+    }),
+    ApiResponse({
+      status: HttpStatus.BAD_REQUEST,
+      description: SYS_MSG.ATTACHMENT_PASTE_EMPTY,
+      schema: errorSchema(HttpStatus.BAD_REQUEST, 'Bad Request', [SYS_MSG.ATTACHMENT_PASTE_EMPTY]),
+    }),
+    ApiResponse({
+      status: HttpStatus.UNAUTHORIZED,
+      description: SYS_MSG.AUTH_UNAUTHORIZED,
+      schema: errorSchema(HttpStatus.UNAUTHORIZED, 'Unauthorized', SYS_MSG.AUTH_UNAUTHORIZED),
+    }),
+    ApiResponse({
+      status: HttpStatus.FORBIDDEN,
+      description: SYS_MSG.AUTH_FORBIDDEN,
+      schema: errorSchema(HttpStatus.FORBIDDEN, 'Forbidden', SYS_MSG.AUTH_FORBIDDEN),
+    }),
   );
 }

@@ -1,9 +1,16 @@
-import { useState } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useState } from 'react';
 import type { ReactNode } from 'react';
-import { RoleContext, DEFAULT_ROLE, STORAGE_KEY } from './role-context';
-import type { Role } from './role-context';
 
-export type { Role } from './role-context';
+export type Role = 'RevOps' | 'Sales' | 'Admin';
+
+export const DEFAULT_ROLE: Role = 'RevOps';
+export const STORAGE_KEY = 'distill.role';
+
+export const RoleContext = createContext<{
+  role: Role | null;
+  setRole: (r: Role) => void;
+}>({ role: null, setRole: () => {} });
 
 function readStoredRole(): Role {
   try {

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { AttachmentSummary } from '../../api/requests';
 import { downloadAttachment } from '../../api/attachments';
 import { formatFileSize } from '../../lib/formatFileSize';
+import { ATTACHMENT_DOWNLOAD_FAILED } from '../../lib/errorMessages';
 
 function labelForMime(mime: string): string {
   if (mime === 'application/pdf') return 'PDF Document';
@@ -48,10 +49,7 @@ interface OriginalAttachmentCardProps {
   onError?: (message: string) => void;
 }
 
-/**
- * The download affordance for the Review screen's Original Request pane (US-E1-5-T2).
- * Shows the attachment's name, type and size, and downloads the original bytes on click.
- */
+/** Review-screen download affordance: shows attachment name/type/size and downloads the original bytes on click. */
 export function OriginalAttachmentCard({
   requestId,
   attachment,
@@ -60,11 +58,12 @@ export function OriginalAttachmentCard({
   const [downloading, setDownloading] = useState(false);
 
   async function handleDownload() {
+    onError?.(''); // clear any stale error from a previous attempt
     setDownloading(true);
     try {
       await downloadAttachment(requestId, attachment.id, attachment.filename);
     } catch {
-      onError?.('Could not download the attachment. Please try again.');
+      onError?.(ATTACHMENT_DOWNLOAD_FAILED);
     } finally {
       setDownloading(false);
     }
