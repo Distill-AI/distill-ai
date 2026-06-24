@@ -120,3 +120,7 @@ export const TOOL_LIST_SUCCESS = 'Tools retrieved successfully';
 export const TOOL_ALREADY_REGISTERED = (name: string) => `Tool "${name}" is already registered`;
 export const TOOL_NAME_RESERVED = (name: string) =>
   `Tool name "${name}" is reserved and cannot be used`;
+
+// Events
+export const EVENT_EMIT_VALIDATION_FAILED =
+  'stage.error payload failed schema validation; emit skipped';
