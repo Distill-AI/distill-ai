@@ -15,10 +15,10 @@ const PolicyRuleSchema = z.object({
 });
 
 const PolicyRulesSchema = z.object({
-  autoApproveThreshold: z.number().min(0).default(5000),
-  maxLineItems: z.number().int().min(1).default(100),
-  restrictedCategories: z.array(z.string()).default([]),
-  rules: z.array(PolicyRuleSchema).default([]),
+  autoApproveThreshold: z.number().min(0),
+  maxLineItems: z.number().int().min(1),
+  restrictedCategories: z.array(z.string()),
+  rules: z.array(PolicyRuleSchema),
 });
 
 type PolicyRulesConfig = z.infer<typeof PolicyRulesSchema>;
@@ -49,9 +49,55 @@ const DEFAULT_RULES: PolicyRulesConfig = {
   rules: [],
 };
 
+const CONFIG_DIR = path.resolve(process.cwd(), env.RULES_CONFIG_PATH);
+
 function resolveConfigPath(overridePath?: string): string {
-  if (overridePath) return path.resolve(overridePath);
-  return path.resolve(process.cwd(), env.RULES_CONFIG_PATH, 'policy-rules.json');
+  if (overridePath) {
+    const resolved = path.resolve(overridePath);
+    if (!resolved.startsWith(CONFIG_DIR)) {
+      throw new Error(`Config path must be within ${CONFIG_DIR}`);
+    }
+    return resolved;
+  }
+  return path.join(CONFIG_DIR, 'policy-rules.json');
+}
+
+function evaluateCondition(
+  condition: string,
+  params: { total: number; lineItems: number },
+  config: PolicyRulesConfig,
+): boolean {
+  const ctx: Record<string, number> = {
+    total: params.total,
+    lineItems: params.lineItems,
+    autoApproveThreshold: config.autoApproveThreshold,
+    maxLineItems: config.maxLineItems,
+  };
+
+  let expr = condition;
+  for (const [key, value] of Object.entries(ctx)) {
+    expr = expr.replaceAll(key, String(value));
+  }
+
+  const operators: [string, (a: number, b: number) => boolean][] = [
+    ['<=', (a, b) => a <= b],
+    ['>=', (a, b) => a >= b],
+    ['<', (a, b) => a < b],
+    ['>', (a, b) => a > b],
+  ];
+
+  for (const [op, fn] of operators) {
+    const idx = expr.indexOf(op);
+    if (idx !== -1) {
+      const left = Number.parseFloat(expr.slice(0, idx).trim());
+      const right = Number.parseFloat(expr.slice(idx + op.length).trim());
+      if (!Number.isNaN(left) && !Number.isNaN(right)) {
+        return fn(left, right);
+      }
+    }
+  }
+
+  return false;
 }
 
 // ── Service ─────────────────────────────────────────────────────────────────────
@@ -152,7 +198,9 @@ export class PolicyService {
     const triggeredRules: string[] = [];
     for (const rule of rules.rules) {
       if (!rule.active) continue;
-      triggeredRules.push(rule.name);
+      if (evaluateCondition(rule.condition, params, rules)) {
+        triggeredRules.push(rule.name);
+      }
     }
 
     return {
