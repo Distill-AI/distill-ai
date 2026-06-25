@@ -142,6 +142,13 @@ export const POLICY_CONFIG_PATH_INVALID =
   'Policy rules config path is outside the allowed directory';
 export const POLICY_CONFIG_VALIDATION_FAILED = 'Config validation failed';
 export const POLICY_LINE_ITEMS_EXCEEDS_MAX = (current: number, limit: number) =>
-  `Line items ${current} exceeds max of ${limit}`;
+  `Line items ${current} exceed max of ${limit}`;
 export const POLICY_CATEGORY_RESTRICTED = (category: string) =>
   `Category "${category}" is restricted`;
+
+// Catalog matching
+export const MATCH_COMPLETE = (matched: number, total: number) =>
+  `Catalog matching complete: ${matched}/${total} items matched`;
+export const MATCH_DEGRADED =
+  'Embedding service unavailable; falling back to lexical-only matching';
+export const MATCH_SKIPPED_EMPTY = 'Line item skipped: raw text is empty';
