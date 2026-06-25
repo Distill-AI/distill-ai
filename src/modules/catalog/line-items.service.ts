@@ -1,9 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
 import { CustomHttpException } from '@common/exceptions/custom-http.exception';
-import { LineItem } from './entities/line-item.entity';
-import { CandidateMatch } from './entities/candidate-match.entity';
+import { LineItemModelAction } from './line-item.model-action';
+import { CandidateMatchModelAction } from './candidate-match.model-action';
 import * as SYS_MSG from '@constants/system-messages';
 
 export interface CandidateResponseItem {
@@ -20,13 +18,16 @@ export interface CandidateResponseItem {
 
 @Injectable()
 export class LineItemsService {
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly lineItemModelAction: LineItemModelAction,
+    private readonly candidateMatchModelAction: CandidateMatchModelAction,
+  ) {}
 
   /** Returns ranked candidate matches for a line item, scoped to the caller's org. */
   async getCandidates(lineId: string, callerOrgId?: string): Promise<CandidateResponseItem[]> {
-    const lineItem = await this.dataSource.manager.findOne(LineItem, {
-      where: { id: lineId },
-      relations: ['request'],
+    const lineItem = await this.lineItemModelAction.get({
+      identifierOptions: { id: lineId },
+      relations: { request: true },
     });
 
     if (!lineItem) {
@@ -37,9 +38,9 @@ export class LineItemsService {
       throw new CustomHttpException(SYS_MSG.LINE_ITEM_NOT_FOUND(lineId), HttpStatus.NOT_FOUND);
     }
 
-    const candidates = await this.dataSource.manager.find(CandidateMatch, {
-      where: { line_item_id: lineId },
-      relations: ['sku'],
+    const { payload: candidates } = await this.candidateMatchModelAction.list({
+      filterRecordOptions: { line_item_id: lineId },
+      relations: { sku: true },
       order: { rank: 'ASC' },
     });
 
