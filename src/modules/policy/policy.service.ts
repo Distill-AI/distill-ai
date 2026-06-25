@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { z } from 'zod';
+import * as SYS_MSG from '@constants/system-messages';
 import { env } from '@config/env';
 
 // ── Zod schema ──────────────────────────────────────────────────────────────────
@@ -55,7 +56,7 @@ function resolveConfigPath(overridePath?: string): string {
   if (overridePath) {
     const resolved = path.resolve(overridePath);
     if (!resolved.startsWith(CONFIG_DIR)) {
-      throw new Error(`Config path must be within ${CONFIG_DIR}`);
+      throw new Error(SYS_MSG.POLICY_CONFIG_PATH_INVALID);
     }
     return resolved;
   }

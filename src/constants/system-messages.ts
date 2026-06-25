@@ -138,3 +138,6 @@ export const POLICY_RULES_INVALID = (detail: string) =>
   `Policy rules configuration is invalid: ${detail}`;
 export const POLICY_RULES_FILE_NOT_FOUND = (path: string) =>
   `Policy rules file not found at ${path}`;
+export const POLICY_CONFIG_PATH_INVALID =
+  'Policy rules config path is outside the allowed directory';
+export const POLICY_CONFIG_VALIDATION_FAILED = 'Config validation failed';
