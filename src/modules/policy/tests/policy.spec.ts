@@ -132,14 +132,14 @@ describe('PolicyService', () => {
   });
 
   describe('FR — triggered rules', () => {
-    it('reports active rules as triggered', async () => {
+    it('reports matching rules as triggered', async () => {
       const result = await service.evaluate({
         orgId: 'org-1',
         total: 1000,
         lineItems: 5,
       });
       expect(result.triggeredRules).toContain('auto_approve_small_orders');
-      expect(result.triggeredRules).toContain('flag_large_orders');
+      expect(result.triggeredRules).not.toContain('flag_large_orders');
     });
   });
 

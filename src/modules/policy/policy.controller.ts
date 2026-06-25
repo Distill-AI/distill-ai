@@ -1,8 +1,8 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpException, HttpStatus, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import * as SYS_MSG from '@constants/system-messages';
 import { PolicyService } from './policy.service';
-import { EvaluatePolicyDto, ReloadPolicyRulesDto } from './dto/policy.dto';
+import { EvaluatePolicyDto } from './dto/policy.dto';
 import type { PolicyRulesConfig, PolicyEvaluationResult } from './policy.service';
 import {
   EvaluatePolicyDocs,
@@ -33,25 +33,27 @@ export class PolicyController {
   @Post('reload')
   @HttpCode(HttpStatus.OK)
   @ReloadPolicyRulesDocs()
-  async reload(@Body() dto: ReloadPolicyRulesDto): Promise<{
+  async reload(): Promise<{
     statusCode: number;
     message: string;
     data: PolicyRulesConfig;
   }> {
     try {
-      const rules = await this.policyService.reload(dto.configPath);
+      const rules = await this.policyService.reload();
       return {
         statusCode: HttpStatus.OK,
         message: SYS_MSG.POLICY_RULES_RELOADED,
         data: rules,
       };
-    } catch (err) {
-      const detail = err instanceof Error ? err.message : String(err);
-      return {
-        statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
-        message: SYS_MSG.POLICY_RULES_INVALID(detail),
-        data: await this.policyService.getRules(),
-      };
+    } catch {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+          message: SYS_MSG.POLICY_RULES_INVALID('Config validation failed'),
+          data: await this.policyService.getRules(),
+        },
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
     }
   }
 
