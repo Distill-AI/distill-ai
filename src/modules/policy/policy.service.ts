@@ -10,7 +10,6 @@ import { env } from '@config/env';
 const PolicyRuleSchema = z.object({
   name: z.string().min(1),
   condition: z.string().min(1),
-  action: z.string().min(1),
   priority: z.number().int().min(1).default(1),
   active: z.boolean().default(true),
 });
@@ -178,7 +177,7 @@ export class PolicyService {
       violations.push({
         rule: 'max_line_items',
         severity: 'error',
-        message: `Line items ${params.lineItems} exceeds max of ${rules.maxLineItems}`,
+        message: SYS_MSG.POLICY_LINE_ITEMS_EXCEEDS_MAX(params.lineItems, rules.maxLineItems),
         current: params.lineItems,
         limit: rules.maxLineItems,
       });
@@ -189,7 +188,7 @@ export class PolicyService {
         violations.push({
           rule: 'restricted_category',
           severity: 'error',
-          message: `Category "${category}" is restricted`,
+          message: SYS_MSG.POLICY_CATEGORY_RESTRICTED(category),
           current: category,
         });
       }

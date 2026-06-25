@@ -47,7 +47,6 @@ export function GetPolicyRulesDocs() {
                   properties: {
                     name: { type: 'string', example: 'auto_approve_small_orders' },
                     condition: { type: 'string', example: 'total <= autoApproveThreshold' },
-                    action: { type: 'string', example: 'approve' },
                     priority: { type: 'number', example: 10 },
                     active: { type: 'boolean', example: true },
                   },

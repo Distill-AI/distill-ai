@@ -141,3 +141,7 @@ export const POLICY_RULES_FILE_NOT_FOUND = (path: string) =>
 export const POLICY_CONFIG_PATH_INVALID =
   'Policy rules config path is outside the allowed directory';
 export const POLICY_CONFIG_VALIDATION_FAILED = 'Config validation failed';
+export const POLICY_LINE_ITEMS_EXCEEDS_MAX = (current: number, limit: number) =>
+  `Line items ${current} exceeds max of ${limit}`;
+export const POLICY_CATEGORY_RESTRICTED = (category: string) =>
+  `Category "${category}" is restricted`;
