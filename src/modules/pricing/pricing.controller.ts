@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, HttpException, HttpStatus, Post } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
 import * as SYS_MSG from '@constants/system-messages';
 import { PricingService } from './pricing.service';
 import { EvaluatePriceDto } from './dto/pricing.dto';
@@ -59,6 +59,7 @@ export class PricingController {
 
   @Post('evaluate')
   @HttpCode(HttpStatus.OK)
+  @ApiExcludeEndpoint()
   @EvaluatePriceDocs()
   async evaluate(@Body() dto: EvaluatePriceDto): Promise<{
     statusCode: number;
