@@ -54,9 +54,7 @@ export class SearchCatalogToolFactory {
       async execute(input: SearchCatalogInput): Promise<SearchCatalogOutput> {
         const { query, orgId, limit } = input;
 
-        const lexicalRows = await skuSearch.lexicalSearch(query, orgId, limit);
-
-        let semanticRows = await (async () => {
+        const semanticRowsPromise = (async () => {
           try {
             const vector = await embeddingsClient.embed(query);
             return await skuSearch.semanticSearch(vector, orgId, limit);
@@ -68,8 +66,13 @@ export class SearchCatalogToolFactory {
           }
         })();
 
-        const degraded = semanticRows === null;
-        if (semanticRows === null) semanticRows = [];
+        const [lexicalRows, semanticRowsResult] = await Promise.all([
+          skuSearch.lexicalSearch(query, orgId, limit),
+          semanticRowsPromise,
+        ]);
+
+        const degraded = semanticRowsResult === null;
+        const semanticRows = semanticRowsResult ?? [];
 
         const fused = fuseRrf(lexicalRows, semanticRows).filter(
           (c) => c.score >= env.MATCH_THRESHOLD,
