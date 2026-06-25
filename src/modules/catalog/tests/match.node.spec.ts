@@ -6,6 +6,7 @@ import type { DataSource, EntityManager } from 'typeorm';
 import { MatchNode } from '../match.node';
 import type { CandidateMatchModelAction } from '../candidate-match.model-action';
 import { MatchMethod } from '../enums/match-method.enum';
+import { env } from '@config/env';
 
 const requestId = 'req-uuid';
 const orgId = 'org-uuid';
@@ -196,7 +197,7 @@ describe('MatchNode', () => {
               sku_code: 'B',
               name: 'Item B',
               description: null,
-              score: 0.85,
+              score: 0.88 - env.CLOSE_TIE_MARGIN + 0.001,
               rank: 2,
               match_method: MatchMethod.FUZZY,
             },
