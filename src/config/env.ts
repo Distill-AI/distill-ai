@@ -84,9 +84,17 @@ const envSchema = z
 
     // ── Embeddings ────────────────────────────────────────────────────────────
     EMBEDDINGS_MODEL: z.string().default('text-embedding-v4'),
+    EMBEDDINGS_API_KEY: z.string().optional(),
+    EMBEDDINGS_BASE_URL: z.string().url().optional(),
+    EMBEDDINGS_DIMENSIONS: z.coerce.number().int().positive().optional(),
+    EMBEDDINGS_PROVIDER: z.string().optional(),
+    CLOSE_TIE_MARGIN: z.coerce.number().min(0).max(0.5).default(0.05),
     // ── Object storage ─────────────────────────────────────────────────────────
     // Bare path or file:// URL for the local adapter; other schemes are rejected at boot for now.
     OBJECT_STORE_URL: z.string().trim().min(1).default('file://./var/object-store'),
+
+    // ── Rules config path (US-E4-4) ───────────────────────────────────────────
+    RULES_CONFIG_PATH: z.string().min(1).default('./config'),
 
     // ── Observability ─────────────────────────────────────────────────────────
     SENTRY_DSN: z.string().url().optional(),
