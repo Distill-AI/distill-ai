@@ -55,6 +55,9 @@ function makeNode({
 
   const dataSource = {
     manager,
+    transaction: vi
+      .fn()
+      .mockImplementation(async (cb: (em: EntityManager) => Promise<void>) => cb(manager)),
   } as unknown as DataSource;
 
   const tools = {
@@ -73,7 +76,7 @@ function makeNode({
 
   const node = new MatchNode(registry as never, tools, candidateActions, events, dataSource);
 
-  return { node, tools, candidateActions, events, manager };
+  return { node, tools, candidateActions, events, manager, dataSource };
 }
 
 describe('MatchNode', () => {
@@ -103,9 +106,11 @@ describe('MatchNode', () => {
     const result = await node.run({ requestId, orgId });
 
     expect(result).toEqual({ kind: 'advance', next: CurrentNode.PRICE });
-    expect(candidateActions.replaceForLineItem).toHaveBeenCalledWith('item-1', [
-      { sku_id: 'sku-1', score: 0.92, rank: 1 },
-    ]);
+    expect(candidateActions.replaceForLineItem).toHaveBeenCalledWith(
+      'item-1',
+      [{ sku_id: 'sku-1', score: 0.92, rank: 1 }],
+      manager,
+    );
     expect(manager.update).toHaveBeenCalledWith(
       expect.anything(),
       { id: 'item-1' },
