@@ -167,6 +167,7 @@ export function EvaluatePriceDocs() {
             properties: {
               approved: { type: 'boolean', example: false },
               effectiveDiscount: { type: 'number', example: 10 },
+              effectiveMargin: { type: 'number', example: 8 },
               appliedRules: {
                 type: 'object',
                 properties: {

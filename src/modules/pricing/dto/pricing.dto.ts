@@ -1,4 +1,13 @@
-import { IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class EvaluatePriceDto {
   @IsUUID()
@@ -24,8 +33,9 @@ export class EvaluatePriceDto {
 }
 
 export class ReloadRulesDto {
-  @IsString()
   @IsOptional()
+  @IsString()
+  @IsNotEmpty()
   @MaxLength(512)
   configPath?: string;
 }
