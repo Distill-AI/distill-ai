@@ -7,7 +7,6 @@ import { ToolRegistry } from '@modules/tools/registry';
 import { toToolName } from '@modules/pipeline/types';
 import type { NodeContext, NodeResult, PipelineNode } from '@modules/pipeline/types';
 import { EventsService } from '@modules/events/events.service';
-import { LineItemModelAction } from './line-item.model-action';
 import { CandidateMatchModelAction } from './candidate-match.model-action';
 import { MatchMethod } from './enums/match-method.enum';
 import { LineItem } from './entities/line-item.entity';
@@ -27,7 +26,6 @@ export class MatchNode implements PipelineNode {
   constructor(
     registry: NodeRegistry,
     private readonly tools: ToolRegistry,
-    private readonly lineItemActions: LineItemModelAction,
     private readonly candidateActions: CandidateMatchModelAction,
     private readonly events: EventsService,
     @InjectDataSource() private readonly dataSource: DataSource,

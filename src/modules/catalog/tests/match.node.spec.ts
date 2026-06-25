@@ -4,7 +4,6 @@ import type { ToolRegistry } from '@modules/tools/registry';
 import type { EventsService } from '@modules/events/events.service';
 import type { DataSource, EntityManager } from 'typeorm';
 import { MatchNode } from '../match.node';
-import type { LineItemModelAction } from '../line-item.model-action';
 import type { CandidateMatchModelAction } from '../candidate-match.model-action';
 import { MatchMethod } from '../enums/match-method.enum';
 
@@ -62,8 +61,6 @@ function makeNode({
     invoke: vi.fn().mockResolvedValue(toolResult),
   } as unknown as ToolRegistry;
 
-  const lineItemActions = {} as unknown as LineItemModelAction;
-
   const candidateActions = {
     replaceForLineItem: vi.fn().mockResolvedValue(undefined),
   } as unknown as CandidateMatchModelAction;
@@ -74,14 +71,7 @@ function makeNode({
 
   const registry = { register: vi.fn() };
 
-  const node = new MatchNode(
-    registry as never,
-    tools,
-    lineItemActions,
-    candidateActions,
-    events,
-    dataSource,
-  );
+  const node = new MatchNode(registry as never, tools, candidateActions, events, dataSource);
 
   return { node, tools, candidateActions, events, manager };
 }
