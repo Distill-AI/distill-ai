@@ -130,16 +130,7 @@ export const TOOL_NAME_RESERVED = (name: string) =>
 export const RESUME_SUCCESS = 'Request resumed successfully';
 export const RESUME_FROM_NODE = (node: string) => `Resuming pipeline from node "${node}"`;
 
-// Pricing (US-E4-4)
-export const PRICING_RULES_RETRIEVED = 'Pricing rules retrieved successfully';
-export const PRICING_RULES_RELOADED = 'Pricing rules reloaded successfully';
-export const PRICING_EVALUATED = 'Pricing evaluated successfully';
-export const PRICING_RULES_INVALID = (detail: string) =>
-  `Pricing rules configuration is invalid: ${detail}`;
-export const PRICING_RULES_FILE_NOT_FOUND = (path: string) =>
-  `Pricing rules file not found at ${path}`;
-
-// Policy (US-E4-4)
+// Policy
 export const POLICY_RULES_RETRIEVED = 'Policy rules retrieved successfully';
 export const POLICY_RULES_RELOADED = 'Policy rules reloaded successfully';
 export const POLICY_EVALUATED = 'Policy evaluated successfully';
