@@ -8,6 +8,7 @@ import { LoggerModule } from './common/logger/logger.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { JobsQueueModule } from './queue/jobs-queue.module';
 import { PipelineQueueModule } from './queue/pipeline-queue.module';
+import { PricingModule } from './modules/pricing/pricing.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { PipelineQueueModule } from './queue/pipeline-queue.module';
     RedisModule,
     JobsQueueModule,
     PipelineQueueModule,
+    PricingModule,
   ],
 })
 export class WorkerModule {}
