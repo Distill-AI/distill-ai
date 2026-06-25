@@ -1,8 +1,8 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpException, HttpStatus, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import * as SYS_MSG from '@constants/system-messages';
 import { PricingService } from './pricing.service';
-import { EvaluatePriceDto, ReloadRulesDto } from './dto/pricing.dto';
+import { EvaluatePriceDto } from './dto/pricing.dto';
 import type { PricingRulesConfig, PriceEvaluationResult } from './pricing.service';
 import {
   EvaluatePriceDocs,
@@ -33,25 +33,27 @@ export class PricingController {
   @Post('reload')
   @HttpCode(HttpStatus.OK)
   @ReloadPricingRulesDocs()
-  async reload(@Body() dto: ReloadRulesDto): Promise<{
+  async reload(): Promise<{
     statusCode: number;
     message: string;
     data: PricingRulesConfig;
   }> {
     try {
-      const rules = await this.pricingService.reload(dto.configPath);
+      const rules = await this.pricingService.reload();
       return {
         statusCode: HttpStatus.OK,
         message: SYS_MSG.PRICING_RULES_RELOADED,
         data: rules,
       };
-    } catch (err) {
-      const detail = err instanceof Error ? err.message : String(err);
-      return {
-        statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
-        message: SYS_MSG.PRICING_RULES_INVALID(detail),
-        data: await this.pricingService.getRules(),
-      };
+    } catch {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+          message: SYS_MSG.PRICING_RULES_INVALID('Config validation failed'),
+          data: await this.pricingService.getRules(),
+        },
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
     }
   }
 
