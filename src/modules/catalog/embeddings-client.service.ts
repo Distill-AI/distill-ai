@@ -11,7 +11,12 @@ export class EmbeddingsClientService {
   constructor() {
     const apiKey = env.EMBEDDINGS_API_KEY ?? env.LLM_API_KEY ?? 'placeholder';
     const baseURL = env.EMBEDDINGS_BASE_URL ?? env.LLM_BASE_URL;
-    this.client = new OpenAI({ apiKey, baseURL });
+    this.client = new OpenAI({
+      apiKey,
+      baseURL,
+      timeout: env.LLM_TIMEOUT_MS,
+      maxRetries: env.LLM_MAX_RETRIES,
+    });
   }
 
   /** Returns an embedding vector for the given text using the configured model. */

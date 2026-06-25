@@ -11,6 +11,10 @@ export function fuseRrf(
   semantic: RrfSemanticHit[],
   k: number = DEFAULT_K,
 ): FusedCandidate[] {
+  if (!Number.isFinite(k) || k < 0) {
+    throw new Error('RRF parameter k must be a finite number >= 0');
+  }
+
   const scores = new Map<
     string,
     {
