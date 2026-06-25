@@ -81,7 +81,7 @@ export class ScoreNode implements PipelineNode {
     }
 
     const lineItemRows = await this.lineItems.find({
-      findOptions: { request_id: requestId },
+      findOptions: { request_id: requestId, request: { org_id: orgId } },
       transactionOptions: { useTransaction: false },
     });
 
