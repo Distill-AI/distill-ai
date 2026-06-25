@@ -1,0 +1,21 @@
+{
+  "autoApproveThreshold": 5000,
+  "maxLineItems": 100,
+  "restrictedCategories": [],
+  "rules": [
+    {
+      "name": "auto_approve_small_orders",
+      "condition": "total <= autoApproveThreshold",
+      "action": "approve",
+      "priority": 10,
+      "active": true
+    },
+    {
+      "name": "flag_large_orders",
+      "condition": "total > 100000",
+      "action": "review",
+      "priority": 20,
+      "active": true
+    }
+  ]
+}
