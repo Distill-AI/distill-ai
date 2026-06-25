@@ -9,16 +9,20 @@ export class SkuSearchActions {
 
   /**
    * Lexical retrieval using pg_trgm word_similarity.
-   * Uses the GIN gin_trgm_ops index via the <% operator; a bare function
-   * comparison (word_similarity(...) > n) cannot use the index.
+   * Uses the GIN gin_trgm_ops index (skus_name_desc_sku_code_trgm_idx) via the <% operator
+   * against sku_code, name, and description. A bare word_similarity() > n comparison cannot
+   * use the index.
    */
   async lexicalSearch(query: string, orgId: string, limit: number): Promise<RrfLexicalHit[]> {
     return this.dataSource.query(
       `SELECT id AS sku_id, sku_code, name, description,
-              word_similarity($1, name || ' ' || COALESCE(description, '')) AS sim_score
+              word_similarity(
+                $1,
+                COALESCE(sku_code, '') || ' ' || COALESCE(name, '') || ' ' || COALESCE(description, '')
+              ) AS sim_score
        FROM skus
        WHERE org_id = $2
-         AND $1 <% (name || ' ' || COALESCE(description, ''))
+         AND $1 <% (COALESCE(sku_code, '') || ' ' || COALESCE(name, '') || ' ' || COALESCE(description, ''))
        ORDER BY sim_score DESC
        LIMIT $3`,
       [query, orgId, limit],
