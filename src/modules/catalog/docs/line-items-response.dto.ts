@@ -7,7 +7,7 @@ export class CandidateResponseDto {
   @ApiProperty({ example: 0.88 })
   confidence: number;
 
-  @ApiProperty({ format: 'uuid' })
+  @ApiProperty({ format: 'uuid', example: 'a1b2c3d4-e5f6-4000-8000-123456789abc' })
   sku_id: string;
 
   @ApiProperty({ example: 'HP5L' })

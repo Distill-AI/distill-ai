@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { DataSource, EntityManager } from 'typeorm';
 import { HttpStatus } from '@nestjs/common';
+import type { LineItemModelAction } from '../line-item.model-action';
+import type { CandidateMatchModelAction } from '../candidate-match.model-action';
 import { LineItemsService } from '../line-items.service';
 import { CustomHttpException } from '@common/exceptions/custom-http.exception';
 
@@ -30,15 +31,18 @@ function makeCandidate(rank: number, score: number) {
   };
 }
 
-function makeService(findOneResult: unknown, findResult: unknown[]) {
-  const manager = {
-    findOne: vi.fn().mockResolvedValue(findOneResult),
-    find: vi.fn().mockResolvedValue(findResult),
-  } as unknown as EntityManager;
+function makeService(getResult: unknown, listPayload: unknown[]) {
+  const lineItemModelAction = {
+    get: vi.fn().mockResolvedValue(getResult),
+  } as unknown as LineItemModelAction;
 
-  const dataSource = { manager } as unknown as DataSource;
+  const candidateMatchModelAction = {
+    list: vi
+      .fn()
+      .mockResolvedValue({ payload: listPayload, paginationMeta: { total: listPayload.length } }),
+  } as unknown as CandidateMatchModelAction;
 
-  return { service: new LineItemsService(dataSource), manager };
+  return { service: new LineItemsService(lineItemModelAction, candidateMatchModelAction) };
 }
 
 describe('LineItemsService.getCandidates', () => {

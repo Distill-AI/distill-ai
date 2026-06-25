@@ -1,13 +1,6 @@
-import {
-  Controller,
-  Get,
-  HttpStatus,
-  NotFoundException,
-  Param,
-  ParseUUIDPipe,
-  Req,
-} from '@nestjs/common';
+import { Controller, Get, HttpStatus, Param, ParseUUIDPipe, Req } from '@nestjs/common';
 import { authConfig } from '@config/auth.config';
+import { CustomHttpException } from '@common/exceptions/custom-http.exception';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
 import type { AuthUser } from '../auth/interfaces/auth-user.interface';
@@ -30,8 +23,11 @@ export class LineItemsController {
     let orgId: string | undefined;
     if (authConfig.enabled) {
       const user = req.user;
-      if (!user || !user.orgId) {
-        throw new NotFoundException(SYS_MSG.LINE_ITEM_NOT_FOUND(lineId));
+      if (!user) {
+        throw new CustomHttpException(SYS_MSG.AUTH_UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
+      }
+      if (!user.orgId) {
+        throw new CustomHttpException(SYS_MSG.AUTH_FORBIDDEN, HttpStatus.FORBIDDEN);
       }
       orgId = user.orgId;
     }
