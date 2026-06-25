@@ -8,6 +8,13 @@ import type { CandidateMatchModelAction } from '../candidate-match.model-action'
 import { MatchMethod } from '../enums/match-method.enum';
 import { env } from '@config/env';
 
+vi.mock('@config/env', () => ({
+  env: {
+    AUTO_THRESHOLD: 0.95,
+    CLOSE_TIE_MARGIN: 0.05,
+  },
+}));
+
 const requestId = 'req-uuid';
 const orgId = 'org-uuid';
 
