@@ -164,3 +164,6 @@ export const MATCH_DEGRADED =
   'Embedding service unavailable; falling back to lexical-only matching';
 export const MATCH_SKIPPED_EMPTY = 'Line item skipped: raw text is empty';
 export const MATCH_SKIPPED_UNKNOWN = 'Line item skipped: raw text is UNKNOWN';
+export const MATCH_CLOSE_TIE_REASON = (top1: number, top2: number) =>
+  `Two candidates within margin (scores: ${top1.toFixed(2)}, ${top2.toFixed(2)})`;
+
