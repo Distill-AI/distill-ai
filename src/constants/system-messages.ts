@@ -102,7 +102,7 @@ export const EXTRACTION_UPSERT_FAILED = (requestId: string) =>
 export const EXTRACTION_JSON_PARSE_FAILED = (detail: string) =>
   `Failed to parse extraction JSON: ${detail}`;
 
-// Scoring (US-E2-3 / US-E5)
+// Scoring
 export const SCORE_ROUTING_APPLIED = (routing: string) => `Routing set to ${routing}`;
 export const SCORE_NO_LINE_ITEMS = 'No line items available for scoring; routing to review';
 export const SCORE_BELOW_AUTO_THRESHOLD = (confidence: number, threshold: number) =>
