@@ -1,4 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
+import * as os from 'node:os';
 import { PricingService } from '../pricing.service';
 import type { PricingRulesConfig } from '../pricing.service';
 
@@ -194,28 +197,78 @@ describe('PricingService', () => {
       expect(rules.maxDiscount.default).toBe(25);
       expect(rules.quantityBreaks.length).toBeGreaterThanOrEqual(1);
     });
+
+    it('returns cached rules when config file contains invalid JSON', async () => {
+      const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'pricing-test-'));
+      const tmpFile = path.join(tmpDir, 'invalid.json');
+      await fs.writeFile(tmpFile, '{ invalid json }');
+
+      (service as unknown as { configPath: string }).configPath = tmpFile;
+      (service as unknown as { lastMtime: number }).lastMtime = 0;
+
+      const rules = await service.getRules();
+      expect(rules.marginFloor.default).toBe(15);
+
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    });
+
+    it('returns cached rules when config file has schema-invalid content', async () => {
+      const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'pricing-test-'));
+      const tmpFile = path.join(tmpDir, 'schema-invalid.json');
+      await fs.writeFile(tmpFile, JSON.stringify({ marginFloor: { default: 15 } }));
+
+      (service as unknown as { configPath: string }).configPath = tmpFile;
+      (service as unknown as { lastMtime: number }).lastMtime = 0;
+
+      const rules = await service.getRules();
+      expect(rules.marginFloor.default).toBe(15);
+
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    });
   });
 
-  describe('EC-02 — Consistent rules within a single evaluation', () => {
-    it('captures a snapshot at the start of evaluate()', async () => {
-      const results = await Promise.all([
-        service.evaluate({
-          orgId: 'org-1',
-          total: 1000,
-          quantity: 10,
-          marginPercent: 10,
-          discountPercent: 5,
-        }),
-        service.evaluate({
-          orgId: 'org-1',
-          total: 1000,
-          quantity: 10,
-          marginPercent: 10,
-          discountPercent: 5,
-        }),
-      ]);
-      expect(results[0].appliedRules).toEqual(results[1].appliedRules);
-      expect(results[0].breaches).toEqual(results[1].breaches);
+  describe('EC-02 — Snapshot isolation across evaluations', () => {
+    const dto = {
+      orgId: 'org-1',
+      total: 1000,
+      quantity: 10,
+      marginPercent: 10,
+      discountPercent: 5,
+    };
+
+    it('uses a snapshot taken at call time, unaffected by later cache mutations', async () => {
+      const result = await service.evaluate(dto);
+      expect(result.appliedRules.marginFloor).toBe(15);
+
+      // Mutate cache after evaluate already returned
+      const mutated: PricingRulesConfig = {
+        ...VALID_RULES,
+        marginFloor: { default: 99 },
+      };
+      (service as unknown as { cachedConfig: PricingRulesConfig | null }).cachedConfig = mutated;
+
+      // The prior result is unchanged
+      expect(result.appliedRules.marginFloor).toBe(15);
+    });
+
+    it('picks up a new snapshot when cache changes between evaluations', async () => {
+      const resultA = await service.evaluate(dto);
+      expect(resultA.appliedRules.marginFloor).toBe(15);
+      expect(resultA.approved).toBe(false);
+
+      // Swap to stricter margin floor
+      const mutated: PricingRulesConfig = {
+        ...VALID_RULES,
+        marginFloor: { default: 99 },
+      };
+      (service as unknown as { cachedConfig: PricingRulesConfig | null }).cachedConfig = mutated;
+
+      const resultB = await service.evaluate(dto);
+      expect(resultB.appliedRules.marginFloor).toBe(99);
+      expect(resultB.approved).toBe(false);
+
+      // Verify they used different snapshots
+      expect(resultA.appliedRules).not.toEqual(resultB.appliedRules);
     });
   });
 

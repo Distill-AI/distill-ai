@@ -45,6 +45,7 @@ interface PriceBreach {
 interface PriceEvaluationResult {
   approved: boolean;
   effectiveDiscount: number;
+  effectiveMargin: number;
   appliedRules: {
     marginFloor: number;
     maxDiscount: number;
@@ -188,9 +189,12 @@ export class PricingService {
       effectiveDiscount = quantityBreakApplied;
     }
 
+    const effectiveMargin = params.marginPercent - (effectiveDiscount - params.discountPercent);
+
     return {
       approved: breaches.length === 0,
       effectiveDiscount,
+      effectiveMargin,
       appliedRules: { marginFloor, maxDiscount, quantityBreakApplied },
       breaches,
     };
