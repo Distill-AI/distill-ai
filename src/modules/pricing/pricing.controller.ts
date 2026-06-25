@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, HttpException, HttpStatus, Post } from
 import { ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
 import * as SYS_MSG from '@constants/system-messages';
 import { PricingService } from './pricing.service';
-import { EvaluatePriceDto } from './dto/pricing.dto';
+import { EvaluatePriceDto, ReloadRulesDto } from './dto/pricing.dto';
 import type { PricingRulesConfig, PriceEvaluationResult } from './pricing.service';
 import {
   EvaluatePriceDocs,
@@ -33,13 +33,13 @@ export class PricingController {
   @Post('reload')
   @HttpCode(HttpStatus.OK)
   @ReloadPricingRulesDocs()
-  async reload(): Promise<{
+  async reload(@Body() dto: ReloadRulesDto): Promise<{
     statusCode: number;
     message: string;
     data: PricingRulesConfig;
   }> {
     try {
-      const rules = await this.pricingService.reload();
+      const rules = await this.pricingService.reload(dto.configPath);
       return {
         statusCode: HttpStatus.OK,
         message: SYS_MSG.PRICING_RULES_RELOADED,
@@ -49,7 +49,7 @@ export class PricingController {
       throw new HttpException(
         {
           statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
-          message: SYS_MSG.PRICING_RULES_INVALID('Config validation failed'),
+          message: SYS_MSG.PRICING_CONFIG_VALIDATION_FAILED,
           data: await this.pricingService.getRules(),
         },
         HttpStatus.UNPROCESSABLE_ENTITY,

@@ -25,7 +25,7 @@ import { EventsModule } from '@modules/events/events.module';
 import { SseModule } from './sse/sse.module';
 import { RequestsModule } from '@modules/requests/requests.module';
 
-//// ── Pricing ──────────────────────────────────
+// ── Pricing ──────────────────────────────────
 import { PricingModule } from '@modules/pricing/pricing.module';
 
 // ── Auth ───────────────────────────────────────────────────────

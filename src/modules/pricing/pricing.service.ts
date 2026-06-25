@@ -1,8 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'node:fs/promises';
+import * as SYS_MSG from '@constants/system-messages';
 import * as path from 'node:path';
 import { z } from 'zod';
 import { env } from '@config/env';
+const CONFIG_DIR = path.resolve(process.cwd(), env.RULES_CONFIG_PATH);
 
 // ── Zod schema ──────────────────────────────────────────────────────────────────
 
@@ -65,8 +67,14 @@ const DEFAULT_RULES: PricingRulesConfig = {
 };
 
 function resolveConfigPath(overridePath?: string): string {
-  if (overridePath) return path.resolve(overridePath);
-  return path.resolve(process.cwd(), env.RULES_CONFIG_PATH, 'pricing-rules.json');
+  if (overridePath) {
+    const resolved = path.resolve(overridePath);
+    if (!resolved.startsWith(CONFIG_DIR + path.sep)) {
+      throw new Error(SYS_MSG.PRICING_CONFIG_PATH_INVALID);
+    }
+    return resolved;
+  }
+  return path.join(CONFIG_DIR, 'pricing-rules.json');
 }
 
 // ── Service ─────────────────────────────────────────────────────────────────────
