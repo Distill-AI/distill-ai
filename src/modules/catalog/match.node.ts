@@ -66,11 +66,19 @@ export class MatchNode implements PipelineNode {
       }
 
       const trimmed = item.raw_text.trim();
-      if (trimmed === '' || trimmed.toUpperCase() === 'UNKNOWN') {
+      if (trimmed === '') {
         this.logger.warn({
           event: 'match_skipped',
           itemId: item.id,
           reason: SYS_MSG.MATCH_SKIPPED_EMPTY,
+        });
+        continue;
+      }
+      if (trimmed.toUpperCase() === 'UNKNOWN') {
+        this.logger.warn({
+          event: 'match_skipped',
+          itemId: item.id,
+          reason: SYS_MSG.MATCH_SKIPPED_UNKNOWN,
         });
         continue;
       }

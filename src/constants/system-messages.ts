@@ -152,3 +152,4 @@ export const MATCH_COMPLETE = (matched: number, total: number) =>
 export const MATCH_DEGRADED =
   'Embedding service unavailable; falling back to lexical-only matching';
 export const MATCH_SKIPPED_EMPTY = 'Line item skipped: raw text is empty';
+export const MATCH_SKIPPED_UNKNOWN = 'Line item skipped: raw text is UNKNOWN';
