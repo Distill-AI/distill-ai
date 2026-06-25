@@ -95,21 +95,26 @@ export class MatchNode implements PipelineNode {
       const { candidates, degraded } = invocation.result as SearchCatalogResult;
       if (degraded) anyDegraded = true;
 
-      await this.candidateActions.replaceForLineItem(
-        item.id,
-        candidates.map((c: SearchCatalogCandidate) => ({
-          sku_id: c.sku_id,
-          score: c.score,
-          rank: c.rank,
-        })),
-      );
+      const candidateRows = candidates.map((c: SearchCatalogCandidate) => ({
+        sku_id: c.sku_id,
+        score: c.score,
+        rank: c.rank,
+      }));
 
-      if (candidates.length === 0) continue;
+      if (candidates.length === 0) {
+        await this.dataSource.transaction((em) =>
+          this.candidateActions.replaceForLineItem(item.id, candidateRows, em),
+        );
+        continue;
+      }
 
       const best = candidates[0];
 
       let method = best.match_method;
-      if (best.score >= 0.95 && (method === MatchMethod.FUZZY || method === MatchMethod.FUSED)) {
+      if (
+        best.score >= env.AUTO_THRESHOLD &&
+        (method === MatchMethod.FUZZY || method === MatchMethod.FUSED)
+      ) {
         method = MatchMethod.EXACT;
       }
 
@@ -119,16 +124,19 @@ export class MatchNode implements PipelineNode {
       const existingFlags = Array.isArray(item.flags) ? (item.flags as string[]) : [];
       const flags: string[] = isCloseTie ? [...existingFlags, 'close_tie'] : existingFlags;
 
-      await this.dataSource.manager.update(
-        LineItem,
-        { id: item.id },
-        {
-          matched_sku_id: best.sku_id,
-          match_confidence: best.score,
-          match_method: method,
-          flags: flags as unknown as object[],
-        },
-      );
+      await this.dataSource.transaction(async (em) => {
+        await this.candidateActions.replaceForLineItem(item.id, candidateRows, em);
+        await em.update(
+          LineItem,
+          { id: item.id },
+          {
+            matched_sku_id: best.sku_id,
+            match_confidence: best.score,
+            match_method: method,
+            flags: flags as unknown as object[],
+          },
+        );
+      });
 
       matchedCount++;
     }
