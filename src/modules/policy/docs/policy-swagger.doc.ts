@@ -80,17 +80,6 @@ export function ReloadPolicyRulesDocs() {
         'and an error response is returned. Useful after editing the config file to ' +
         'verify the new rules are valid before they take effect on the next policy evaluation.',
     }),
-    ApiBody({
-      schema: {
-        properties: {
-          configPath: {
-            type: 'string',
-            example: './config/policy-rules.json',
-            description: 'Optional override path to the policy rules config file',
-          },
-        },
-      },
-    }),
     ApiOkResponse({
       description: SYS_MSG.POLICY_RULES_RELOADED,
       schema: {

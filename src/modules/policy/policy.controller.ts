@@ -1,5 +1,5 @@
-import { Body, Controller, Get, HttpCode, HttpException, HttpStatus, Post } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
 import * as SYS_MSG from '@constants/system-messages';
 import { PolicyService } from './policy.service';
 import { EvaluatePolicyDto } from './dto/policy.dto';
@@ -9,6 +9,7 @@ import {
   GetPolicyRulesDocs,
   ReloadPolicyRulesDocs,
 } from './docs/policy-swagger.doc';
+import { CustomHttpException } from '@common/exceptions/custom-http.exception';
 
 @ApiTags('Policy')
 @Controller('policy')
@@ -45,20 +46,20 @@ export class PolicyController {
         message: SYS_MSG.POLICY_RULES_RELOADED,
         data: rules,
       };
-    } catch {
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
-          message: SYS_MSG.POLICY_CONFIG_VALIDATION_FAILED,
-          data: await this.policyService.getRules(),
-        },
-        HttpStatus.UNPROCESSABLE_ENTITY,
+    } catch (err) {
+      const isNotFound = (err as NodeJS.ErrnoException).code === 'ENOENT';
+      throw new CustomHttpException(
+        isNotFound
+          ? SYS_MSG.POLICY_RULES_FILE_NOT_FOUND('policy-rules.json')
+          : SYS_MSG.POLICY_CONFIG_VALIDATION_FAILED,
+        isNotFound ? HttpStatus.NOT_FOUND : HttpStatus.UNPROCESSABLE_ENTITY,
       );
     }
   }
 
   @Post('evaluate')
   @HttpCode(HttpStatus.OK)
+  @ApiExcludeEndpoint()
   @EvaluatePolicyDocs()
   async evaluate(@Body() dto: EvaluatePolicyDto): Promise<{
     statusCode: number;
