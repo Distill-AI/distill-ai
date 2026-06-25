@@ -4,7 +4,6 @@ import {
   ApiOperation,
   ApiParam,
   ApiResponse,
-  ApiTags,
   getSchemaPath,
 } from '@nestjs/swagger';
 import { CandidateResponseDto } from './line-items-response.dto';
@@ -27,7 +26,6 @@ function errorSchema(statusCode: HttpStatus, error: string, message: string) {
 
 export function GetCandidatesDocs(): MethodDecorator {
   return applyDecorators(
-    ApiTags('Line Items'),
     ApiExtraModels(CandidateResponseDto),
     ApiOperation({
       summary: 'Get ranked alternative candidates for a line item',

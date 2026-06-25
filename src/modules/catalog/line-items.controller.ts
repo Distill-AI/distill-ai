@@ -1,4 +1,5 @@
 import { Controller, Get, HttpStatus, Param, ParseUUIDPipe, Req } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { authConfig } from '@config/auth.config';
 import { CustomHttpException } from '@common/exceptions/custom-http.exception';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -8,6 +9,7 @@ import { LineItemsService } from './line-items.service';
 import { GetCandidatesDocs } from './docs/line-items-swagger.doc';
 import * as SYS_MSG from '@constants/system-messages';
 
+@ApiTags('Line Items')
 @Controller('line-items')
 export class LineItemsController {
   constructor(private readonly lineItemsService: LineItemsService) {}
