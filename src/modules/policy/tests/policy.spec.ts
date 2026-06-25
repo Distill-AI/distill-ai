@@ -1,4 +1,3 @@
-import { describe, it, expect, beforeEach } from 'vitest';
 import { PolicyService } from '../policy.service';
 import type { PolicyRulesConfig } from '../policy.service';
 
@@ -35,7 +34,7 @@ describe('PolicyService', () => {
 
   // ── AC: Acceptance Criteria ──────────────────────────────────────────────────
 
-  describe('AC-01 — Changing rules affects next evaluation', () => {
+  describe('AC-01: Changing rules affects next evaluation', () => {
     it('detects violation when line items exceed max', async () => {
       const result = await service.evaluate({
         orgId: 'org-1',
@@ -59,7 +58,7 @@ describe('PolicyService', () => {
     });
   });
 
-  describe('AC-02 — Rule change picked up by next evaluation', () => {
+  describe('AC-02: Rule change picked up by next evaluation', () => {
     it('uses current cached rules for evaluation', async () => {
       const result = await service.evaluate({
         orgId: 'org-1',
@@ -86,7 +85,7 @@ describe('PolicyService', () => {
 
   // ── FR: Functional Requirements ──────────────────────────────────────────────
 
-  describe('FR — auto-approve threshold', () => {
+  describe('FR: auto-approve threshold', () => {
     it('marks as auto-approvable when total is below threshold', async () => {
       const result = await service.evaluate({
         orgId: 'org-1',
@@ -108,7 +107,7 @@ describe('PolicyService', () => {
     });
   });
 
-  describe('FR — restricted categories', () => {
+  describe('FR: restricted categories', () => {
     it('flags restricted category as violation', async () => {
       const result = await service.evaluate({
         orgId: 'org-1',
@@ -131,7 +130,7 @@ describe('PolicyService', () => {
     });
   });
 
-  describe('FR — triggered rules', () => {
+  describe('FR: triggered rules', () => {
     it('reports matching rules as triggered', async () => {
       const result = await service.evaluate({
         orgId: 'org-1',
@@ -145,7 +144,7 @@ describe('PolicyService', () => {
 
   // ── EC: Edge Cases ──────────────────────────────────────────────────────────
 
-  describe('EC-01 — Malformed config keeps last-known-good', () => {
+  describe('EC-01: Malformed config keeps last-known-good', () => {
     it('returns cached rules when file is missing', async () => {
       const before = await service.getRules();
       expect(before.maxLineItems).toBe(100);
@@ -165,7 +164,7 @@ describe('PolicyService', () => {
     });
   });
 
-  describe('EC-02 — Consistent rules within a single evaluation', () => {
+  describe('EC-02: Consistent rules within a single evaluation', () => {
     it('caches config at start of evaluate()', async () => {
       const results = await Promise.all([
         service.evaluate({

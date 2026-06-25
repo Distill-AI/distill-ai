@@ -55,7 +55,7 @@ const CONFIG_DIR = path.resolve(process.cwd(), env.RULES_CONFIG_PATH);
 function resolveConfigPath(overridePath?: string): string {
   if (overridePath) {
     const resolved = path.resolve(overridePath);
-    if (!resolved.startsWith(CONFIG_DIR)) {
+    if (!resolved.startsWith(CONFIG_DIR + path.sep)) {
       throw new Error(SYS_MSG.POLICY_CONFIG_PATH_INVALID);
     }
     return resolved;
@@ -76,7 +76,7 @@ function evaluateCondition(
   };
 
   let expr = condition;
-  for (const [key, value] of Object.entries(ctx)) {
+  for (const [key, value] of Object.entries(ctx).sort((a, b) => b[0].length - a[0].length)) {
     expr = expr.replaceAll(key, String(value));
   }
 
@@ -111,6 +111,7 @@ export class PolicyService {
   private lastMtime = 0;
   private configPath = resolveConfigPath();
 
+  /** Returns the current policy rules, reloading from disk if the file has changed since last read. */
   async getRules(): Promise<PolicyRulesConfig> {
     const resolvedPath = this.configPath;
 
@@ -165,7 +166,7 @@ export class PolicyService {
   }
 
   async evaluate(params: {
-    orgId: string;
+    orgId: string; // Reserved for per-org rule lookup in a future story
     total: number;
     lineItems: number;
     categories?: string[];
