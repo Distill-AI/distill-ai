@@ -24,6 +24,7 @@ import { IngestionModule } from '@modules/ingestion/ingestion.module';
 import { EventsModule } from '@modules/events/events.module';
 import { SseModule } from './sse/sse.module';
 import { RequestsModule } from '@modules/requests/requests.module';
+import { LineItemsModule } from '@modules/catalog/line-items.module';
 
 // ── Pricing ──────────────────────────────────
 import { PricingModule } from '@modules/pricing/pricing.module';
@@ -76,6 +77,7 @@ import { RlsContextMiddleware } from '@modules/auth/middleware/rls-context.middl
     SseModule,
     EventsModule,
     RequestsModule,
+    LineItemsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
