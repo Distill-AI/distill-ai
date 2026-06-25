@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import * as SYS_MSG from '@constants/system-messages';
 import { RequestRouting } from '@modules/requests/enums/request-routing.enum';
 import { ToolRegistry } from '@modules/tools/registry';
@@ -7,6 +7,16 @@ import { scoringConfig } from '@config/scoring.config';
 import { ScoreNode } from '../score.node';
 import { ScorerService } from '../scorer.service';
 import type { ScoringLineItem } from '../interfaces/scoring-input.interface';
+
+vi.mock('@config/scoring.config', () => ({
+  scoringConfig: {
+    autoThreshold: 0.95,
+    unmatchedFloor: 0,
+    policyFlagPenalty: 0.5,
+    dealValueExceededPenalty: 0.8,
+    autoSendCapMinor: 5000,
+  },
+}));
 
 function line(overrides: Partial<ScoringLineItem> = {}): ScoringLineItem {
   return {
@@ -128,13 +138,10 @@ describe('ScorerService', () => {
       line({ unitPriceMinor: 100000, quantity: 10, matchConfidence: 0.99 }),
     ]);
 
-    const cap = scoringConfig.autoSendCapMinor;
-    if (cap !== undefined) {
-      expect(result.overallConfidence).toBe(scoringConfig.dealValueExceededPenalty);
-      expect(result.routingReasons).toEqual(
-        expect.arrayContaining([expect.objectContaining({ code: 'deal_value_exceeds_cap' })]),
-      );
-    }
+    expect(result.overallConfidence).toBe(scoringConfig.dealValueExceededPenalty);
+    expect(result.routingReasons).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'deal_value_exceeds_cap' })]),
+    );
   });
 });
 
