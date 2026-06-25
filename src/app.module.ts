@@ -25,6 +25,9 @@ import { EventsModule } from '@modules/events/events.module';
 import { SseModule } from './sse/sse.module';
 import { RequestsModule } from '@modules/requests/requests.module';
 
+// ── Policy ────────────────────────────────────────────────────────
+import { PolicyModule } from '@modules/policy/policy.module';
+
 // ── Auth ───────────────────────────────────────────────────────
 import { AuthModule } from '@modules/auth';
 import { AuthGuard } from '@modules/auth';
@@ -58,6 +61,7 @@ import { RlsContextMiddleware } from '@modules/auth/middleware/rls-context.middl
 
     // ── Feature modules — add yours here, remove the reference ones ───────
     AuthModule,
+    PolicyModule,
     // ── Feature modules , add yours here, remove the reference ones ───────
     JobsModule,
     DlqModule,
