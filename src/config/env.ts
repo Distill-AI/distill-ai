@@ -93,6 +93,9 @@ const envSchema = z
     // Bare path or file:// URL for the local adapter; other schemes are rejected at boot for now.
     OBJECT_STORE_URL: z.string().trim().min(1).default('file://./var/object-store'),
 
+    // ── Rules config path (US-E4-4) ───────────────────────────────────────────
+    RULES_CONFIG_PATH: z.string().min(1).default('./config'),
+
     // ── Observability ─────────────────────────────────────────────────────────
     SENTRY_DSN: z.string().url().optional(),
   })
