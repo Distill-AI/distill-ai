@@ -129,3 +129,10 @@ export const TOOL_NAME_RESERVED = (name: string) =>
 // Resume / Crash Recovery
 export const RESUME_SUCCESS = 'Request resumed successfully';
 export const RESUME_FROM_NODE = (node: string) => `Resuming pipeline from node "${node}"`;
+
+// Catalog matching
+export const MATCH_COMPLETE = (matched: number, total: number) =>
+  `Catalog matching complete: ${matched}/${total} items matched`;
+export const MATCH_DEGRADED =
+  'Embedding service unavailable; falling back to lexical-only matching';
+export const MATCH_SKIPPED_EMPTY = 'Line item skipped: raw text is empty';
