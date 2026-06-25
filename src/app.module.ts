@@ -27,6 +27,8 @@ import { RequestsModule } from '@modules/requests/requests.module';
 
 // ── Pricing ──────────────────────────────────
 import { PricingModule } from '@modules/pricing/pricing.module';
+// ── Policy ────────────────────────────────────────────────────────
+import { PolicyModule } from '@modules/policy/policy.module';
 
 // ── Auth ───────────────────────────────────────────────────────
 import { AuthModule } from '@modules/auth';
@@ -62,6 +64,7 @@ import { RlsContextMiddleware } from '@modules/auth/middleware/rls-context.middl
     // ── Feature modules — add yours here, remove the reference ones ───────
     AuthModule,
     PricingModule,
+    PolicyModule,
     // ── Feature modules , add yours here, remove the reference ones ───────
     JobsModule,
     DlqModule,
