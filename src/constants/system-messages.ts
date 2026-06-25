@@ -104,6 +104,14 @@ export const EXTRACTION_JSON_PARSE_FAILED = (detail: string) =>
 
 // Scoring (US-E2-3 / US-E5)
 export const SCORE_ROUTING_APPLIED = (routing: string) => `Routing set to ${routing}`;
+export const SCORE_NO_LINE_ITEMS = 'No line items available for scoring; routing to review';
+export const SCORE_BELOW_AUTO_THRESHOLD = (confidence: number, threshold: number) =>
+  `Overall confidence ${confidence} below auto threshold ${threshold}`;
+export const SCORE_AUTO_ELIGIBLE = (confidence: number) =>
+  `Overall confidence ${confidence} meets auto-eligible threshold`;
+export const SCORE_POLICY_FLAGS_DETECTED = 'Policy flags present on one or more line items';
+export const SCORE_DEAL_VALUE_EXCEEDS_CAP = (total: number, cap: number) =>
+  `Deal value ${total} exceeds auto-send cap ${cap}`;
 
 // Auth
 export const AUTH_PROFILE_FETCHED = 'Profile fetched successfully';
