@@ -13,6 +13,8 @@ import { ExtractNode } from '@modules/extraction/extract.node';
 import { ScoringModule } from '@modules/scoring/scoring.module';
 import { ScoreNode } from '@modules/scoring/score.node';
 import { ToolsModule } from '@modules/tools/tools.module';
+import { CatalogModule } from '@modules/catalog/catalog.module';
+import { MatchNode } from '@modules/catalog/match.node';
 import { ParseNode } from '@modules/parse/parse.node';
 import { QueueClientModule } from './queue-client.module';
 import { PipelineProcessor } from './processors/pipeline.processor';
@@ -34,6 +36,7 @@ import { PipelineProcessor } from './processors/pipeline.processor';
     ExtractionModule,
     ScoringModule,
     ToolsModule,
+    CatalogModule,
     ObjectStoreModule,
   ],
   providers: [
@@ -43,6 +46,7 @@ import { PipelineProcessor } from './processors/pipeline.processor';
     ParseNode,
     ExtractNode,
     ClassifyNode,
+    MatchNode,
     ScoreNode,
     PipelineProcessor,
   ],
