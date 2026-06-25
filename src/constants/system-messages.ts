@@ -138,3 +138,5 @@ export const PRICING_RULES_INVALID = (detail: string) =>
   `Pricing rules configuration is invalid: ${detail}`;
 export const PRICING_RULES_FILE_NOT_FOUND = (path: string) =>
   `Pricing rules file not found at ${path}`;
+export const PRICING_CONFIG_VALIDATION_FAILED = 'Pricing rules config validation failed';
+export const PRICING_CONFIG_PATH_INVALID = 'Pricing config path is invalid';
