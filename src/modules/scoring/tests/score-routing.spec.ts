@@ -4,6 +4,7 @@ import { RequestStatus } from '@modules/requests/enums/request-status.enum';
 import { RequestRouting } from '@modules/requests/enums/request-routing.enum';
 import type { Request } from '@modules/requests/entities/request.entity';
 import type { RequestModelAction } from '@modules/requests/requests.model-action';
+import type { LineItemModelAction } from '@modules/catalog/line-item.model-action';
 import type { ExtractionModelAction } from '@modules/extraction/extraction.model-action';
 import type { EventsService } from '@modules/events/events.service';
 import { ExtractionStatus } from '@modules/extraction/enums/extraction-status.enum';
@@ -48,7 +49,7 @@ function makeFakeRequests(startNode: CurrentNode) {
 }
 
 describe('score routing (graph integration)', () => {
-  it('terminal status is needs_review when score routes failed extraction to review', async () => {
+  it('terminal status is needs_review when extraction fails (scoreExtractionFailure path)', async () => {
     const requests = makeFakeRequests(CurrentNode.SCORE);
     const events = { emit: vi.fn().mockResolvedValue(undefined) } as unknown as EventsService;
 
@@ -60,12 +61,17 @@ describe('score routing (graph integration)', () => {
       }),
     } as unknown as ExtractionModelAction;
 
+    const lineItems = {
+      find: vi.fn().mockResolvedValue({ payload: [] }),
+    } as unknown as LineItemModelAction;
+
     const registry = new NodeRegistry();
     new ScoreNode(
       registry,
       new ScorerService(),
       requests as unknown as RequestModelAction,
       extractions,
+      lineItems,
       events,
     );
 
@@ -83,5 +89,45 @@ describe('score routing (graph integration)', () => {
     ]);
     expect(requests.record.current_node).toBe(CurrentNode.DONE);
     expect(requests.record.status).toBe(RequestStatus.NEEDS_REVIEW);
+  });
+
+  it('terminal status is priced when score routes to auto_eligible', async () => {
+    const requests = makeFakeRequests(CurrentNode.SCORE);
+    const events = { emit: vi.fn().mockResolvedValue(undefined) } as unknown as EventsService;
+
+    const extractions = {
+      findByRequestId: vi.fn().mockResolvedValue({
+        schema_valid: true,
+        status: ExtractionStatus.COMPLETED,
+      }),
+    } as unknown as ExtractionModelAction;
+
+    const lineItems = {
+      find: vi.fn().mockResolvedValue({
+        payload: [{ match_confidence: 0.99, unit_price_minor: 1000, quantity: 1, flags: [] }],
+      }),
+    } as unknown as LineItemModelAction;
+
+    const registry = new NodeRegistry();
+    new ScoreNode(
+      registry,
+      new ScorerService(),
+      requests as unknown as RequestModelAction,
+      extractions,
+      lineItems,
+      events,
+    );
+
+    const engine = new PipelineGraphEngine(
+      registry,
+      requests as unknown as RequestModelAction,
+      events,
+    );
+
+    await engine.run('req-1');
+
+    expect(requests.record.routing).toBe(RequestRouting.AUTO_ELIGIBLE);
+    expect(requests.record.current_node).toBe(CurrentNode.DONE);
+    expect(requests.record.status).toBe(RequestStatus.PRICED);
   });
 });
