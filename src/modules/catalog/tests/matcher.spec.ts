@@ -12,10 +12,6 @@ function semHit(sku_id: string, sim_score: number): RrfSemanticHit {
 }
 
 describe('matcher', () => {
-  it('placeholder — assertions wired in E3', () => {
-    // intentionally empty: reserves this suite in CI
-  });
-
   it('exact lexical match ranks above semantic-only match', () => {
     const result = fuseRrf([lexHit('sku-a', 1.0)], [semHit('sku-b', 0.9)]);
 
