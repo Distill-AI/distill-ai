@@ -112,11 +112,11 @@ export function ReloadPolicyRulesDocs() {
     }),
     ApiResponse({
       status: HttpStatus.UNPROCESSABLE_ENTITY,
-      description: 'Config validation failed',
+      description: SYS_MSG.POLICY_CONFIG_VALIDATION_FAILED,
       schema: errorSchema(
         HttpStatus.UNPROCESSABLE_ENTITY,
         'Unprocessable Entity',
-        'Policy rules configuration is invalid: ...',
+        SYS_MSG.POLICY_CONFIG_VALIDATION_FAILED,
       ),
     }),
   );

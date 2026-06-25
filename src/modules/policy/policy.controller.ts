@@ -49,7 +49,7 @@ export class PolicyController {
       throw new HttpException(
         {
           statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
-          message: SYS_MSG.POLICY_RULES_INVALID('Config validation failed'),
+          message: SYS_MSG.POLICY_CONFIG_VALIDATION_FAILED,
           data: await this.policyService.getRules(),
         },
         HttpStatus.UNPROCESSABLE_ENTITY,
