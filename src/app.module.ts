@@ -25,8 +25,7 @@ import { EventsModule } from '@modules/events/events.module';
 import { SseModule } from './sse/sse.module';
 import { RequestsModule } from '@modules/requests/requests.module';
 
-// ── Pricing & Policy (US-E4-4) ──────────────────────────────────
-import { PricingModule } from '@modules/pricing/pricing.module';
+// ── Policy ────────────────────────────────────────────────────────
 import { PolicyModule } from '@modules/policy/policy.module';
 
 // ── Auth ───────────────────────────────────────────────────────
@@ -62,7 +61,6 @@ import { RlsContextMiddleware } from '@modules/auth/middleware/rls-context.middl
 
     // ── Feature modules — add yours here, remove the reference ones ───────
     AuthModule,
-    PricingModule,
     PolicyModule,
     // ── Feature modules , add yours here, remove the reference ones ───────
     JobsModule,
