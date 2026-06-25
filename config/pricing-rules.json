@@ -1,0 +1,16 @@
+{
+  "marginFloor": {
+    "default": 15,
+    "byOrg": {}
+  },
+  "maxDiscount": {
+    "default": 25,
+    "byOrg": {}
+  },
+  "quantityBreaks": [
+    { "minQty": 1, "discountPercent": 0 },
+    { "minQty": 11, "maxQty": 50, "discountPercent": 5 },
+    { "minQty": 51, "maxQty": 100, "discountPercent": 10 },
+    { "minQty": 101, "discountPercent": 15 }
+  ]
+}
