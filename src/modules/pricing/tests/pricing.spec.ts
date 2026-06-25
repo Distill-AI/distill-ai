@@ -179,6 +179,7 @@ describe('PricingService', () => {
       const before = await service.getRules();
       expect(before.marginFloor.default).toBe(15);
 
+      (service as unknown as { lastMtime: number }).lastMtime = 0;
       (service as unknown as { configPath: string }).configPath =
         './nonexistent/pricing-rules.json';
       const after = await service.getRules();

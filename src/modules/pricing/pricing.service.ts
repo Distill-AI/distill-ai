@@ -6,11 +6,16 @@ import { env } from '@config/env';
 
 // ── Zod schema ──────────────────────────────────────────────────────────────────
 
-const QuantityBreakSchema = z.object({
-  minQty: z.number().int().min(1),
-  maxQty: z.number().int().min(1).optional(),
-  discountPercent: z.number().min(0).max(100),
-});
+const QuantityBreakSchema = z
+  .object({
+    minQty: z.number().int().min(1),
+    maxQty: z.number().int().min(1).optional(),
+    discountPercent: z.number().min(0).max(100),
+  })
+  .refine((qb) => qb.maxQty === undefined || qb.maxQty >= qb.minQty, {
+    message: 'maxQty must be greater than or equal to minQty',
+    path: ['maxQty'],
+  });
 
 const PricingRulesSchema = z.object({
   marginFloor: z.object({
@@ -23,7 +28,6 @@ const PricingRulesSchema = z.object({
   }),
   quantityBreaks: z.array(QuantityBreakSchema).min(1),
 });
-
 type PricingRulesConfig = z.infer<typeof PricingRulesSchema>;
 
 // ── Interfaces ──────────────────────────────────────────────────────────────────
