@@ -8,6 +8,7 @@ import { LoggerModule } from './common/logger/logger.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { JobsQueueModule } from './queue/jobs-queue.module';
 import { PipelineQueueModule } from './queue/pipeline-queue.module';
+import { PricingModule } from './modules/pricing/pricing.module';
 import { PolicyModule } from './modules/policy/policy.module';
 
 @Module({
@@ -31,6 +32,7 @@ import { PolicyModule } from './modules/policy/policy.module';
     PolicyModule,
     JobsQueueModule,
     PipelineQueueModule,
+    PricingModule,
   ],
 })
 export class WorkerModule {}
