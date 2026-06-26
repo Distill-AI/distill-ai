@@ -19,6 +19,7 @@ import type { EventsService } from '@modules/events/events.service';
 import { ExtractionStatus } from '@modules/extraction/enums/extraction-status.enum';
 import { ScoreNode } from '../score.node';
 import { ScorerService } from '../scorer.service';
+import { RoutingReasonCode } from '../enums/routing-reason-code.enum';
 
 describe('ScoreNode', () => {
   const requestId = 'req-1';
@@ -90,7 +91,7 @@ describe('ScoreNode', () => {
           overall_confidence: 0,
           routing_reasons: [
             expect.objectContaining({
-              code: 'extraction_failed',
+              code: RoutingReasonCode.EXTRACTION_FAILED,
               message: SYS_MSG.EXTRACTION_ESCALATED,
             }),
           ],
@@ -144,7 +145,7 @@ describe('ScoreNode', () => {
       expect.objectContaining({
         updatePayload: expect.objectContaining({
           routing: RequestRouting.NEEDS_REVIEW,
-          routing_reasons: [expect.objectContaining({ code: 'no_line_items' })],
+          routing_reasons: [expect.objectContaining({ code: RoutingReasonCode.NO_LINE_ITEMS })],
         }),
       }),
     );
