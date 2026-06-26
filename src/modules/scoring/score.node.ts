@@ -8,6 +8,7 @@ import { EventsService } from '@modules/events/events.service';
 import { NodeRegistry } from '@modules/pipeline/node-registry';
 import type { NodeContext, NodeResult, PipelineNode } from '@modules/pipeline/types';
 import { ScorerService } from './scorer.service';
+import type { ScoringResultDto } from './dto/scoring-result.dto';
 
 @Injectable()
 export class ScoreNode implements PipelineNode {
@@ -43,41 +44,7 @@ export class ScoreNode implements PipelineNode {
     if (!extraction?.schema_valid) {
       const scored = this.scorer.scoreExtractionFailure(extraction);
 
-      const updated = await this.requests.update({
-        identifierOptions: { id: requestId, org_id: orgId },
-        updatePayload: {
-          routing: scored.routing,
-          overall_confidence: scored.overallConfidence,
-          routing_reasons: scored.routingReasons,
-          current_node: this.nextNode,
-        },
-        transactionOptions: { useTransaction: false },
-      });
-      if (!updated) {
-        return { kind: 'failed', error: { message: SYS_MSG.REQUEST_NOT_FOUND(requestId) } };
-      }
-
-      const elapsedMs = Date.now() - start;
-      try {
-        await this.events.emit({
-          eventName: 'node.exited',
-          orgId,
-          requestId,
-          attributes: {
-            node: this.name,
-            next: this.nextNode,
-            routing: scored.routing,
-            overall_confidence: scored.overallConfidence,
-            routing_reasons: scored.routingReasons,
-            elapsed_ms: elapsedMs,
-            message: SYS_MSG.SCORE_ROUTING_APPLIED(scored.routing),
-          },
-        });
-      } catch (err) {
-        this.logger.error(`Failed to emit node.exited for request ${requestId}`, err);
-      }
-
-      return { kind: 'advance', next: this.nextNode };
+      return this.persistAndEmit(scored, requestId, orgId, start);
     }
 
     const lineItemRows = await this.lineItems.find({
@@ -90,10 +57,19 @@ export class ScoreNode implements PipelineNode {
         matchConfidence: li.match_confidence,
         unitPriceMinor: li.unit_price_minor,
         quantity: li.quantity,
-        hasFlags: Array.isArray(li.flags) && (li.flags as unknown[]).length > 0,
+        hasFlags: Array.isArray(li.flags) && (li.flags as string[]).some((f) => f !== 'close_tie'),
       })),
     );
 
+    return this.persistAndEmit(scored, requestId, orgId, start);
+  }
+
+  private async persistAndEmit(
+    scored: ScoringResultDto,
+    requestId: string,
+    orgId: string,
+    start: number,
+  ): Promise<NodeResult> {
     const updated = await this.requests.update({
       identifierOptions: { id: requestId, org_id: orgId },
       updatePayload: {
