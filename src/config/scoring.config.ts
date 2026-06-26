@@ -5,7 +5,10 @@ const schema = z.object({
   SCORE_UNMATCHED_FLOOR: z.coerce.number().min(0).max(1).default(0),
   SCORE_POLICY_FLAG_PENALTY: z.coerce.number().min(0).max(1).default(0.5),
   SCORE_DEAL_VALUE_EXCEEDED_PENALTY: z.coerce.number().min(0).max(1).default(0.8),
-  SCORE_AUTO_SEND_CAP_MINOR: z.coerce.number().int().nonnegative().optional(),
+  SCORE_AUTO_SEND_CAP_MINOR: z.preprocess(
+    (val) => (val === '' ? undefined : val),
+    z.coerce.number().int().nonnegative().optional(),
+  ),
 });
 
 const result = schema.safeParse(process.env);

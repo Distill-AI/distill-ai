@@ -84,12 +84,14 @@ export class ScorerService {
       return 1;
     }
 
-    const total = lineItems.reduce((sum, li) => {
-      if (li.unitPriceMinor !== null && li.quantity !== null) {
-        return sum + li.unitPriceMinor * li.quantity;
-      }
-      return sum;
-    }, 0);
+    const hasIncomplete = lineItems.some(
+      (li) => li.unitPriceMinor === null || li.quantity === null,
+    );
+    if (hasIncomplete) {
+      return scoringConfig.dealValueExceededPenalty;
+    }
+
+    const total = lineItems.reduce((sum, li) => sum + li.unitPriceMinor! * li.quantity!, 0);
 
     if (total > cap) {
       return scoringConfig.dealValueExceededPenalty;
@@ -128,17 +130,24 @@ export class ScorerService {
 
     if (dealValueFactor < 1) {
       const cap = scoringConfig.autoSendCapMinor ?? 0;
-      const total = lineItems.reduce((sum, li) => {
-        if (li.unitPriceMinor !== null && li.quantity !== null) {
-          return sum + li.unitPriceMinor * li.quantity;
-        }
-        return sum;
-      }, 0);
-      reasons.push({
-        code: 'deal_value_exceeds_cap',
-        message: SYS_MSG.SCORE_DEAL_VALUE_EXCEEDS_CAP(total, cap),
-        source: 'confidence',
-      });
+      const hasIncomplete = lineItems.some(
+        (li) => li.unitPriceMinor === null || li.quantity === null,
+      );
+
+      if (hasIncomplete) {
+        reasons.push({
+          code: 'incomplete_deal_value',
+          message: SYS_MSG.SCORE_DEAL_VALUE_INCOMPLETE,
+          source: 'confidence',
+        });
+      } else {
+        const total = lineItems.reduce((sum, li) => sum + li.unitPriceMinor! * li.quantity!, 0);
+        reasons.push({
+          code: 'deal_value_exceeds_cap',
+          message: SYS_MSG.SCORE_DEAL_VALUE_EXCEEDS_CAP(total, cap),
+          source: 'confidence',
+        });
+      }
     }
 
     if (overallConfidence >= scoringConfig.autoThreshold && reasons.length === 0) {

@@ -143,6 +143,19 @@ describe('ScorerService', () => {
       expect.arrayContaining([expect.objectContaining({ code: 'deal_value_exceeds_cap' })]),
     );
   });
+
+  it('routes quote with incomplete pricing to review (fail-closed)', () => {
+    const result = scorer.score([
+      line({ unitPriceMinor: 1000, quantity: 1, matchConfidence: 0.99 }),
+      line({ unitPriceMinor: null, quantity: 1, matchConfidence: 0.99 }),
+    ]);
+
+    expect(result.overallConfidence).toBe(scoringConfig.dealValueExceededPenalty);
+    expect(result.routing).toBe(RequestRouting.NEEDS_REVIEW);
+    expect(result.routingReasons).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'incomplete_deal_value' })]),
+    );
+  });
 });
 
 describe('ScoreNode wiring', () => {
