@@ -106,7 +106,7 @@ export const EXTRACTION_JSON_PARSE_FAILED = (detail: string) =>
 export const SCORE_ROUTING_APPLIED = (routing: string) => `Routing set to ${routing}`;
 export const SCORE_NO_LINE_ITEMS = 'No line items available for scoring; routing to review';
 export const SCORE_BELOW_AUTO_THRESHOLD = (lineConfidence: number, threshold: number) =>
-  +`Line confidence ${lineConfidence} below auto threshold ${threshold}`;
+  `Line confidence ${lineConfidence} below auto threshold ${threshold}`;
 export const SCORE_AUTO_ELIGIBLE = (confidence: number) =>
   `Overall confidence ${confidence} meets auto-eligible threshold`;
 export const SCORE_POLICY_FLAGS_DETECTED = 'Policy flags present on one or more line items';
