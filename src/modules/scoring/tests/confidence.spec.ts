@@ -1,33 +1,40 @@
 import 'reflect-metadata';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import * as SYS_MSG from '@constants/system-messages';
-import { EXTRACTION_FAILURE_EMPTY_SOURCE } from '@modules/extraction/constants';
-import type { Extraction } from '@modules/extraction/entities/extraction.entity';
-import { ExtractionStatus } from '@modules/extraction/enums/extraction-status.enum';
-import type { Request } from '@modules/requests/entities/request.entity';
 import { RequestRouting } from '@modules/requests/enums/request-routing.enum';
 import { ToolRegistry } from '@modules/tools/registry';
+import { scoringConfig } from '@config/scoring.config';
 import { ScoreNode } from '../score.node';
 import { ScorerService } from '../scorer.service';
+import type { ScoringLineItem } from '../interfaces/scoring-input.interface';
 
-const baseRequest = {
-  classification_confidence: 0.5,
-} as Request;
+vi.mock('@config/scoring.config', () => ({
+  scoringConfig: {
+    autoThreshold: 0.95,
+    unmatchedFloor: 0,
+    policyFlagPenalty: 0.5,
+    dealValueExceededPenalty: 0.8,
+    autoSendCapMinor: 5000,
+  },
+}));
 
-const validExtraction = {
-  schema_valid: true,
-  status: ExtractionStatus.COMPLETED,
-} as Extraction;
+function line(overrides: Partial<ScoringLineItem> = {}): ScoringLineItem {
+  return {
+    matchConfidence: 0.95,
+    unitPriceMinor: 1000,
+    quantity: 1,
+    hasFlags: false,
+    ...overrides,
+  };
+}
 
 describe('ScorerService', () => {
   const scorer = new ScorerService();
 
+  // ── Extraction failure path ──────────────────────────────────────────
+
   it('routes failed extraction to needs_review with extraction_failed reason', () => {
-    const result = scorer.score(baseRequest, {
-      ...validExtraction,
-      schema_valid: false,
-      status: ExtractionStatus.FAILED,
-    });
+    const result = scorer.scoreExtractionFailure({ schema_valid: false });
 
     expect(result.routing).toBe(RequestRouting.NEEDS_REVIEW);
     expect(result.overallConfidence).toBe(0);
@@ -40,48 +47,131 @@ describe('ScorerService', () => {
     ]);
   });
 
-  it('routes empty-source failure to needs_review with extraction_empty_source reason', () => {
-    const result = scorer.score(baseRequest, {
-      ...validExtraction,
+  it('routes empty-source extraction failure with extraction_empty_source reason', () => {
+    const result = scorer.scoreExtractionFailure({
       schema_valid: false,
-      status: ExtractionStatus.FAILED,
-      raw_json: { failure_code: EXTRACTION_FAILURE_EMPTY_SOURCE },
+      raw_json: { failure_code: 'empty_source' },
     });
 
     expect(result.routing).toBe(RequestRouting.NEEDS_REVIEW);
     expect(result.routingReasons).toEqual([
-      {
-        code: 'extraction_empty_source',
-        message: SYS_MSG.EXTRACTION_SOURCE_TEXT_EMPTY,
-        source: 'extraction',
-      },
+      expect.objectContaining({ code: 'extraction_empty_source', source: 'extraction' }),
     ]);
   });
 
-  it('routes missing extraction to needs_review with extraction_failed reason', () => {
-    const result = scorer.score(baseRequest, null);
+  it('routes null extraction to needs_review with extraction_failed reason', () => {
+    const result = scorer.scoreExtractionFailure(null);
 
     expect(result.routing).toBe(RequestRouting.NEEDS_REVIEW);
+    expect(result.overallConfidence).toBe(0);
     expect(result.routingReasons[0]?.code).toBe('extraction_failed');
   });
 
-  it('routes valid extraction to needs_review with empty reasons (E5 adds confidence routing)', () => {
-    const result = scorer.score({ classification_confidence: 0.99 } as Request, validExtraction);
+  // ── Aggregate scoring ────────────────────────────────────────────────
 
+  it('routes a quote with one 64% line, no flags, under cap to needs_review (AC-01)', () => {
+    const result = scorer.score([line({ matchConfidence: 0.64 })]);
+
+    expect(result.overallConfidence).toBe(0.64);
     expect(result.routing).toBe(RequestRouting.NEEDS_REVIEW);
-    expect(result.overallConfidence).toBe(0.99);
-    expect(result.routingReasons).toEqual([]);
+    expect(result.routingReasons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'low_line_confidence',
+          source: 'confidence',
+        }),
+      ]),
+    );
   });
 
-  it('is deterministic for the same inputs', () => {
-    const first = scorer.score(baseRequest, validExtraction);
-    const second = scorer.score(baseRequest, validExtraction);
+  it('routes a quote with all high-confidence lines, no flags, under cap to priced (AC-02/AC-03)', () => {
+    const result = scorer.score([line({ matchConfidence: 0.99 }), line({ matchConfidence: 0.98 })]);
+
+    expect(result.overallConfidence).toBeGreaterThanOrEqual(scoringConfig.autoThreshold);
+    expect(result.routing).toBe(RequestRouting.AUTO_ELIGIBLE);
+    expect(result.routingReasons).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'auto_eligible' })]),
+    );
+  });
+
+  it('reflects the minimum line confidence as overall_confidence', () => {
+    const result = scorer.score([
+      line({ matchConfidence: 0.99 }),
+      line({ matchConfidence: 0.64 }),
+      line({ matchConfidence: 0.85 }),
+    ]);
+
+    expect(result.overallConfidence).toBe(0.64);
+    expect(result.routing).toBe(RequestRouting.NEEDS_REVIEW);
+  });
+
+  it('uses unmatched floor for lines with null match_confidence', () => {
+    const result = scorer.score([line({ matchConfidence: null })]);
+
+    expect(result.overallConfidence).toBe(scoringConfig.unmatchedFloor);
+    expect(result.routing).toBe(RequestRouting.NEEDS_REVIEW);
+  });
+
+  it('handles all unmatched lines at floor -> needs_review (EC-01)', () => {
+    const result = scorer.score([line({ matchConfidence: null }), line({ matchConfidence: null })]);
+
+    expect(result.overallConfidence).toBe(scoringConfig.unmatchedFloor);
+    expect(result.routing).toBe(RequestRouting.NEEDS_REVIEW);
+    expect(result.routing).not.toBe(RequestRouting.AUTO_ELIGIBLE);
+  });
+
+  it('handles zero line items explicitly -> needs_review (EC-02)', () => {
+    const result = scorer.score([]);
+
+    expect(result.overallConfidence).toBe(0);
+    expect(result.routing).toBe(RequestRouting.NEEDS_REVIEW);
+    expect(result.routingReasons).toEqual([expect.objectContaining({ code: 'no_line_items' })]);
+  });
+
+  it('is deterministic for the same inputs (EC-03)', () => {
+    const items = [line({ matchConfidence: 0.85 }), line({ matchConfidence: 0.92 })];
+
+    const first = scorer.score(items);
+    const second = scorer.score(items);
     expect(second).toEqual(first);
+  });
+
+  it('applies policy flag penalty when flags exist', () => {
+    const result = scorer.score([line({ hasFlags: true, matchConfidence: 0.99 })]);
+
+    expect(result.overallConfidence).toBe(scoringConfig.policyFlagPenalty);
+    expect(result.routingReasons).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'policy_flags_detected' })]),
+    );
+  });
+
+  it('applies deal value penalty when total exceeds cap', () => {
+    const result = scorer.score([
+      line({ unitPriceMinor: 100000, quantity: 10, matchConfidence: 0.99 }),
+    ]);
+
+    expect(result.overallConfidence).toBe(scoringConfig.dealValueExceededPenalty);
+    expect(result.routingReasons).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'deal_value_exceeds_cap' })]),
+    );
+  });
+
+  it('routes quote with incomplete pricing to review (fail-closed)', () => {
+    const result = scorer.score([
+      line({ unitPriceMinor: 1000, quantity: 1, matchConfidence: 0.99 }),
+      line({ unitPriceMinor: null, quantity: 1, matchConfidence: 0.99 }),
+    ]);
+
+    expect(result.overallConfidence).toBe(scoringConfig.dealValueExceededPenalty);
+    expect(result.routing).toBe(RequestRouting.NEEDS_REVIEW);
+    expect(result.routingReasons).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'incomplete_deal_value' })]),
+    );
   });
 });
 
 describe('ScoreNode wiring', () => {
-  it('does not accept ToolRegistry in its constructor', () => {
+  it('does not accept ToolRegistry in its constructor (SEC-01)', () => {
     const paramTypes: unknown[] = Reflect.getMetadata('design:paramtypes', ScoreNode) ?? [];
     expect(paramTypes).not.toContain(ToolRegistry);
   });
