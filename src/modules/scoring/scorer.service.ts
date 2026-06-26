@@ -5,6 +5,7 @@ import { RequestRouting } from '@modules/requests/enums/request-routing.enum';
 import { scoringConfig } from '@config/scoring.config';
 import type { ScoringResultDto } from './dto/scoring-result.dto';
 import type { ScoringLineItem } from './interfaces/scoring-input.interface';
+import type { Extraction } from '@modules/extraction/entities/extraction.entity';
 
 @Injectable()
 export class ScorerService {
@@ -25,7 +26,12 @@ export class ScorerService {
 
     const lineConfidenceFactor = this.computeLineConfidenceFactor(lineItems);
     const policyComplianceFactor = this.computePolicyComplianceFactor(lineItems);
-    const dealValueFactor = this.computeDealValueFactor(lineItems);
+    const {
+      factor: dealValueFactor,
+      cap,
+      hasIncomplete,
+      total,
+    } = this.computeDealValueFactor(lineItems);
 
     const overallConfidence = Math.min(
       lineConfidenceFactor,
@@ -34,11 +40,13 @@ export class ScorerService {
     );
 
     const routingReasons = this.buildReasons(
-      lineItems,
       lineConfidenceFactor,
       policyComplianceFactor,
       dealValueFactor,
       overallConfidence,
+      cap,
+      hasIncomplete,
+      total,
     );
 
     const routing =
@@ -54,7 +62,7 @@ export class ScorerService {
    * Kept as a separate method for the extraction-failure path (not part of the
    * aggregate confidence formula). Returns needs_review with extraction reason.
    */
-  scoreExtractionFailure(extraction: unknown | null): ScoringResultDto {
+  scoreExtractionFailure(extraction: Partial<Extraction> | null): ScoringResultDto {
     return {
       routing: RequestRouting.NEEDS_REVIEW,
       overallConfidence: 0,
@@ -78,34 +86,45 @@ export class ScorerService {
     return hasFlags ? scoringConfig.policyFlagPenalty : 1;
   }
 
-  private computeDealValueFactor(lineItems: ScoringLineItem[]): number {
+  private computeDealValueFactor(lineItems: ScoringLineItem[]): {
+    factor: number;
+    cap: number | undefined;
+    hasIncomplete: boolean;
+    total: number;
+  } {
     const cap = scoringConfig.autoSendCapMinor;
-    if (cap === undefined || cap <= 0) {
-      return 1;
+    if (cap === undefined) {
+      return { factor: 1, cap, hasIncomplete: false, total: 0 };
     }
 
     const hasIncomplete = lineItems.some(
       (li) => li.unitPriceMinor === null || li.quantity === null,
     );
     if (hasIncomplete) {
-      return scoringConfig.dealValueExceededPenalty;
+      return {
+        factor: scoringConfig.dealValueExceededPenalty,
+        cap,
+        hasIncomplete,
+        total: 0,
+      };
     }
 
     const total = lineItems.reduce((sum, li) => sum + li.unitPriceMinor! * li.quantity!, 0);
-
     if (total > cap) {
-      return scoringConfig.dealValueExceededPenalty;
+      return { factor: scoringConfig.dealValueExceededPenalty, cap, hasIncomplete, total };
     }
 
-    return 1;
+    return { factor: 1, cap, hasIncomplete, total };
   }
 
   private buildReasons(
-    lineItems: ScoringLineItem[],
     lineConfidenceFactor: number,
     policyComplianceFactor: number,
     dealValueFactor: number,
     overallConfidence: number,
+    cap: number | undefined,
+    hasIncomplete: boolean,
+    total: number,
   ): { code: string; message: string; source: 'confidence' }[] {
     const reasons: { code: string; message: string; source: 'confidence' }[] = [];
 
@@ -129,11 +148,6 @@ export class ScorerService {
     }
 
     if (dealValueFactor < 1) {
-      const cap = scoringConfig.autoSendCapMinor ?? 0;
-      const hasIncomplete = lineItems.some(
-        (li) => li.unitPriceMinor === null || li.quantity === null,
-      );
-
       if (hasIncomplete) {
         reasons.push({
           code: 'incomplete_deal_value',
@@ -141,10 +155,9 @@ export class ScorerService {
           source: 'confidence',
         });
       } else {
-        const total = lineItems.reduce((sum, li) => sum + li.unitPriceMinor! * li.quantity!, 0);
         reasons.push({
           code: 'deal_value_exceeds_cap',
-          message: SYS_MSG.SCORE_DEAL_VALUE_EXCEEDS_CAP(total, cap),
+          message: SYS_MSG.SCORE_DEAL_VALUE_EXCEEDS_CAP(total, cap ?? 0),
           source: 'confidence',
         });
       }

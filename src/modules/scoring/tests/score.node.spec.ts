@@ -1,5 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 import { CurrentNode } from '@modules/requests/enums/current-node.enum';
+
+vi.mock('@config/scoring.config', () => ({
+  scoringConfig: {
+    autoThreshold: 0.95,
+    unmatchedFloor: 0,
+    policyFlagPenalty: 0.5,
+    dealValueExceededPenalty: 0.8,
+    autoSendCapMinor: undefined,
+  },
+}));
 import { RequestRouting } from '@modules/requests/enums/request-routing.enum';
 import * as SYS_MSG from '@constants/system-messages';
 import type { RequestModelAction } from '@modules/requests/requests.model-action';

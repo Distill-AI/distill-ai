@@ -4,11 +4,3 @@ export interface ScoringLineItem {
   quantity: number | null;
   hasFlags: boolean;
 }
-
-export interface ScoringConfig {
-  autoThreshold: number;
-  unmatchedFloor: number;
-  policyFlagPenalty: number;
-  dealValueExceededPenalty: number;
-  autoSendCapMinor: number | undefined;
-}

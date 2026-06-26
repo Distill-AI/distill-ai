@@ -47,6 +47,18 @@ describe('ScorerService', () => {
     ]);
   });
 
+  it('routes empty-source extraction failure with extraction_empty_source reason', () => {
+    const result = scorer.scoreExtractionFailure({
+      schema_valid: false,
+      raw_json: { failure_code: 'empty_source' },
+    });
+
+    expect(result.routing).toBe(RequestRouting.NEEDS_REVIEW);
+    expect(result.routingReasons).toEqual([
+      expect.objectContaining({ code: 'extraction_empty_source', source: 'extraction' }),
+    ]);
+  });
+
   it('routes null extraction to needs_review with extraction_failed reason', () => {
     const result = scorer.scoreExtractionFailure(null);
 
