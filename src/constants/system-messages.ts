@@ -102,8 +102,18 @@ export const EXTRACTION_UPSERT_FAILED = (requestId: string) =>
 export const EXTRACTION_JSON_PARSE_FAILED = (detail: string) =>
   `Failed to parse extraction JSON: ${detail}`;
 
-// Scoring (US-E2-3 / US-E5)
+// Scoring
 export const SCORE_ROUTING_APPLIED = (routing: string) => `Routing set to ${routing}`;
+export const SCORE_NO_LINE_ITEMS = 'No line items available for scoring; routing to review';
+export const SCORE_BELOW_AUTO_THRESHOLD = (lineConfidence: number, threshold: number) =>
+  `Line confidence ${lineConfidence} below auto threshold ${threshold}`;
+export const SCORE_AUTO_ELIGIBLE = (confidence: number) =>
+  `Overall confidence ${confidence} meets auto-eligible threshold`;
+export const SCORE_POLICY_FLAGS_DETECTED = 'Policy flags present on one or more line items';
+export const SCORE_DEAL_VALUE_EXCEEDS_CAP = (total: number, cap: number) =>
+  `Deal value ${total} exceeds auto-send cap ${cap}`;
+export const SCORE_DEAL_VALUE_INCOMPLETE =
+  'One or more line items have incomplete pricing; routed to review';
 
 // Auth
 export const AUTH_PROFILE_FETCHED = 'Profile fetched successfully';

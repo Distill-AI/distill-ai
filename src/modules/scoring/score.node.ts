@@ -3,10 +3,12 @@ import * as SYS_MSG from '@constants/system-messages';
 import { CurrentNode } from '@modules/requests/enums/current-node.enum';
 import { RequestModelAction } from '@modules/requests/requests.model-action';
 import { ExtractionModelAction } from '@modules/extraction/extraction.model-action';
+import { LineItemModelAction } from '@modules/catalog/line-item.model-action';
 import { EventsService } from '@modules/events/events.service';
 import { NodeRegistry } from '@modules/pipeline/node-registry';
 import type { NodeContext, NodeResult, PipelineNode } from '@modules/pipeline/types';
 import { ScorerService } from './scorer.service';
+import type { ScoringResultDto } from './dto/scoring-result.dto';
 
 @Injectable()
 export class ScoreNode implements PipelineNode {
@@ -19,12 +21,13 @@ export class ScoreNode implements PipelineNode {
     private readonly scorer: ScorerService,
     private readonly requests: RequestModelAction,
     private readonly extractions: ExtractionModelAction,
+    private readonly lineItems: LineItemModelAction,
     private readonly events: EventsService,
   ) {
     registry.register(this);
   }
 
-  /** Writes deterministic routing from extraction validity - no LLM access */
+  /** Writes deterministic routing from extraction validity and line-item scoring - no LLM access */
   async run(ctx: NodeContext): Promise<NodeResult> {
     const { requestId, orgId } = ctx;
     const start = Date.now();
@@ -37,8 +40,36 @@ export class ScoreNode implements PipelineNode {
     }
 
     const extraction = await this.extractions.findByRequestId(requestId, orgId);
-    const scored = this.scorer.score(req, extraction);
 
+    if (!extraction?.schema_valid) {
+      const scored = this.scorer.scoreExtractionFailure(extraction);
+
+      return this.persistAndEmit(scored, requestId, orgId, start);
+    }
+
+    const lineItemRows = await this.lineItems.find({
+      findOptions: { request_id: requestId, request: { org_id: orgId } },
+      transactionOptions: { useTransaction: false },
+    });
+
+    const scored = this.scorer.score(
+      lineItemRows.payload.map((li) => ({
+        matchConfidence: li.match_confidence,
+        unitPriceMinor: li.unit_price_minor,
+        quantity: li.quantity,
+        hasFlags: Array.isArray(li.flags) && (li.flags as string[]).some((f) => f !== 'close_tie'),
+      })),
+    );
+
+    return this.persistAndEmit(scored, requestId, orgId, start);
+  }
+
+  private async persistAndEmit(
+    scored: ScoringResultDto,
+    requestId: string,
+    orgId: string,
+    start: number,
+  ): Promise<NodeResult> {
     const updated = await this.requests.update({
       identifierOptions: { id: requestId, org_id: orgId },
       updatePayload: {
