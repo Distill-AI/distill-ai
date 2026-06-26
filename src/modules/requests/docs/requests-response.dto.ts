@@ -4,6 +4,7 @@ import { RequestStatus } from '../enums/request-status.enum';
 import { CurrentNode } from '../enums/current-node.enum';
 import { ParseStatus } from '../enums/parse-status.enum';
 import { ParseErrorReason } from '../enums/parse-error-reason.enum';
+import { RequestRouting } from '../enums/request-routing.enum';
 
 /** Swagger schema for an Inbox list row (GET /requests). Documentation only. */
 export class RequestSummaryResponseDto {
@@ -66,6 +67,22 @@ export class RequestDetailResponseDto extends RequestSummaryResponseDto {
 
   @ApiProperty({ enum: CurrentNode, example: CurrentNode.EXTRACT })
   current_node: CurrentNode;
+
+  @ApiProperty({ enum: RequestRouting, nullable: true, example: RequestRouting.NEEDS_REVIEW })
+  routing: RequestRouting | null;
+
+  @ApiProperty({
+    type: 'array',
+    items: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', example: 'low_line_confidence' },
+        message: { type: 'string', example: 'Line confidence 0.64 below auto threshold 0.95' },
+        source: { type: 'string', example: 'confidence' },
+      },
+    },
+  })
+  routing_reasons: Array<{ code: string; message: string; source: string }>;
 
   @ApiProperty({ type: [AttachmentSummaryResponseDto] })
   attachments: AttachmentSummaryResponseDto[];
