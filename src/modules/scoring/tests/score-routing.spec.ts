@@ -75,10 +75,16 @@ describe('score routing (graph integration)', () => {
       find: vi.fn().mockResolvedValue({ payload: [] }),
     } as unknown as LineItemModelAction;
 
+    const scoringConfig = {
+      getAutoThreshold: vi.fn().mockReturnValue(0.95),
+      getAutoSendCapMinor: vi.fn().mockReturnValue(undefined),
+    };
+
     const registry = new NodeRegistry();
     new ScoreNode(
       registry,
       new ScorerService(),
+      scoringConfig as never,
       requests as unknown as RequestModelAction,
       extractions,
       lineItems,
@@ -118,10 +124,16 @@ describe('score routing (graph integration)', () => {
       }),
     } as unknown as LineItemModelAction;
 
+    const scoringConfig = {
+      getAutoThreshold: vi.fn().mockReturnValue(0.95),
+      getAutoSendCapMinor: vi.fn().mockReturnValue(undefined),
+    };
+
     const registry = new NodeRegistry();
     new ScoreNode(
       registry,
       new ScorerService(),
+      scoringConfig as never,
       requests as unknown as RequestModelAction,
       extractions,
       lineItems,
