@@ -19,7 +19,8 @@ export class ScoringConfigService {
   getAutoThreshold(): number {
     const raw = this.config.get('SCORE_AUTO_THRESHOLD');
     if (raw === undefined || raw === '') {
-      return this.lastValidAutoThreshold;
+      this.lastValidAutoThreshold = scoringConfig.autoThreshold;
+      return scoringConfig.autoThreshold;
     }
 
     const parsed = autoThresholdSchema.safeParse(raw);
