@@ -18,12 +18,13 @@ export class ScoringConfigService {
   /** Reads SCORE_AUTO_THRESHOLD at decision time; retains the last valid value when the current config is malformed or out of range. */
   getAutoThreshold(): number {
     const raw = this.config.get('SCORE_AUTO_THRESHOLD');
-    if (raw === undefined || raw === '') {
+    const value = typeof raw === 'string' ? raw.trim() : raw;
+    if (value === undefined || value === null || value === '') {
       this.lastValidAutoThreshold = scoringConfig.autoThreshold;
       return scoringConfig.autoThreshold;
     }
 
-    const parsed = autoThresholdSchema.safeParse(raw);
+    const parsed = autoThresholdSchema.safeParse(value);
     if (parsed.success) {
       this.lastValidAutoThreshold = parsed.data;
       return parsed.data;
@@ -36,12 +37,13 @@ export class ScoringConfigService {
   /** Reads SCORE_AUTO_SEND_CAP_MINOR at decision time; an unset value means no cap, and a malformed value retains the last valid value. */
   getAutoSendCapMinor(): number | undefined {
     const raw = this.config.get('SCORE_AUTO_SEND_CAP_MINOR');
-    if (raw === undefined || raw === '') {
+    const value = typeof raw === 'string' ? raw.trim() : raw;
+    if (value === undefined || value === null || value === '') {
       this.lastValidAutoSendCapMinor = undefined;
       return undefined;
     }
 
-    const parsed = autoSendCapSchema.safeParse(raw);
+    const parsed = autoSendCapSchema.safeParse(value);
     if (parsed.success) {
       this.lastValidAutoSendCapMinor = parsed.data;
       return parsed.data;
