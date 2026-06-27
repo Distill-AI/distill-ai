@@ -19,6 +19,7 @@ import type { EventsService } from '@modules/events/events.service';
 import { ExtractionStatus } from '@modules/extraction/enums/extraction-status.enum';
 import { ScoreNode } from '../score.node';
 import { ScorerService } from '../scorer.service';
+import type { ScoringConfigService } from '../scoring-config.service';
 
 describe('ScoreNode', () => {
   const requestId = 'req-1';
@@ -64,7 +65,7 @@ describe('ScoreNode', () => {
     const scoringConfig = {
       getAutoThreshold: vi.fn().mockReturnValue(0.95),
       getAutoSendCapMinor: vi.fn().mockReturnValue(undefined),
-    };
+    } satisfies Pick<ScoringConfigService, 'getAutoThreshold' | 'getAutoSendCapMinor'>;
 
     return { requests, extractions, lineItems, events, registry, scoringConfig };
   }
@@ -78,7 +79,7 @@ describe('ScoreNode', () => {
     const node = new ScoreNode(
       registry as never,
       new ScorerService(),
-      scoringConfig as never,
+      scoringConfig as unknown as ScoringConfigService,
       requests,
       extractions,
       lineItems,
@@ -112,7 +113,7 @@ describe('ScoreNode', () => {
     const node = new ScoreNode(
       registry as never,
       new ScorerService(),
-      scoringConfig as never,
+      scoringConfig as unknown as ScoringConfigService,
       requests,
       extractions,
       lineItems,
@@ -138,7 +139,7 @@ describe('ScoreNode', () => {
     const node = new ScoreNode(
       registry as never,
       new ScorerService(),
-      scoringConfig as never,
+      scoringConfig as unknown as ScoringConfigService,
       requests,
       extractions,
       lineItems,
@@ -166,7 +167,7 @@ describe('ScoreNode', () => {
     const node = new ScoreNode(
       registry as never,
       new ScorerService(),
-      scoringConfig as never,
+      scoringConfig as unknown as ScoringConfigService,
       requests,
       extractions,
       lineItems,
