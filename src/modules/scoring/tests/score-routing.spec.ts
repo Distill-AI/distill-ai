@@ -84,7 +84,7 @@ describe('score routing (graph integration)', () => {
     new ScoreNode(
       registry,
       new ScorerService(),
-      scoringConfig as never,
+      scoringConfig as unknown as ConstructorParameters<typeof ScoreNode>[2],
       requests as unknown as RequestModelAction,
       extractions,
       lineItems,
