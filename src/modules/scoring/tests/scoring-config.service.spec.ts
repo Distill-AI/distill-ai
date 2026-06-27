@@ -33,6 +33,12 @@ describe('ScoringConfigService', () => {
     expect(service.getAutoThreshold()).toBe(0.95);
   });
 
+  it('treats a whitespace-only threshold as unset, not 0 (SEC-01)', () => {
+    const service = new ScoringConfigService(makeConfig({ SCORE_AUTO_THRESHOLD: '   ' }));
+
+    expect(service.getAutoThreshold()).toBe(0.95);
+  });
+
   it('treats an unset cap as no cap and a valid cap as a number', () => {
     expect(new ScoringConfigService(makeConfig({})).getAutoSendCapMinor()).toBeUndefined();
     expect(
@@ -40,6 +46,12 @@ describe('ScoringConfigService', () => {
         makeConfig({ SCORE_AUTO_SEND_CAP_MINOR: '5000' }),
       ).getAutoSendCapMinor(),
     ).toBe(5000);
+  });
+
+  it('treats a whitespace-only cap as no cap, not 0', () => {
+    const service = new ScoringConfigService(makeConfig({ SCORE_AUTO_SEND_CAP_MINOR: '   ' }));
+
+    expect(service.getAutoSendCapMinor()).toBeUndefined();
   });
 
   it('reads the threshold at decision time so a change affects the next read (AC-02/EC-02)', () => {
