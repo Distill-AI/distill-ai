@@ -167,6 +167,13 @@ export const POLICY_LINE_ITEMS_EXCEEDS_MAX = (current: number, limit: number) =>
 export const POLICY_CATEGORY_RESTRICTED = (category: string) =>
   `Category "${category}" is restricted`;
 
+// Pricing node (US-E4-1)
+export const PRICE_QUOTE_PRICED = (totalMinor: number) =>
+  `Quote priced; total ${totalMinor} (minor units)`;
+export const PRICE_NO_MATCHED_LINES = 'No matched line items to price';
+export const PRICE_RULES_MISSING =
+  'No pricing rules configured for this organization; quote blocked for review';
+
 // Catalog matching
 export const MATCH_COMPLETE = (matched: number, total: number) =>
   `Catalog matching complete: ${matched}/${total} items matched`;
