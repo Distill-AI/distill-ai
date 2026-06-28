@@ -5,7 +5,6 @@ import { EventsModule } from '@modules/events/events.module';
 import { PipelineEngineModule } from '@modules/pipeline/pipeline-engine.module';
 import { PipelineGraphEngine } from '@modules/pipeline/graph.engine';
 import { NodeRegistry } from '@modules/pipeline/node-registry';
-import { STUB_NODES } from '@modules/pipeline/stub-nodes';
 import { ClassifyModule } from '@modules/classify/classify.module';
 import { ClassifyNode } from '@modules/classify/classify.node';
 import { ExtractionModule } from '@modules/extraction/extraction.module';
@@ -17,6 +16,8 @@ import { CatalogModule } from '@modules/catalog/catalog.module';
 import { MatchNode } from '@modules/catalog/match.node';
 import { PricingModule } from '@modules/pricing/pricing.module';
 import { PriceNode } from '@modules/pricing/price.node';
+import { PolicyModule } from '@modules/policy/policy.module';
+import { PolicyNode } from '@modules/policy/policy.node';
 import { QuotesModule } from '@modules/quotes/quotes.module';
 import { ParseNode } from '@modules/parse/parse.node';
 import { QueueClientModule } from './queue-client.module';
@@ -24,8 +25,8 @@ import { PipelineProcessor } from './processors/pipeline.processor';
 
 /**
  * Worker-process module for the pipeline: the graph engine, the node registry, the real nodes
- * (ParseNode, ExtractNode, ClassifyNode, MatchNode, PriceNode, ScoreNode) + the remaining (M1)
- * stub nodes, and the Bull processor that drives a
+ * (ParseNode, ExtractNode, ClassifyNode, MatchNode, PriceNode, PolicyNode, ScoreNode), and the
+ * Bull processor that drives a
  * run per request. Imported only by WorkerModule, so the processor never runs in the API process.
  * Nodes register themselves with NodeRegistry on construction (Nest instantiates providers eagerly).
  */
@@ -41,18 +42,19 @@ import { PipelineProcessor } from './processors/pipeline.processor';
     ToolsModule,
     CatalogModule,
     PricingModule,
+    PolicyModule,
     QuotesModule,
     ObjectStoreModule,
   ],
   providers: [
     PipelineGraphEngine,
     NodeRegistry,
-    ...STUB_NODES,
     ParseNode,
     ExtractNode,
     ClassifyNode,
     MatchNode,
     PriceNode,
+    PolicyNode,
     ScoreNode,
     PipelineProcessor,
   ],
