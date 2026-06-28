@@ -1,14 +1,33 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as SYS_MSG from '@constants/system-messages';
 import { CurrentNode } from '@modules/requests/enums/current-node.enum';
+import { RequestRouting } from '@modules/requests/enums/request-routing.enum';
 import { RequestModelAction } from '@modules/requests/requests.model-action';
 import { ExtractionModelAction } from '@modules/extraction/extraction.model-action';
 import { LineItemModelAction } from '@modules/catalog/line-item.model-action';
+import type { LineItem } from '@modules/catalog/entities/line-item.entity';
 import { EventsService } from '@modules/events/events.service';
 import { NodeRegistry } from '@modules/pipeline/node-registry';
 import type { NodeContext, NodeResult, PipelineNode } from '@modules/pipeline/types';
+import { PRICING_BLOCKED_FLAG } from '@modules/pricing/pricing.constants';
+import {
+  MARGIN_FLOOR_BREACH_FLAG,
+  MAX_DISCOUNT_BREACH_FLAG,
+  POLICY_BLOCKED_FLAG,
+} from '@modules/policy/policy.constants';
 import { ScorerService } from './scorer.service';
 import type { ScoringResultDto } from './dto/scoring-result.dto';
+
+/**
+ * Flags from the price/policy nodes that force needs_review regardless of confidence (US-E4-2):
+ * even a 99%-confidence quote is held when a deterministic gate fires. The policy gate wins.
+ */
+const HARD_REVIEW_FLAGS = new Set<string>([
+  PRICING_BLOCKED_FLAG,
+  MARGIN_FLOOR_BREACH_FLAG,
+  MAX_DISCOUNT_BREACH_FLAG,
+  POLICY_BLOCKED_FLAG,
+]);
 
 @Injectable()
 export class ScoreNode implements PipelineNode {
@@ -61,7 +80,35 @@ export class ScoreNode implements PipelineNode {
       })),
     );
 
-    return this.persistAndEmit(scored, requestId, orgId, start);
+    const gated = this.applyPolicyGate(scored, lineItemRows.payload);
+    return this.persistAndEmit(gated, requestId, orgId, start);
+  }
+
+  /**
+   * The deterministic gate (US-E4-2): if any line carries a hard review flag from the price or
+   * policy node, force needs_review regardless of the computed confidence. The policy gate wins.
+   */
+  private applyPolicyGate(scored: ScoringResultDto, lines: LineItem[]): ScoringResultDto {
+    const hasHardFlag = lines.some(
+      (li) =>
+        Array.isArray(li.flags) && (li.flags as string[]).some((f) => HARD_REVIEW_FLAGS.has(f)),
+    );
+    if (!hasHardFlag) {
+      return scored;
+    }
+    // Force review and annotate why, even if confidence already routed to review, so the reason
+    // is recorded as a deterministic policy breach rather than only a soft confidence flag.
+    const alreadyAnnotated = scored.routingReasons.some((r) => r.code === 'policy_breach');
+    return {
+      routing: RequestRouting.NEEDS_REVIEW,
+      overallConfidence: scored.overallConfidence,
+      routingReasons: alreadyAnnotated
+        ? scored.routingReasons
+        : [
+            ...scored.routingReasons,
+            { code: 'policy_breach', message: SYS_MSG.POLICY_GATE_REVIEW, source: 'policy' },
+          ],
+    };
   }
 
   private async persistAndEmit(
