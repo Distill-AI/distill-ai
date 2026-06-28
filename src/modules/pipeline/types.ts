@@ -64,3 +64,14 @@ export const TOOL_NAMES = [
   'render_quote_pdf',
   'explain_routing',
 ] as const;
+
+/**
+ * Compile-time guarantee (US-E4-3 FR-2): the deterministic node names price/policy/score are
+ * never tool names. If one were ever added to TOOL_NAMES, the `Extract` would no longer be
+ * `never`, `_AssertDeterministicNotTool` would resolve to `false`, and the build would fail.
+ */
+type AssertTrue<T extends true> = T;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- compile-time-only boundary assertion
+type _AssertDeterministicNotTool = AssertTrue<
+  Extract<(typeof TOOL_NAMES)[number], 'price' | 'policy' | 'score'> extends never ? true : false
+>;
