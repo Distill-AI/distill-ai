@@ -2,5 +2,5 @@
 export interface RoutingReason {
   code: string;
   message: string;
-  source: 'extraction' | 'confidence';
+  source: 'extraction' | 'confidence' | 'policy';
 }
