@@ -1,16 +1,17 @@
-import { IsArray, IsOptional, IsString, IsUUID } from 'class-validator';
+import { ArrayMinSize, IsArray, IsOptional, IsString, IsUUID } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class GenerateDraftDto {
   @ApiProperty({
     description: 'List of detected gaps requiring clarification',
     example: ['Missing delivery date', 'No contact name provided'],
+    minItems: 1,
   })
   @IsArray()
+  @ArrayMinSize(1)
   @IsString({ each: true })
   gaps: string[];
 }
-
 export class UpdateDraftDto {
   @ApiPropertyOptional({ description: 'Updated subject line' })
   @IsOptional()

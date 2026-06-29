@@ -1,4 +1,14 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Put,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import * as SYS_MSG from '@constants/system-messages';
 import { ClarificationService } from './clarification.service';
@@ -19,7 +29,7 @@ export class ClarificationController {
   @HttpCode(HttpStatus.CREATED)
   @GenerateDraftDocs()
   async generateDraft(
-    @Param('requestId') requestId: string,
+    @Param('requestId', ParseUUIDPipe) requestId: string,
     @Body() dto: GenerateDraftDto,
   ): Promise<{ statusCode: number; message: string; data: unknown }> {
     const result = await this.clarificationService.generateDraft(requestId, dto.gaps);
@@ -34,7 +44,7 @@ export class ClarificationController {
   @HttpCode(HttpStatus.OK)
   @GetClarificationDocs()
   async getClarification(
-    @Param('requestId') requestId: string,
+    @Param('requestId', ParseUUIDPipe) requestId: string,
   ): Promise<{ statusCode: number; message: string; data: unknown }> {
     const result = await this.clarificationService.getByRequestId(requestId);
     return {
@@ -48,7 +58,7 @@ export class ClarificationController {
   @HttpCode(HttpStatus.OK)
   @UpdateDraftDocs()
   async updateDraft(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateDraftDto,
   ): Promise<{ statusCode: number; message: string; data: unknown }> {
     const result = await this.clarificationService.updateDraft(
@@ -67,7 +77,7 @@ export class ClarificationController {
   @HttpCode(HttpStatus.OK)
   @SendClarificationDocs()
   async send(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: SendClarificationDto,
   ): Promise<{ statusCode: number; message: string; data: unknown }> {
     const result = await this.clarificationService.send(id, dto.sent_by);

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { AbstractModelAction } from '@common/model-action/abstract.model-action';
 import { Clarification } from '../entities/clarification.entity';
 
@@ -23,16 +23,21 @@ export class ClarificationActions extends AbstractModelAction<Clarification> {
     id: string,
     draft_subject: string | null,
     draft_body: string | null,
+    gaps?: string[],
   ): Promise<Clarification | null> {
-    await this.clarificationRepository.update(id, { draft_subject, draft_body });
+    if (gaps !== undefined) {
+      await this.clarificationRepository.update(id, { draft_subject, draft_body, gaps });
+    } else {
+      await this.clarificationRepository.update(id, { draft_subject, draft_body });
+    }
     return this.clarificationRepository.findOne({ where: { id } });
   }
 
   async markSent(id: string, sentBy: string): Promise<Clarification | null> {
-    await this.clarificationRepository.update(id, {
-      sent_at: new Date(),
-      sent_by: sentBy,
-    });
+    await this.clarificationRepository.update(
+      { id, sent_at: IsNull() },
+      { sent_at: new Date(), sent_by: sentBy },
+    );
     return this.clarificationRepository.findOne({ where: { id } });
   }
 }

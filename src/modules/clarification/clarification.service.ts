@@ -28,6 +28,7 @@ export class ClarificationService {
 
     let draft_subject: string | null = null;
     let draft_body: string | null = null;
+    let generationSucceeded = false;
 
     try {
       const result = await this.toolRegistry.invoke(toolName, { gaps, requestId }, requestId);
@@ -36,6 +37,7 @@ export class ClarificationService {
         const output = result.result as { draft_subject: string; draft_body: string };
         draft_subject = output.draft_subject;
         draft_body = output.draft_body;
+        generationSucceeded = true;
       } else {
         this.logger.warn(`Draft generation failed for request ${requestId}: ${result.error}`);
       }
@@ -48,7 +50,11 @@ export class ClarificationService {
     const existing = await this.actions.findByRequestId(requestId);
 
     if (existing) {
-      const updated = await this.actions.updateDraft(existing.id, draft_subject, draft_body);
+      if (!generationSucceeded) {
+        return existing;
+      }
+
+      const updated = await this.actions.updateDraft(existing.id, draft_subject, draft_body, gaps);
       if (!updated) {
         throw new CustomHttpException(SYS_MSG.CLARIFICATION_NOT_FOUND, HttpStatus.NOT_FOUND);
       }
@@ -109,6 +115,13 @@ export class ClarificationService {
   }
 
   async send(id: string, sentBy: string): Promise<Clarification> {
+    if (!sentBy) {
+      throw new CustomHttpException(
+        SYS_MSG.CLARIFICATION_SEND_ACTOR_REQUIRED,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     const clarification = await this.getById(id);
 
     if (clarification.sent_at) {

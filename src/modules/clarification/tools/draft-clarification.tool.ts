@@ -7,10 +7,11 @@ import { CustomHttpException } from '@common/exceptions/custom-http.exception';
 import { HttpStatus } from '@nestjs/common';
 
 export const DraftClarificationInputSchema = z.object({
-  gaps: z.array(z.string()).min(1, 'At least one gap is required'),
+  gaps: z
+    .array(z.string().trim().min(1, 'Gap cannot be empty'))
+    .min(1, 'At least one gap is required'),
   requestId: z.string().uuid(),
 });
-
 export const DraftClarificationOutputSchema = z.object({
   draft_subject: z.string().min(1),
   draft_body: z.string().min(1),
