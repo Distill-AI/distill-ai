@@ -33,11 +33,15 @@ describe('boundary', () => {
 
 describe('score boundary', () => {
   it('score node produces zero tool_call rows', async () => {
-    const paramTypes: unknown[] = Reflect.getMetadata('design:paramtypes', ScoreNode) ?? [];
+    const paramTypes = Reflect.getMetadata('design:paramtypes', ScoreNode) as unknown[] | undefined;
+    expect(paramTypes?.length).toBeGreaterThan(0);
+    expect(paramTypes).toContain(ScorerService);
     expect(paramTypes).not.toContain(ToolRegistry);
     expect(paramTypes).not.toContain(ToolCallsActions);
 
-    const insertLog = vi.fn();
+    const insertLog = vi
+      .spyOn(ToolCallsActions.prototype, 'insertLog')
+      .mockResolvedValue(undefined);
 
     const requestId = 'req-boundary';
     const orgId = 'org-boundary';
