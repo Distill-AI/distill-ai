@@ -70,22 +70,50 @@ function makeFakeRequests() {
 }
 
 describe('deterministic boundary (US-E4-3)', () => {
-  it('FR-1: a run through price -> policy -> score emits no tool.invoked event', async () => {
+  it('FR-1: a run through the real price -> policy -> score logic emits no tool.invoked event', async () => {
     const requests = makeFakeRequests();
     const events = { emit: vi.fn().mockResolvedValue(undefined) } as unknown as EventsService;
-    const dataSource = { transaction: vi.fn() };
-    // Both deterministic nodes read line items through LineItemModelAction.list; none exist here.
-    const lineItems = { list: vi.fn().mockResolvedValue({ payload: [] }) };
+    // Run the transaction callback so PriceNode/PolicyNode actually execute their persistence path.
+    const dataSource = {
+      transaction: vi.fn((cb: (em: unknown) => Promise<unknown>) => cb({ update: vi.fn() })),
+    };
+    // A real matched, priced line that BREACHES the margin floor: this forces both deterministic
+    // cores (QuotePricingService and QuotePolicyService) to run their full logic, so the test would
+    // catch a tool call hidden inside either of them rather than only proving the empty short-circuit.
+    const line = {
+      id: 'li-1',
+      request_id: 'req-1',
+      position: 1,
+      raw_text: 'widget',
+      quantity: 100,
+      matched_sku_id: 'sku-1',
+      matched_sku: {
+        name: 'Widget',
+        base_price_minor: 1000,
+        lead_time_days: 7,
+        currency: 'GBP',
+        cost_minor: 950,
+      },
+      unit_price_minor: 900,
+      flags: [] as string[],
+    };
+    const lineItems = { list: vi.fn().mockResolvedValue({ payload: [line] }) };
 
     const registry = new NodeRegistry();
     new PriceNode(
       registry,
       lineItems as never,
       {
-        getRuleSetForOrg: vi.fn().mockResolvedValue({ quantityBreaks: [], hasAnyRules: true }),
+        getRuleSetForOrg: vi.fn().mockResolvedValue({
+          quantityBreaks: [{ minQty: 50, discountPct: 10 }],
+          hasAnyRules: true,
+        }),
       } as never,
       new QuotePricingService(),
-      { replaceForRequest: vi.fn(), deleteForRequest: vi.fn() } as never,
+      {
+        replaceForRequest: vi.fn().mockResolvedValue({ id: 'quote-1' }),
+        deleteForRequest: vi.fn(),
+      } as never,
       events,
       dataSource as never,
     );
@@ -114,7 +142,20 @@ describe('deterministic boundary (US-E4-3)', () => {
           .fn()
           .mockResolvedValue({ schema_valid: true, status: ExtractionStatus.COMPLETED }),
       } as never,
-      { find: vi.fn().mockResolvedValue({ payload: [] }) } as never,
+      // Score sees the same line, matched at 99% but carrying the margin breach flag, so the hard
+      // gate (not a low score) is what routes it to review.
+      {
+        find: vi.fn().mockResolvedValue({
+          payload: [
+            {
+              match_confidence: 0.99,
+              unit_price_minor: 900,
+              quantity: 100,
+              flags: ['margin_floor_breach'],
+            },
+          ],
+        }),
+      } as never,
       events,
     );
 
@@ -128,11 +169,12 @@ describe('deterministic boundary (US-E4-3)', () => {
     const emitted = (events.emit as ReturnType<typeof vi.fn>).mock.calls.map(
       (c) => (c[0] as { eventName: string }).eventName,
     );
+    // The whole point: even with the real pricing + policy logic exercised, no tool is invoked.
     expect(emitted).not.toContain('tool.invoked');
     expect(emitted).toContain('pricing.completed');
     expect(emitted).toContain('policy.completed');
     expect(requests.record.current_node).toBe(CurrentNode.DONE);
-    // No valid line items -> deterministic core still routes to review, never auto-sends.
+    // The margin-floor breach forces review through the deterministic gate, never an auto-send.
     expect(requests.record.routing).toBe(RequestRouting.NEEDS_REVIEW);
   });
 
