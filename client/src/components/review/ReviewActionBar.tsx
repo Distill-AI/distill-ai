@@ -104,9 +104,7 @@ export function ReviewActionBar({ requestId, status }: ReviewActionBarProps) {
               </div>
             </div>
             {declineMutation.isError && (
-              <p className="text-sm text-rose-600">
-                Failed to decline. Please try again.
-              </p>
+              <p className="text-sm text-rose-600">Failed to decline. Please try again.</p>
             )}
           </div>
         )}

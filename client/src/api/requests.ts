@@ -160,10 +160,7 @@ export async function declineRequest(
   requestId: string,
   payload: { reason: string },
 ): Promise<DeclineResult> {
-  const res = await client.post<{ data: DeclineResult }>(
-    `/requests/${requestId}/decline`,
-    payload,
-  );
+  const res = await client.post<{ data: DeclineResult }>(`/requests/${requestId}/decline`, payload);
   return res.data.data;
 }
 
@@ -172,8 +169,7 @@ export function useDeclineRequest() {
   const navigate = useNavigate();
 
   return useMutation<DeclineResult, AxiosError, { requestId: string; reason: string }>({
-    mutationFn: ({ requestId, reason }) =>
-      declineRequest(requestId, { reason }),
+    mutationFn: ({ requestId, reason }) => declineRequest(requestId, { reason }),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: requestKeys.detail(variables.requestId) });
       queryClient.invalidateQueries({ queryKey: requestKeys.lists() });
