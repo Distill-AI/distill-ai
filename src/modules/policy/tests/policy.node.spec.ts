@@ -119,6 +119,17 @@ describe('PolicyNode', () => {
     expect(updateCalls).toHaveLength(0);
   });
 
+  it('clears stale policy flags from a line that is no longer priced', async () => {
+    // A prior run flagged this line; a later run unpriced it (unit_price_minor null). The stale
+    // flag must be cleared even though the line is no longer evaluated, or the score gate sticks.
+    const { node, updateCalls } = setup([
+      makeLine({ unit_price_minor: null, flags: [MARGIN_FLOOR_BREACH_FLAG] }),
+    ]);
+    await node.run(ctx);
+    expect(updateCalls).toHaveLength(1);
+    expect(updateCalls[0].payload.flags).not.toContain(MARGIN_FLOOR_BREACH_FLAG);
+  });
+
   it('EC-03: a re-run with the breach flag already present makes no redundant write', async () => {
     const { node, updateCalls } = setup([
       makeLine({ unit_price_minor: 900, flags: [MARGIN_FLOOR_BREACH_FLAG] }),
