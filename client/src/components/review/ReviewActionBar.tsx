@@ -8,6 +8,8 @@ interface ReviewActionBarProps {
   status: string;
 }
 
+const REVIEWABLE_STATUSES: ReadonlySet<string> = new Set(['needs_review']);
+
 const DECLINE_REASONS = [
   'Not a relevant request',
   'Insufficient information',
@@ -42,7 +44,7 @@ export function ReviewActionBar({ requestId, status }: ReviewActionBarProps) {
         <span className="text-sm font-medium text-body-text">
           {requestStatusLabels[status as RequestStatus] ?? status}
         </span>
-        {!showDeclinePicker ? (
+        {REVIEWABLE_STATUSES.has(status) && !showDeclinePicker && (
           <button
             type="button"
             onClick={() => setShowDeclinePicker(true)}
@@ -50,7 +52,8 @@ export function ReviewActionBar({ requestId, status }: ReviewActionBarProps) {
           >
             Decline
           </button>
-        ) : (
+        )}
+        {REVIEWABLE_STATUSES.has(status) && showDeclinePicker && (
           <div className="flex flex-1 flex-col gap-3">
             <div className="flex items-center gap-3">
               <select
