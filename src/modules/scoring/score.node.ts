@@ -8,6 +8,7 @@ import { EventsService } from '@modules/events/events.service';
 import { NodeRegistry } from '@modules/pipeline/node-registry';
 import type { NodeContext, NodeResult, PipelineNode } from '@modules/pipeline/types';
 import { ScorerService } from './scorer.service';
+import { ScoringConfigService } from './scoring-config.service';
 import type { ScoringResultDto } from './dto/scoring-result.dto';
 
 @Injectable()
@@ -19,6 +20,7 @@ export class ScoreNode implements PipelineNode {
   constructor(
     registry: NodeRegistry,
     private readonly scorer: ScorerService,
+    private readonly scoringConfig: ScoringConfigService,
     private readonly requests: RequestModelAction,
     private readonly extractions: ExtractionModelAction,
     private readonly lineItems: LineItemModelAction,
@@ -52,6 +54,11 @@ export class ScoreNode implements PipelineNode {
       transactionOptions: { useTransaction: false },
     });
 
+    const thresholds = {
+      autoThreshold: this.scoringConfig.getAutoThreshold(),
+      autoSendCapMinor: this.scoringConfig.getAutoSendCapMinor(),
+    };
+
     const scored = this.scorer.score(
       lineItemRows.payload.map((li) => ({
         matchConfidence: li.match_confidence,
@@ -59,6 +66,7 @@ export class ScoreNode implements PipelineNode {
         quantity: li.quantity,
         hasFlags: Array.isArray(li.flags) && (li.flags as string[]).some((f) => f !== 'close_tie'),
       })),
+      thresholds,
     );
 
     return this.persistAndEmit(scored, requestId, orgId, start);
