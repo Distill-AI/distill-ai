@@ -293,7 +293,6 @@ describe('ScoreNode determinism', () => {
     await directNode.run({ requestId, orgId });
     const directPayload = (directRequests.update as ReturnType<typeof vi.fn>).mock.calls[0][0]
       .updatePayload;
-    const directRouting = directPayload.routing;
 
     const record = {
       id: requestId,
@@ -308,9 +307,9 @@ describe('ScoreNode determinism', () => {
     const engineRequests = {
       record,
       get: vi.fn().mockImplementation(() => Promise.resolve(record)),
-      update: vi.fn().mockImplementation((opts: { updatePayload: { routing?: string } }) => {
+      update: vi.fn().mockImplementation((opts: { updatePayload: Record<string, unknown> }) => {
         if (opts.updatePayload.routing) {
-          record.routing = opts.updatePayload.routing;
+          record.routing = opts.updatePayload.routing as string;
         }
         return Promise.resolve(record);
       }),
@@ -364,7 +363,11 @@ describe('ScoreNode determinism', () => {
 
     await engine.run(requestId);
 
-    expect(record.routing).toBe(directRouting);
+    const enginePayload = (engineRequests.update as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      .updatePayload;
+    expect(enginePayload.routing).toBe(directPayload.routing);
+    expect(enginePayload.overall_confidence).toBe(directPayload.overall_confidence);
+    expect(enginePayload.routing_reasons).toEqual(directPayload.routing_reasons);
 
     vi.useRealTimers();
   });
