@@ -38,9 +38,11 @@ function setup(lines: FakeLine[], ruleSet: PolicyRuleSet = RULES) {
     }),
   };
   const dataSource = {
-    manager: { find: vi.fn().mockResolvedValue(lines) },
     transaction: vi.fn((cb: (em: unknown) => Promise<unknown>) => cb(em)),
   };
+  const lineItems = {
+    list: vi.fn().mockResolvedValue({ payload: lines }),
+  } as unknown as { list: ReturnType<typeof vi.fn> };
   const policyRules = {
     getRuleSetForOrg: vi.fn().mockResolvedValue(ruleSet),
   } as unknown as PolicyRuleModelAction;
@@ -49,6 +51,7 @@ function setup(lines: FakeLine[], ruleSet: PolicyRuleSet = RULES) {
 
   const node = new PolicyNode(
     registry,
+    lineItems as never,
     policyRules,
     new QuotePolicyService(),
     events,
