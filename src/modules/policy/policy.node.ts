@@ -45,15 +45,13 @@ export class PolicyNode implements PipelineNode {
     const { requestId, orgId } = ctx;
 
     const { payload: lines } = await this.lineItems.list({
-      filterRecordOptions: { request_id: requestId },
+      // Scope by org as well as request so a mismatched job context cannot read or reflag another
+      // org's line items (the request relation auto-joins for the where filter).
+      filterRecordOptions: { request_id: requestId, request: { org_id: orgId } },
       relations: { matched_sku: true },
       order: { position: 'ASC' },
     });
     const priced = lines.filter((li) => li.matched_sku !== null && li.unit_price_minor !== null);
-    if (priced.length === 0) {
-      await this.emitCompleted(orgId, requestId, EMPTY_RESULT);
-      return { kind: 'advance', next: this.nextNode };
-    }
 
     const inputs: PolicyLineInput[] = priced.map((li) => ({
       lineItemId: li.id,
@@ -63,26 +61,26 @@ export class PolicyNode implements PipelineNode {
     }));
 
     const rules = await this.policyRules.getRuleSetForOrg(orgId);
-    const result = this.policy.evaluate(inputs, rules);
+    const result = priced.length > 0 ? this.policy.evaluate(inputs, rules) : EMPTY_RESULT;
 
-    // Always reconcile flags, not only on a breach: a rerun after repricing or a rule change must
-    // clear stale breach flags from now-healthy lines, otherwise the score node's hard gate keeps
-    // forcing needs_review for a quote that no longer breaches.
-    await this.persistFlags(priced, result);
+    // Reconcile flags across ALL request lines, not just the priced subset and not only on a breach:
+    // a rerun that reprices, unmatches, or clears a line must drop its stale policy flags, otherwise
+    // the score node's hard gate keeps forcing needs_review for a quote that no longer breaches.
+    await this.persistFlags(lines, result);
     await this.emitCompleted(orgId, requestId, result);
     return { kind: 'advance', next: this.nextNode };
   }
 
   /**
-   * Reconciles the policy-managed flags on every priced line in one transaction. Each line starts
+   * Reconciles the policy-managed flags on every request line in one transaction. Each line starts
    * from its current flags with the policy-managed set stripped, then this run's breaches (or the
    * fail-closed block) are re-added. A line is written only when its flag set actually changes, so a
-   * healthy rerun drops stale flags, an unchanged line is left untouched, and non-policy flags
-   * (e.g. close_tie) are preserved.
+   * healthy or now-unpriced rerun drops stale flags, an unchanged line is left untouched, and
+   * non-policy flags (e.g. close_tie) are preserved.
    */
-  private async persistFlags(priced: LineItem[], result: PolicyEvaluation): Promise<void> {
+  private async persistFlags(lines: LineItem[], result: PolicyEvaluation): Promise<void> {
     const flagsByLine = new Map<string, Set<string>>(
-      priced.map((li) => [
+      lines.map((li) => [
         li.id,
         new Set(
           (Array.isArray(li.flags) ? (li.flags as string[]) : []).filter(
@@ -102,7 +100,7 @@ export class PolicyNode implements PipelineNode {
     }
 
     await this.dataSource.transaction(async (em) => {
-      for (const li of priced) {
+      for (const li of lines) {
         const before = Array.isArray(li.flags) ? (li.flags as string[]) : [];
         const after = [...(flagsByLine.get(li.id) ?? [])];
         if (!sameFlags(before, after)) {
