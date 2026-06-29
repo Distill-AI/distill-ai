@@ -22,6 +22,12 @@ export interface AttachmentSummary {
   created_at: string;
 }
 
+export interface RoutingReason {
+  code: string;
+  message: string;
+  source: string;
+}
+
 /** A single request's detail, returned by GET /requests/:id, for the Review screen. */
 export interface RequestDetail {
   id: string;
@@ -36,6 +42,8 @@ export interface RequestDetail {
   current_node: string;
   created_at: string;
   attachments: AttachmentSummary[];
+  routing: string | null;
+  routing_reasons: RoutingReason[];
 }
 
 export async function fetchRequest(id: string): Promise<RequestDetail> {
