@@ -39,6 +39,14 @@ describe('RoutingReasonsBanner', () => {
     ).toBeInTheDocument();
   });
 
+  it('aria-controls points at the panel id', () => {
+    render(<RoutingReasonsBanner routing="needs_review" routing_reasons={reasons} />);
+    const btn = screen.getByRole('button', { name: /why this needs review/i });
+    const panelId = btn.getAttribute('aria-controls');
+    expect(panelId).toBeTruthy();
+    expect(document.getElementById(panelId!)).toBeInTheDocument();
+  });
+
   it('collapses the body on toggle and expands it again', async () => {
     const user = userEvent.setup();
     render(<RoutingReasonsBanner routing="needs_review" routing_reasons={reasons} />);
@@ -48,13 +56,11 @@ describe('RoutingReasonsBanner', () => {
 
     await user.click(btn);
     expect(btn).toHaveAttribute('aria-expanded', 'false');
-    expect(
-      screen.queryByText('Line confidence 0.64 below auto threshold 0.95'),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText('Line confidence 0.64 below auto threshold 0.95')).not.toBeVisible();
 
     await user.click(btn);
     expect(btn).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByText('Line confidence 0.64 below auto threshold 0.95')).toBeInTheDocument();
+    expect(screen.getByText('Line confidence 0.64 below auto threshold 0.95')).toBeVisible();
   });
 
   it('does not show all-clear when routing is null and reasons is empty', () => {
