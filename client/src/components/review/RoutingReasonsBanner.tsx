@@ -49,24 +49,23 @@ export function RoutingReasonsBanner({ routing, routing_reasons }: RoutingReason
         </div>
       </button>
 
-      {open && (
-        <div id={bodyId} className="mt-2 max-h-40 overflow-y-auto rounded-lg bg-canvas p-3.5">
-          <ul role="list" className="flex flex-col gap-1.5">
-            {routing_reasons.map((reason, index) => (
-              <li
-                key={`${reason.code}-${reason.source}-${index}`}
-                className="flex items-start gap-2"
-              >
-                <span
-                  className="mt-1.75 h-1.5 w-1.5 shrink-0 rounded-full bg-muted"
-                  aria-hidden="true"
-                />
-                <span className="text-sm text-body-text">{reason.message}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <div
+        id={bodyId}
+        hidden={!open}
+        className="mt-2 max-h-40 overflow-y-auto rounded-lg bg-canvas p-3.5"
+      >
+        <ul role="list" className="flex flex-col gap-1.5">
+          {routing_reasons.map((reason, index) => (
+            <li key={`${reason.code}-${reason.source}-${index}`} className="flex items-start gap-2">
+              <span
+                className="mt-1.75 h-1.5 w-1.5 shrink-0 rounded-full bg-muted"
+                aria-hidden="true"
+              />
+              <span className="text-sm text-body-text">{reason.message}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
