@@ -6,6 +6,7 @@ import { NodeRegistry } from '@modules/pipeline/node-registry';
 import type { NodeContext, NodeResult, PipelineNode } from '@modules/pipeline/types';
 import { EventsService } from '@modules/events/events.service';
 import { LineItem } from '@modules/catalog/entities/line-item.entity';
+import { LineItemModelAction } from '@modules/catalog/line-item.model-action';
 import * as SYS_MSG from '@constants/system-messages';
 import { PolicyRuleModelAction } from './policy-rule.model-action';
 import { QuotePolicyService } from './quote-policy.service';
@@ -30,6 +31,7 @@ export class PolicyNode implements PipelineNode {
 
   constructor(
     registry: NodeRegistry,
+    private readonly lineItems: LineItemModelAction,
     private readonly policyRules: PolicyRuleModelAction,
     private readonly policy: QuotePolicyService,
     private readonly events: EventsService,
@@ -42,8 +44,8 @@ export class PolicyNode implements PipelineNode {
   async run(ctx: NodeContext): Promise<NodeResult> {
     const { requestId, orgId } = ctx;
 
-    const lines = await this.dataSource.manager.find(LineItem, {
-      where: { request_id: requestId },
+    const { payload: lines } = await this.lineItems.list({
+      filterRecordOptions: { request_id: requestId },
       relations: { matched_sku: true },
       order: { position: 'ASC' },
     });

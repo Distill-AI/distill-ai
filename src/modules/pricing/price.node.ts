@@ -6,6 +6,7 @@ import { NodeRegistry } from '@modules/pipeline/node-registry';
 import type { NodeContext, NodeResult, PipelineNode } from '@modules/pipeline/types';
 import { EventsService } from '@modules/events/events.service';
 import { LineItem } from '@modules/catalog/entities/line-item.entity';
+import { LineItemModelAction } from '@modules/catalog/line-item.model-action';
 import { QuoteModelAction, type QuoteLineInput } from '@modules/quotes/quote.model-action';
 import { StageErrorReason } from '@constants/events.constants';
 import * as SYS_MSG from '@constants/system-messages';
@@ -28,6 +29,7 @@ export class PriceNode implements PipelineNode {
 
   constructor(
     registry: NodeRegistry,
+    private readonly lineItems: LineItemModelAction,
     private readonly pricingRules: PricingRuleModelAction,
     private readonly pricing: QuotePricingService,
     private readonly quotes: QuoteModelAction,
@@ -41,8 +43,8 @@ export class PriceNode implements PipelineNode {
   async run(ctx: NodeContext): Promise<NodeResult> {
     const { requestId, orgId } = ctx;
 
-    const lines = await this.dataSource.manager.find(LineItem, {
-      where: { request_id: requestId },
+    const { payload: lines } = await this.lineItems.list({
+      filterRecordOptions: { request_id: requestId },
       relations: { matched_sku: true },
       order: { position: 'ASC' },
     });
@@ -51,6 +53,9 @@ export class PriceNode implements PipelineNode {
       (li) => li.matched_sku !== null && li.quantity !== null && li.quantity > 0,
     );
     if (priceable.length === 0) {
+      // Nothing to price on this run: drop any quote a prior run left attached so the request is
+      // not carrying stale totals, then report an empty quote (quoteId: null).
+      await this.quotes.deleteForRequest(requestId);
       await this.emitCompleted(orgId, requestId, null, 0, false);
       return { kind: 'advance', next: this.nextNode };
     }
@@ -105,9 +110,13 @@ export class PriceNode implements PipelineNode {
     flagsById: Map<string, string[]>,
   ): Promise<void> {
     for (const line of priced.lines) {
-      const flags = flagsById.get(line.lineItemId) ?? [];
-      if (priced.blocked && !flags.includes(PRICING_BLOCKED_FLAG)) {
-        flags.push(PRICING_BLOCKED_FLAG);
+      let flags = flagsById.get(line.lineItemId) ?? [];
+      if (priced.blocked) {
+        if (!flags.includes(PRICING_BLOCKED_FLAG)) flags.push(PRICING_BLOCKED_FLAG);
+      } else {
+        // A later run that prices successfully must clear the stale blocked flag from an earlier
+        // rule-missing run, otherwise the line stays flagged for review forever.
+        flags = flags.filter((f) => f !== PRICING_BLOCKED_FLAG);
       }
       await em.update(
         LineItem,
