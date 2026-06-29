@@ -92,6 +92,7 @@ export function ReviewActionBar({ requestId, status }: ReviewActionBarProps) {
                 <button
                   type="button"
                   onClick={() => {
+                    declineMutation.reset();
                     setShowDeclinePicker(false);
                     setDeclineReason('');
                     setCustomReason('');

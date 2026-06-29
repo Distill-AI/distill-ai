@@ -6,14 +6,17 @@ import type { RequestDetail } from '../api/requests';
 const { mockUseRequest, mockDownload, mockUseDeclineRequest } = vi.hoisted(() => ({
   mockUseRequest: vi.fn(),
   mockDownload: vi.fn(),
-  mockUseDeclineRequest: vi.fn(),
+  mockUseDeclineRequest: vi.fn(() => ({
+    mutate: vi.fn(),
+    isPending: false,
+    isError: false,
+  })),
 }));
 
 vi.mock('../api/requests', () => ({
   useRequest: () => mockUseRequest(),
   useDeclineRequest: () => mockUseDeclineRequest(),
 }));
-
 vi.mock('../api/attachments', () => ({
   downloadAttachment: mockDownload,
 }));
