@@ -104,6 +104,10 @@ describe('deterministic boundary (US-E4-3)', () => {
     new ScoreNode(
       registry,
       new ScorerService(),
+      {
+        getAutoThreshold: vi.fn().mockReturnValue(0.95),
+        getAutoSendCapMinor: vi.fn().mockReturnValue(undefined),
+      } as never,
       requests as unknown as RequestModelAction,
       {
         findByRequestId: vi
