@@ -77,6 +77,22 @@ describe('QuotePolicyService', () => {
     expect(result.breaches.find((b) => b.type === 'margin_floor')).toBeUndefined();
   });
 
+  it('flags a free or negative-priced line with a real cost as a margin-floor breach', () => {
+    // unitPriceMinor 0 with a real cost cannot meet any positive floor: it must not slip through.
+    const free = service.evaluate([line({ unitPriceMinor: 0, costMinor: 700 })], RULES);
+    expect(free.breaches).toContainEqual(
+      expect.objectContaining({ type: 'margin_floor', observedPct: -100, limitPct: 15 }),
+    );
+
+    const negative = service.evaluate([line({ unitPriceMinor: -50, costMinor: 700 })], RULES);
+    expect(negative.breaches.find((b) => b.type === 'margin_floor')).toBeDefined();
+  });
+
+  it('does not invent a margin breach for a zero-priced line with no cost basis', () => {
+    const result = service.evaluate([line({ unitPriceMinor: 0, costMinor: null })], RULES);
+    expect(result.breaches.find((b) => b.type === 'margin_floor')).toBeUndefined();
+  });
+
   it('reports no breach for a healthy line within both limits', () => {
     const result = service.evaluate(
       [line({ basePriceMinor: 1000, unitPriceMinor: 950, costMinor: 700 })],

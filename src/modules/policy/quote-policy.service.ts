@@ -46,13 +46,25 @@ export class QuotePolicyService {
         }
       }
 
-      if (rules.marginFloorPct !== null && line.costMinor !== null && line.unitPriceMinor > 0) {
-        const marginPct = ((line.unitPriceMinor - line.costMinor) / line.unitPriceMinor) * 100;
-        if (marginPct < rules.marginFloorPct) {
+      if (rules.marginFloorPct !== null && line.costMinor !== null) {
+        if (line.unitPriceMinor > 0) {
+          const marginPct = ((line.unitPriceMinor - line.costMinor) / line.unitPriceMinor) * 100;
+          if (marginPct < rules.marginFloorPct) {
+            breaches.push({
+              lineItemId: line.lineItemId,
+              type: 'margin_floor',
+              observedPct: pct1(marginPct),
+              limitPct: rules.marginFloorPct,
+            });
+          }
+        } else if (line.costMinor > 0) {
+          // A free or negative-priced line with a real cost is a guaranteed loss that no positive
+          // margin floor can permit. Flag it explicitly (reported as a -100% margin) instead of
+          // dividing by a non-positive price and silently skipping the rule.
           breaches.push({
             lineItemId: line.lineItemId,
             type: 'margin_floor',
-            observedPct: pct1(marginPct),
+            observedPct: pct1(-100),
             limitPct: rules.marginFloorPct,
           });
         }
