@@ -25,18 +25,6 @@ export class ClassifyStubNode implements PipelineNode {
 }
 
 @Injectable()
-export class PriceStubNode implements PipelineNode {
-  readonly name = CurrentNode.PRICE;
-  private readonly nextNode = CurrentNode.POLICY;
-  constructor(registry: NodeRegistry) {
-    registry.register(this);
-  }
-  run(): Promise<NodeResult> {
-    return Promise.resolve({ kind: 'advance', next: this.nextNode });
-  }
-}
-
-@Injectable()
 export class PolicyStubNode implements PipelineNode {
   readonly name = CurrentNode.POLICY;
   private readonly nextNode = CurrentNode.SCORE;
@@ -49,4 +37,4 @@ export class PolicyStubNode implements PipelineNode {
 }
 
 /** All stub-node providers, for registration in the module. */
-export const STUB_NODES = [PriceStubNode, PolicyStubNode];
+export const STUB_NODES = [PolicyStubNode];
