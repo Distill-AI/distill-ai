@@ -45,27 +45,38 @@ const RULES: PricingRuleSet = {
 };
 
 function setup(lines: FakeLine[], ruleSet: PricingRuleSet = RULES) {
-  const updateCalls: Array<{ where: unknown; payload: Record<string, unknown> }> = [];
+  const updateCalls: Array<{ where: { id: string }; payload: Record<string, unknown> }> = [];
   const em = {
-    update: vi.fn((_entity: unknown, where: unknown, payload: Record<string, unknown>) => {
+    update: vi.fn((_entity: unknown, where: { id: string }, payload: Record<string, unknown>) => {
       updateCalls.push({ where, payload });
+      // Mutate the in-memory line flags so a re-run on the same fixture sees persisted state.
+      const target = lines.find((l) => l.id === where.id);
+      if (target && Array.isArray(payload.flags)) target.flags = payload.flags as string[];
       return Promise.resolve();
     }),
   };
   const dataSource = {
-    manager: { find: vi.fn().mockResolvedValue(lines) },
     transaction: vi.fn((cb: (em: unknown) => Promise<unknown>) => cb(em)),
   };
+
+  const lineItems = {
+    list: vi.fn().mockResolvedValue({ payload: lines }),
+  } as unknown as { list: ReturnType<typeof vi.fn> };
 
   const pricingRules = {
     getRuleSetForOrg: vi.fn().mockResolvedValue(ruleSet),
   } as unknown as PricingRuleModelAction;
 
   const replaceCalls: ReplaceQuoteInput[] = [];
+  const deleteCalls: string[] = [];
   const quotes = {
     replaceForRequest: vi.fn((input: ReplaceQuoteInput) => {
       replaceCalls.push(input);
       return Promise.resolve({ id: 'quote-1' });
+    }),
+    deleteForRequest: vi.fn((requestId: string) => {
+      deleteCalls.push(requestId);
+      return Promise.resolve();
     }),
   } as unknown as QuoteModelAction;
 
@@ -74,6 +85,7 @@ function setup(lines: FakeLine[], ruleSet: PricingRuleSet = RULES) {
 
   const node = new PriceNode(
     registry,
+    lineItems as never,
     pricingRules,
     new QuotePricingService(),
     quotes,
@@ -81,7 +93,7 @@ function setup(lines: FakeLine[], ruleSet: PricingRuleSet = RULES) {
     dataSource as never,
   );
 
-  return { node, registry, events, quotes, replaceCalls, updateCalls };
+  return { node, registry, events, quotes, replaceCalls, deleteCalls, updateCalls };
 }
 
 describe('PriceNode', () => {
@@ -128,14 +140,16 @@ describe('PriceNode', () => {
     expect(emittedEvents).not.toContain('tool.invoked');
   });
 
-  it('advances without persisting a quote when nothing is priceable', async () => {
-    const { node, replaceCalls, events } = setup([
+  it('clears any prior quote and persists none when nothing is priceable', async () => {
+    const { node, replaceCalls, deleteCalls, events } = setup([
       makeLine({ matched_sku: null, matched_sku_id: null }),
     ]);
     const result = await node.run(ctx);
 
     expect(result).toEqual({ kind: 'advance', next: CurrentNode.POLICY });
     expect(replaceCalls).toHaveLength(0);
+    // A quote left by an earlier run must be dropped so the request carries no stale totals.
+    expect(deleteCalls).toEqual(['req-1']);
     const completed = (events.emit as ReturnType<typeof vi.fn>).mock.calls.find(
       (c) => (c[0] as { eventName: string }).eventName === 'pricing.completed',
     );
@@ -144,12 +158,14 @@ describe('PriceNode', () => {
 
   it('skips lines with a missing quantity', async () => {
     const { node, replaceCalls } = setup([
-      makeLine({ id: 'a', quantity: null }),
-      makeLine({ id: 'b', quantity: 60 }),
+      makeLine({ id: 'a', position: 1, quantity: null }),
+      makeLine({ id: 'b', position: 2, quantity: 60 }),
     ]);
     await node.run(ctx);
+    // Only the priceable line survives; its distinct position proves the null-quantity line was dropped.
     expect(replaceCalls[0].lines).toHaveLength(1);
-    expect(replaceCalls[0].lines[0].position).toBe(1);
+    expect(replaceCalls[0].lines[0].position).toBe(2);
+    expect(replaceCalls[0].lines[0].quantity).toBe(60);
   });
 
   it('EC-02: with no pricing rules, prices at base, flags the line, and emits a stage error', async () => {
@@ -170,12 +186,20 @@ describe('PriceNode', () => {
     );
   });
 
-  it('EC-03: re-running on identical input recomputes the same quote without double discounting', async () => {
-    const first = setup([makeLine({ quantity: 500 })]);
-    await first.node.run(ctx);
-    const second = setup([makeLine({ quantity: 500 })]);
-    await second.node.run(ctx);
+  it('EC-03: re-running the same request reuses persisted state without double discounting', async () => {
+    // One fixture, two runs on the same node. The fake persistence mutates the line flags between
+    // runs (see setup), so this proves idempotency against persisted state, not just a pure function.
+    const { node, replaceCalls, updateCalls } = setup([makeLine({ quantity: 500 })]);
+    await node.run(ctx);
+    await node.run(ctx);
 
-    expect(JSON.stringify(first.replaceCalls[0])).toBe(JSON.stringify(second.replaceCalls[0]));
+    expect(replaceCalls).toHaveLength(2);
+    expect(JSON.stringify(replaceCalls[0])).toBe(JSON.stringify(replaceCalls[1]));
+    // The discount is applied once per run, never compounded from the prior run's persisted price.
+    expect(replaceCalls[1].totalMinor).toBe(450000);
+    // No blocked flag accumulates on a successful re-run.
+    for (const call of updateCalls) {
+      expect(call.payload.flags).not.toContain(PRICING_BLOCKED_FLAG);
+    }
   });
 });

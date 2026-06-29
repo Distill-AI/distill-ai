@@ -40,7 +40,12 @@ export class QuotePricingService {
       .filter((b) => line.quantity >= b.minQty)
       .reduce((max, b) => Math.max(max, b.discountPct), 0);
 
+    // Discount the extended line total before rounding, so small minor-unit prices are not
+    // distorted by rounding the per-unit price first. `unitPriceMinor` stays a rounded per-unit
+    // display value and is no longer assumed to satisfy `unitPriceMinor * quantity === amountMinor`.
+    const baseAmountMinor = Math.round(line.basePriceMinor * line.quantity);
     const unitPriceMinor = Math.round((line.basePriceMinor * (100 - appliedDiscountPct)) / 100);
+    const amountMinor = Math.round((baseAmountMinor * (100 - appliedDiscountPct)) / 100);
 
     return {
       lineItemId: line.lineItemId,
@@ -49,8 +54,8 @@ export class QuotePricingService {
       description: line.description,
       quantity: line.quantity,
       unitPriceMinor,
-      amountMinor: Math.round(unitPriceMinor * line.quantity),
-      baseAmountMinor: Math.round(line.basePriceMinor * line.quantity),
+      amountMinor,
+      baseAmountMinor,
       appliedDiscountPct,
       leadTimeDays: line.leadTimeDays,
     };
