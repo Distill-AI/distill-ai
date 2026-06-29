@@ -69,6 +69,9 @@ export class LineItem {
   @Column({ type: 'jsonb', default: () => "'[]'" })
   flags: unknown[];
 
+  @Column({ type: 'text', nullable: true })
+  match_routing_reason: string | null;
+
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   created_at: Date;
 }

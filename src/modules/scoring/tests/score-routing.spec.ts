@@ -22,6 +22,8 @@ import { PipelineGraphEngine } from '@modules/pipeline/graph.engine';
 import { NodeRegistry } from '@modules/pipeline/node-registry';
 import { ScoreNode } from '../score.node';
 import { ScorerService } from '../scorer.service';
+import { RoutingReasonCode } from '../enums/routing-reason-code.enum';
+import type { ScoringConfigService } from '../scoring-config.service';
 
 function makeFakeRequests(startNode: CurrentNode) {
   const record = {
@@ -75,10 +77,16 @@ describe('score routing (graph integration)', () => {
       find: vi.fn().mockResolvedValue({ payload: [] }),
     } as unknown as LineItemModelAction;
 
+    const scoringConfig = {
+      getAutoThreshold: vi.fn().mockReturnValue(0.95),
+      getAutoSendCapMinor: vi.fn().mockReturnValue(undefined),
+    } satisfies Pick<ScoringConfigService, 'getAutoThreshold' | 'getAutoSendCapMinor'>;
+
     const registry = new NodeRegistry();
     new ScoreNode(
       registry,
       new ScorerService(),
+      scoringConfig as unknown as ScoringConfigService,
       requests as unknown as RequestModelAction,
       extractions,
       lineItems,
@@ -95,7 +103,7 @@ describe('score routing (graph integration)', () => {
 
     expect(requests.record.routing).toBe(RequestRouting.NEEDS_REVIEW);
     expect(requests.record.routing_reasons).toEqual([
-      expect.objectContaining({ code: 'extraction_failed' }),
+      expect.objectContaining({ code: RoutingReasonCode.EXTRACTION_FAILED }),
     ]);
     expect(requests.record.current_node).toBe(CurrentNode.DONE);
     expect(requests.record.status).toBe(RequestStatus.NEEDS_REVIEW);
@@ -118,10 +126,16 @@ describe('score routing (graph integration)', () => {
       }),
     } as unknown as LineItemModelAction;
 
+    const scoringConfig = {
+      getAutoThreshold: vi.fn().mockReturnValue(0.95),
+      getAutoSendCapMinor: vi.fn().mockReturnValue(undefined),
+    } satisfies Pick<ScoringConfigService, 'getAutoThreshold' | 'getAutoSendCapMinor'>;
+
     const registry = new NodeRegistry();
     new ScoreNode(
       registry,
       new ScorerService(),
+      scoringConfig as unknown as ScoringConfigService,
       requests as unknown as RequestModelAction,
       extractions,
       lineItems,

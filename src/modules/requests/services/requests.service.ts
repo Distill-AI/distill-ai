@@ -50,6 +50,8 @@ export class RequestsService {
       sender_email: request.sender_email,
       source_body: request.source_body,
       current_node: request.current_node,
+      routing: request.routing,
+      routing_reasons: request.routing_reasons ?? [],
       attachments,
     };
   }
