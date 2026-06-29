@@ -18,6 +18,18 @@ import { QuotePolicyService } from '@modules/policy/quote-policy.service';
 import { ScoreNode } from '@modules/scoring/score.node';
 import { ScorerService } from '@modules/scoring/scorer.service';
 
+// scoring.config validates process.env at import time and throws when the scoring vars are absent.
+// Mock it so this file loads in CI without scoring env vars set. vitest hoists vi.mock above imports.
+vi.mock('@config/scoring.config', () => ({
+  scoringConfig: {
+    autoThreshold: 0.95,
+    unmatchedFloor: 0,
+    policyFlagPenalty: 1.0,
+    dealValueExceededPenalty: 0.8,
+    autoSendCapMinor: undefined,
+  },
+}));
+
 /**
  * US-E4-3: proves that pricing, policy, and scoring are structurally unreachable by any AI call.
  * FR-1 runtime (no tool.invoked from price/policy/score), FR-2 type/reserved-name guarantee,
@@ -61,21 +73,25 @@ describe('deterministic boundary (US-E4-3)', () => {
   it('FR-1: a run through price -> policy -> score emits no tool.invoked event', async () => {
     const requests = makeFakeRequests();
     const events = { emit: vi.fn().mockResolvedValue(undefined) } as unknown as EventsService;
-    const dataSource = { manager: { find: vi.fn().mockResolvedValue([]) } };
+    const dataSource = { transaction: vi.fn() };
+    // Both deterministic nodes read line items through LineItemModelAction.list; none exist here.
+    const lineItems = { list: vi.fn().mockResolvedValue({ payload: [] }) };
 
     const registry = new NodeRegistry();
     new PriceNode(
       registry,
+      lineItems as never,
       {
         getRuleSetForOrg: vi.fn().mockResolvedValue({ quantityBreaks: [], hasAnyRules: true }),
       } as never,
       new QuotePricingService(),
-      { replaceForRequest: vi.fn() } as never,
+      { replaceForRequest: vi.fn(), deleteForRequest: vi.fn() } as never,
       events,
       dataSource as never,
     );
     new PolicyNode(
       registry,
+      lineItems as never,
       {
         getRuleSetForOrg: vi
           .fn()
