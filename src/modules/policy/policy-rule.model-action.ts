@@ -21,8 +21,9 @@ export class PolicyRuleModelAction extends AbstractModelAction<PricingRule> {
 
   /**
    * Loads the org's active margin-floor and max-discount thresholds from the org-scoped
-   * pricing_rules table (SEC-02). `hasAnyRules` reflects whether the org has any active rules at
-   * all, so the policy node can fail closed when none are configured.
+   * pricing_rules table (SEC-02). `hasAnyRules` is derived from the parsed thresholds, not the raw
+   * row count, so an org whose only active rows are quantity-break (or malformed) policy rows still
+   * fails closed (EC-02) instead of passing every quote with no policy evaluation at all.
    */
   async getRuleSetForOrg(orgId: string): Promise<PolicyRuleSet> {
     const { payload } = await this.find({
@@ -43,6 +44,10 @@ export class PolicyRuleModelAction extends AbstractModelAction<PricingRule> {
       }
     }
 
-    return { marginFloorPct, maxDiscountPct, hasAnyRules: payload.length > 0 };
+    return {
+      marginFloorPct,
+      maxDiscountPct,
+      hasAnyRules: marginFloorPct !== null || maxDiscountPct !== null,
+    };
   }
 }
