@@ -16,6 +16,7 @@ import {
   POLICY_BLOCKED_FLAG,
 } from '@modules/policy/policy.constants';
 import { ScorerService } from './scorer.service';
+import { ScoringConfigService } from './scoring-config.service';
 import type { ScoringResultDto } from './dto/scoring-result.dto';
 
 /**
@@ -38,6 +39,7 @@ export class ScoreNode implements PipelineNode {
   constructor(
     registry: NodeRegistry,
     private readonly scorer: ScorerService,
+    private readonly scoringConfig: ScoringConfigService,
     private readonly requests: RequestModelAction,
     private readonly extractions: ExtractionModelAction,
     private readonly lineItems: LineItemModelAction,
@@ -71,6 +73,11 @@ export class ScoreNode implements PipelineNode {
       transactionOptions: { useTransaction: false },
     });
 
+    const thresholds = {
+      autoThreshold: this.scoringConfig.getAutoThreshold(),
+      autoSendCapMinor: this.scoringConfig.getAutoSendCapMinor(),
+    };
+
     const scored = this.scorer.score(
       lineItemRows.payload.map((li) => ({
         matchConfidence: li.match_confidence,
@@ -78,6 +85,7 @@ export class ScoreNode implements PipelineNode {
         quantity: li.quantity,
         hasFlags: Array.isArray(li.flags) && (li.flags as string[]).some((f) => f !== 'close_tie'),
       })),
+      thresholds,
     );
 
     const gated = this.applyPolicyGate(scored, lineItemRows.payload);

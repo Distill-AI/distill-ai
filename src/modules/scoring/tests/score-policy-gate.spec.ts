@@ -23,6 +23,7 @@ import { NodeRegistry } from '@modules/pipeline/node-registry';
 import { MARGIN_FLOOR_BREACH_FLAG } from '@modules/policy/policy.constants';
 import { ScoreNode } from '../score.node';
 import { ScorerService } from '../scorer.service';
+import type { ScoringConfigService } from '../scoring-config.service';
 
 function build(flags: string[]) {
   const updatePayloads: Array<Record<string, unknown>> = [];
@@ -45,10 +46,15 @@ function build(flags: string[]) {
     }),
   } as unknown as LineItemModelAction;
   const events = { emit: vi.fn().mockResolvedValue(undefined) } as unknown as EventsService;
+  const scoringConfig = {
+    getAutoThreshold: vi.fn().mockReturnValue(0.95),
+    getAutoSendCapMinor: vi.fn().mockReturnValue(undefined),
+  } satisfies Pick<ScoringConfigService, 'getAutoThreshold' | 'getAutoSendCapMinor'>;
 
   const node = new ScoreNode(
     new NodeRegistry(),
     new ScorerService(),
+    scoringConfig as unknown as ScoringConfigService,
     requests,
     extractions,
     lineItems,
