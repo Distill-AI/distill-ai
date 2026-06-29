@@ -119,12 +119,31 @@ describe('PolicyNode', () => {
     expect(updateCalls).toHaveLength(0);
   });
 
-  it('EC-03: merges the breach flag without duplicating an existing flag on re-run', async () => {
+  it('EC-03: a re-run with the breach flag already present makes no redundant write', async () => {
     const { node, updateCalls } = setup([
       makeLine({ unit_price_minor: 900, flags: [MARGIN_FLOOR_BREACH_FLAG] }),
     ]);
     await node.run(ctx);
+    // The line already carries exactly the right flag, so the flag set is unchanged: no duplicate,
+    // no write.
+    expect(updateCalls).toHaveLength(0);
+  });
+
+  it('clears a stale policy flag on a healthy re-run but preserves non-policy flags', async () => {
+    // unit 950, base 1000, cost 700 -> 26.3% margin, 5% discount: healthy, but a prior run left the
+    // breach flag (and an unrelated close_tie flag) on the line.
+    const { node, updateCalls } = setup([
+      makeLine({
+        unit_price_minor: 950,
+        matched_sku: { base_price_minor: 1000, cost_minor: 700 },
+        flags: [MARGIN_FLOOR_BREACH_FLAG, 'close_tie'],
+      }),
+    ]);
+    await node.run(ctx);
+
+    expect(updateCalls).toHaveLength(1);
     const flags = updateCalls[0].payload.flags as string[];
-    expect(flags.filter((f) => f === MARGIN_FLOOR_BREACH_FLAG)).toHaveLength(1);
+    expect(flags).not.toContain(MARGIN_FLOOR_BREACH_FLAG);
+    expect(flags).toContain('close_tie');
   });
 });
