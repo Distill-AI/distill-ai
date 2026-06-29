@@ -42,7 +42,10 @@ function makeService(getResult: unknown, listPayload: unknown[]) {
       .mockResolvedValue({ payload: listPayload, paginationMeta: { total: listPayload.length } }),
   } as unknown as CandidateMatchModelAction;
 
-  return { service: new LineItemsService(lineItemModelAction, candidateMatchModelAction) };
+  return {
+    service: new LineItemsService(lineItemModelAction, candidateMatchModelAction),
+    candidateMatchModelAction,
+  };
 }
 
 describe('LineItemsService.getCandidates', () => {
@@ -53,12 +56,18 @@ describe('LineItemsService.getCandidates', () => {
   });
 
   it('returns candidates ordered by rank with all fields mapped (AC-01, AC-02)', async () => {
-    const { service } = makeService(makeLineItem(), [
+    const { service, candidateMatchModelAction } = makeService(makeLineItem(), [
       makeCandidate(1, 0.88),
       makeCandidate(2, 0.85),
     ]);
     const result = await service.getCandidates(LINE_ID, ORG_ID);
 
+    expect(candidateMatchModelAction.list).toHaveBeenCalledWith(
+      expect.objectContaining({
+        relations: { sku: true },
+        order: { rank: 'ASC' },
+      }),
+    );
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({
       rank: 1,
