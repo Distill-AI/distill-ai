@@ -3,6 +3,8 @@ import type { RequestStatus } from '../enums/request-status.enum';
 import type { CurrentNode } from '../enums/current-node.enum';
 import type { ParseStatus } from '../enums/parse-status.enum';
 import type { ParseErrorReason } from '../enums/parse-error-reason.enum';
+import type { RequestRouting } from '../enums/request-routing.enum';
+import type { RoutingReason } from '../types/routing-reason';
 
 /** A request as it appears in the Inbox list. Read model for `GET /requests`. */
 export interface RequestSummary {
@@ -32,5 +34,7 @@ export interface RequestDetail extends RequestSummary {
   sender_email: string | null;
   source_body: string | null;
   current_node: CurrentNode;
+  routing: RequestRouting | null;
+  routing_reasons: RoutingReason[];
   attachments: AttachmentSummary[];
 }
