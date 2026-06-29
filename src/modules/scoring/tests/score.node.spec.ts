@@ -347,7 +347,7 @@ describe('ScoreNode determinism', () => {
         getAutoSendCapMinor: vi.fn().mockReturnValue(undefined),
       } satisfies Pick<ScoringConfigService, 'getAutoThreshold' | 'getAutoSendCapMinor'>;
 
-      const scoreNode = new ScoreNode(
+      new ScoreNode(
         engRegistry as never,
         new ScorerService(),
         engScoringConfig as unknown as ScoringConfigService,
@@ -356,7 +356,7 @@ describe('ScoreNode determinism', () => {
         engLineItems,
         engEvents,
       );
-      engRegistry.register(scoreNode);
+      expect(engRegistry.has(CurrentNode.SCORE)).toBe(true);
 
       const engine = new PipelineGraphEngine(
         engRegistry,
