@@ -5,6 +5,7 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { Request } from '../../requests/entities/request.entity';
 
@@ -32,6 +33,12 @@ export class Clarification {
   @Column({ type: 'timestamptz', nullable: true })
   sent_at: Date | null;
 
+  @Column({ type: 'uuid', nullable: true })
+  sent_by: string | null;
+
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   created_at: Date;
+
+  @UpdateDateColumn({ type: 'timestamptz', name: 'updated_at' })
+  updated_at: Date;
 }
