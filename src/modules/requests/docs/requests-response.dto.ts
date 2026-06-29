@@ -78,7 +78,11 @@ export class RequestDetailResponseDto extends RequestSummaryResponseDto {
       properties: {
         code: { type: 'string', example: 'low_line_confidence' },
         message: { type: 'string', example: 'Line confidence 0.64 below auto threshold 0.95' },
-        source: { type: 'string', example: 'confidence' },
+        source: {
+          type: 'string',
+          enum: ['extraction', 'confidence', 'policy'],
+          example: 'confidence',
+        },
       },
     },
   })
