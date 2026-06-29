@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LessThan, Repository } from 'typeorm';
+import { LessThan, Not, Repository } from 'typeorm';
 import { AbstractModelAction } from '@common/model-action/abstract.model-action';
 import { Request } from './entities/request.entity';
 import { CurrentNode } from './enums/current-node.enum';
@@ -24,6 +24,21 @@ export class RequestModelAction extends AbstractModelAction<Request> {
   /** Set the working/terminal status of a request. */
   async setStatus(requestId: string, status: RequestStatus): Promise<void> {
     await this.requestRepository.update({ id: requestId }, { status });
+  }
+
+  /**
+   * Atomically set status only if the current value is not already {@link status}.
+   * Returns `true` when a row was actually updated (the transition won); `false`
+   * when the status was already {@link status} (no-op / concurrent caller lost).
+   * Use this for terminal transitions where only the first caller should win
+   * (e.g. decline) to avoid duplicate audit events.
+   */
+  async trySetStatus(requestId: string, status: RequestStatus): Promise<boolean> {
+    const result = await this.requestRepository.update(
+      { id: requestId, status: Not(status) },
+      { status },
+    );
+    return (result.affected ?? 0) > 0;
   }
 
   /**

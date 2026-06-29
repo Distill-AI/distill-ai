@@ -53,10 +53,16 @@ export class RequestActions {
     reason: string,
     userId?: string,
   ): Promise<DeclineResponsePayload> {
-    if (request.status === RequestStatus.DECLINED) {
+    const didTransition = await this.requestModelAction.trySetStatus(
+      request.id,
+      RequestStatus.DECLINED,
+    );
+
+    if (!didTransition) {
       this.logger.log({
         event: 'decline_request_idempotent',
         requestId: request.id,
+        status: RequestStatus.DECLINED,
       });
       return {
         request_id: request.id,
@@ -71,15 +77,21 @@ export class RequestActions {
       reason,
     });
 
-    await this.requestModelAction.setStatus(request.id, RequestStatus.DECLINED);
-
-    await this.eventsService.emit({
-      eventName: 'request.declined',
-      orgId: request.org_id,
-      requestId: request.id,
-      userId: userId ?? null,
-      attributes: { reason },
-    });
+    try {
+      await this.eventsService.emit({
+        eventName: 'request.declined',
+        orgId: request.org_id,
+        requestId: request.id,
+        userId: userId ?? null,
+        attributes: { reason },
+      });
+    } catch (err) {
+      this.logger.error({
+        event: 'decline_audit_failed',
+        requestId: request.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
 
     this.logger.log({
       event: 'decline_request_completed',
