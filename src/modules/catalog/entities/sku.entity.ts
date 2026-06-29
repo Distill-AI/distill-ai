@@ -27,6 +27,10 @@ export class Sku extends BaseEntity {
   @Column({ type: 'int' })
   base_price_minor: number;
 
+  // Unit cost in minor units, used by the policy node to evaluate gross margin (US-E4-2).
+  @Column({ type: 'int', nullable: true })
+  cost_minor: number | null;
+
   @Column({ type: 'text', default: 'GBP' })
   currency: string;
 
