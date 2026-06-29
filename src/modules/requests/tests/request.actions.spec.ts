@@ -102,7 +102,7 @@ describe('RequestActions.declineRequest', () => {
     );
   });
 
-  it('propagates an emit error after a successful status transition', async () => {
+  it('rolls back the status transition when the audit event fails to emit', async () => {
     const emitError = new Error('DB connection lost');
     const { service, request, requestModelAction, eventsService } = setup({
       trySetStatus: true,
@@ -113,10 +113,16 @@ describe('RequestActions.declineRequest', () => {
       'DB connection lost',
     );
 
-    expect(requestModelAction.trySetStatus).toHaveBeenCalledWith(
+    expect(requestModelAction.trySetStatus).toHaveBeenNthCalledWith(
+      1,
       'req-1',
       RequestStatus.DECLINED,
       expect.any(Array),
+    );
+    expect(requestModelAction.trySetStatus).toHaveBeenNthCalledWith(
+      2,
+      'req-1',
+      RequestStatus.NEEDS_REVIEW,
     );
     expect(eventsService.emit).toHaveBeenCalled();
   });

@@ -61,6 +61,8 @@ export class RequestActions {
     reason: string,
     userId?: string,
   ): Promise<DeclineResponsePayload> {
+    const originalStatus = request.status;
+
     const didTransition = await this.requestModelAction.trySetStatus(
       request.id,
       RequestStatus.DECLINED,
@@ -109,6 +111,7 @@ export class RequestActions {
         requestId: request.id,
         error: err instanceof Error ? err.message : String(err),
       });
+      await this.requestModelAction.trySetStatus(request.id, originalStatus);
       throw err;
     }
 

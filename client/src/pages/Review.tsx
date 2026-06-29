@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useRequest } from '../api/requests';
+import type { RequestStatus } from '../api/interface/request-status';
 import { OriginalRequestPane } from '../components/review/OriginalRequestPane';
 import { ReviewActionBar } from '../components/review/ReviewActionBar';
 import { ErrorBanner } from '../components/inbox/ErrorBanner';
@@ -61,7 +62,7 @@ export function Review() {
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          <ReviewActionBar requestId={request.id} status={request.status} />
+          <ReviewActionBar requestId={request.id} status={request.status as RequestStatus} />
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <div className="rounded-card border border-border bg-surface p-4">
