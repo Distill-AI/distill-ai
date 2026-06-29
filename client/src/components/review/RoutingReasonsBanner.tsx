@@ -1,14 +1,14 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import type { RoutingReason } from '../../api/requests';
 
 interface RoutingReasonsBannerProps {
-  routing: string | null;
+  routing: 'auto_eligible' | 'needs_review' | null;
   routing_reasons: RoutingReason[];
-  overall_confidence: number | null;
 }
 
 export function RoutingReasonsBanner({ routing, routing_reasons }: RoutingReasonsBannerProps) {
   const [open, setOpen] = useState(true);
+  const bodyId = useId();
 
   if (routing === 'auto_eligible') {
     return (
@@ -26,7 +26,7 @@ export function RoutingReasonsBanner({ routing, routing_reasons }: RoutingReason
       <button
         type="button"
         aria-expanded={open}
-        aria-controls="routing-reasons-body"
+        aria-controls={bodyId}
         onClick={() => setOpen((prev) => !prev)}
         className="flex w-full items-center justify-between"
       >
@@ -50,14 +50,17 @@ export function RoutingReasonsBanner({ routing, routing_reasons }: RoutingReason
       </button>
 
       {open && (
-        <div id="routing-reasons-body" className="mt-2 max-h-40 overflow-y-auto rounded-lg bg-canvas p-3.5">
+        <div id={bodyId} className="mt-2 max-h-40 overflow-y-auto rounded-lg bg-canvas p-3.5">
           <ul role="list" className="flex flex-col gap-1.5">
             {routing_reasons.map((reason, index) => (
               <li
                 key={`${reason.code}-${reason.source}-${index}`}
                 className="flex items-start gap-2"
               >
-                <span className="mt-1.75 h-1.5 w-1.5 shrink-0 rounded-full bg-muted" aria-hidden="true" />
+                <span
+                  className="mt-1.75 h-1.5 w-1.5 shrink-0 rounded-full bg-muted"
+                  aria-hidden="true"
+                />
                 <span className="text-sm text-body-text">{reason.message}</span>
               </li>
             ))}

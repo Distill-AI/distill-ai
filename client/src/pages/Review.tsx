@@ -67,7 +67,6 @@ export function Review() {
           <RoutingReasonsBanner
             routing={request.routing}
             routing_reasons={request.routing_reasons}
-            overall_confidence={request.overall_confidence}
           />
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <div className="rounded-card border border-border bg-surface p-4">
