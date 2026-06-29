@@ -23,6 +23,7 @@ import { NodeRegistry } from '@modules/pipeline/node-registry';
 import { ScoreNode } from '../score.node';
 import { ScorerService } from '../scorer.service';
 import { RoutingReasonCode } from '../enums/routing-reason-code.enum';
+import type { ScoringConfigService } from '../scoring-config.service';
 
 function makeFakeRequests(startNode: CurrentNode) {
   const record = {
@@ -76,10 +77,16 @@ describe('score routing (graph integration)', () => {
       find: vi.fn().mockResolvedValue({ payload: [] }),
     } as unknown as LineItemModelAction;
 
+    const scoringConfig = {
+      getAutoThreshold: vi.fn().mockReturnValue(0.95),
+      getAutoSendCapMinor: vi.fn().mockReturnValue(undefined),
+    } satisfies Pick<ScoringConfigService, 'getAutoThreshold' | 'getAutoSendCapMinor'>;
+
     const registry = new NodeRegistry();
     new ScoreNode(
       registry,
       new ScorerService(),
+      scoringConfig as unknown as ScoringConfigService,
       requests as unknown as RequestModelAction,
       extractions,
       lineItems,
@@ -119,10 +126,16 @@ describe('score routing (graph integration)', () => {
       }),
     } as unknown as LineItemModelAction;
 
+    const scoringConfig = {
+      getAutoThreshold: vi.fn().mockReturnValue(0.95),
+      getAutoSendCapMinor: vi.fn().mockReturnValue(undefined),
+    } satisfies Pick<ScoringConfigService, 'getAutoThreshold' | 'getAutoSendCapMinor'>;
+
     const registry = new NodeRegistry();
     new ScoreNode(
       registry,
       new ScorerService(),
+      scoringConfig as unknown as ScoringConfigService,
       requests as unknown as RequestModelAction,
       extractions,
       lineItems,
