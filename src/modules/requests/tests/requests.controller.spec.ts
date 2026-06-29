@@ -6,7 +6,9 @@ import { RequestsService } from '../services/requests.service';
 import { StreamService } from '../services/stream.service';
 import { RequestActions } from '../actions/request.actions';
 import { ResumeReason } from '../enums/resume-reason.enum';
+import { RequestStatus } from '../enums/request-status.enum';
 import { CurrentNode } from '../enums/current-node.enum';
+import { DeclineRequestDto } from '../dto/decline-request.dto';
 import { AttachmentsService } from '../services/attachments.service';
 import type { Request as RequestEntity } from '../entities/request.entity';
 import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
@@ -30,7 +32,7 @@ describe('RequestsController', () => {
   const mockRequest = {
     id: 'req-1',
     org_id: 'org-1',
-    status: 'parsing',
+    status: 'parsing' as RequestStatus,
     current_node: CurrentNode.EXTRACT,
   };
 
@@ -76,6 +78,11 @@ describe('RequestsController', () => {
         resumed: true,
         resume_reason: ResumeReason.MANUAL,
         current_node: CurrentNode.EXTRACT,
+      }),
+      declineRequest: vi.fn().mockResolvedValue({
+        request_id: 'req-1',
+        status: RequestStatus.DECLINED,
+        reason: 'Not a relevant request',
       }),
     };
     attachmentsService = {
@@ -197,6 +204,61 @@ describe('RequestsController', () => {
       const elapsed = Date.now() - start;
 
       expect(elapsed).toBeLessThan(1000);
+    });
+  });
+
+  describe('decline (POST /:id/decline)', () => {
+    const dto = new DeclineRequestDto();
+    dto.reason = 'Not a relevant request';
+
+    it('declines a request with a reason and returns the declined status (AC-01, AC-02)', async () => {
+      const result = await controller.decline('req-1', dto, { user: mockUser });
+
+      expect(result.statusCode).toBe(200);
+      expect(result.message).toBeDefined();
+      expect(result.data.status).toBe(RequestStatus.DECLINED);
+      expect(result.data.reason).toBe('Not a relevant request');
+      expect(result.data.request_id).toBe('req-1');
+      expect(requestActions.declineRequest).toHaveBeenCalledWith(
+        mockRequest,
+        'Not a relevant request',
+        'user-1',
+      );
+    });
+
+    it('throws NotFoundException when request does not exist', async () => {
+      vi.spyOn(requestsService, 'findByIdOrFail').mockRejectedValueOnce(
+        new NotFoundException('Request req-404 not found'),
+      );
+
+      await expect(controller.decline('req-404', dto, { user: mockUser })).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('throws NotFoundException when org_id does not match (RLS, SEC-01)', async () => {
+      const wrongOrgReq = { ...mockRequest, org_id: 'org-2' } as RequestEntity;
+      vi.spyOn(requestsService, 'findByIdOrFail').mockResolvedValueOnce(wrongOrgReq);
+
+      await expect(controller.decline('req-1', dto, { user: mockUser })).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('throws NotFoundException when user has no orgId (SEC-01)', async () => {
+      await expect(controller.decline('req-1', dto, { user: undefined })).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('declining an already-declined request is idempotent (EC-01)', async () => {
+      const alreadyDeclined = { ...mockRequest, status: RequestStatus.DECLINED } as RequestEntity;
+      vi.spyOn(requestsService, 'findByIdOrFail').mockResolvedValueOnce(alreadyDeclined);
+
+      const result = await controller.decline('req-1', dto, { user: mockUser });
+
+      expect(result.statusCode).toBe(200);
+      expect(result.data.status).toBe(RequestStatus.DECLINED);
     });
   });
 

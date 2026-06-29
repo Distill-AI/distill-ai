@@ -12,6 +12,7 @@ import {
   getSchemaPath,
 } from '@nestjs/swagger';
 import { PasteAttachmentDto } from '../dto/paste-attachment.dto';
+import { DeclineRequestDto } from '../dto/decline-request.dto';
 import { RequestSummaryResponseDto, RequestDetailResponseDto } from './requests-response.dto';
 import * as SYS_MSG from '@constants/system-messages';
 
@@ -273,6 +274,65 @@ export function PasteAttachmentDocs(): MethodDecorator {
       status: HttpStatus.BAD_REQUEST,
       description: SYS_MSG.ATTACHMENT_PASTE_EMPTY,
       schema: errorSchema(HttpStatus.BAD_REQUEST, 'Bad Request', [SYS_MSG.ATTACHMENT_PASTE_EMPTY]),
+    }),
+    ApiResponse({
+      status: HttpStatus.UNAUTHORIZED,
+      description: SYS_MSG.AUTH_UNAUTHORIZED,
+      schema: errorSchema(HttpStatus.UNAUTHORIZED, 'Unauthorized', SYS_MSG.AUTH_UNAUTHORIZED),
+    }),
+    ApiResponse({
+      status: HttpStatus.FORBIDDEN,
+      description: SYS_MSG.AUTH_FORBIDDEN,
+      schema: errorSchema(HttpStatus.FORBIDDEN, 'Forbidden', SYS_MSG.AUTH_FORBIDDEN),
+    }),
+  );
+}
+
+export function RequestDeclineDocs(): MethodDecorator {
+  return applyDecorators(
+    ApiTags('Requests'),
+    ApiOperation({
+      summary: 'Decline a request with a reason',
+      description:
+        'Sets the request status to declined and records the decline reason in the audit trail ' +
+        'under the `request.declined` event. Declining an already-declined request is idempotent ' +
+        'and does not write a second audit event. The reason is required and must not be empty.',
+    }),
+    ApiParam({
+      name: 'id',
+      description: 'UUID of the request to decline',
+      required: true,
+      type: 'string',
+      format: 'uuid',
+    }),
+    ApiBody({ type: DeclineRequestDto }),
+    ApiResponse({
+      status: HttpStatus.OK,
+      schema: {
+        properties: {
+          success: { type: 'boolean', example: true },
+          statusCode: { type: 'number', example: HttpStatus.OK },
+          message: { type: 'string', example: SYS_MSG.REQUEST_DECLINED },
+          data: {
+            type: 'object',
+            properties: {
+              request_id: { type: 'string', format: 'uuid' },
+              status: { type: 'string', example: 'declined' },
+              reason: { type: 'string', example: 'Not a relevant request' },
+            },
+          },
+        },
+      },
+    }),
+    ApiResponse({
+      status: HttpStatus.NOT_FOUND,
+      description: SYS_MSG.REQUEST_NOT_FOUND('{id}'),
+      schema: errorSchema(HttpStatus.NOT_FOUND, 'Not Found', SYS_MSG.REQUEST_NOT_FOUND('{id}')),
+    }),
+    ApiResponse({
+      status: HttpStatus.BAD_REQUEST,
+      description: SYS_MSG.DECLINE_REASON_REQUIRED,
+      schema: errorSchema(HttpStatus.BAD_REQUEST, 'Bad Request', [SYS_MSG.DECLINE_REASON_REQUIRED]),
     }),
     ApiResponse({
       status: HttpStatus.UNAUTHORIZED,

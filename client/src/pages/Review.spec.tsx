@@ -3,13 +3,15 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { Review } from './Review';
 import type { RequestDetail } from '../api/requests';
 
-const { mockUseRequest, mockDownload } = vi.hoisted(() => ({
+const { mockUseRequest, mockDownload, mockUseDeclineRequest } = vi.hoisted(() => ({
   mockUseRequest: vi.fn(),
   mockDownload: vi.fn(),
+  mockUseDeclineRequest: vi.fn(),
 }));
 
 vi.mock('../api/requests', () => ({
   useRequest: () => mockUseRequest(),
+  useDeclineRequest: () => mockUseDeclineRequest(),
 }));
 
 vi.mock('../api/attachments', () => ({
@@ -84,5 +86,24 @@ describe('Review', () => {
     expect(screen.getByText(/parsed structure/i)).toBeInTheDocument();
     expect(screen.getByText(/suggested quote/i)).toBeInTheDocument();
     expect(screen.getAllByText(/coming soon/i)).toHaveLength(2);
+  });
+
+  it('renders the Decline button for a needs_review request', () => {
+    mockUseRequest.mockReturnValue({ data: detail, isLoading: false, isError: false });
+    renderReview();
+
+    expect(screen.getByRole('button', { name: /decline/i })).toBeInTheDocument();
+  });
+
+  it('shows a declined status banner instead of Decline button when already declined', () => {
+    mockUseRequest.mockReturnValue({
+      data: { ...detail, status: 'declined' },
+      isLoading: false,
+      isError: false,
+    });
+    renderReview();
+
+    expect(screen.queryByRole('button', { name: /decline/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/this request has been declined/i)).toBeInTheDocument();
   });
 });
