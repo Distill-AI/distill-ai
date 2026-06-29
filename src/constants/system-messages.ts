@@ -114,6 +114,12 @@ export const SCORE_DEAL_VALUE_EXCEEDS_CAP = (total: number, cap: number) =>
   `Deal value ${total} exceeds auto-send cap ${cap}`;
 export const SCORE_DEAL_VALUE_INCOMPLETE =
   'One or more line items have incomplete pricing; routed to review';
+export const SCORE_INVALID_AUTO_THRESHOLD = (value: unknown, retained: number) =>
+  `Invalid SCORE_AUTO_THRESHOLD ${JSON.stringify(value)}; retaining last valid value ${retained}`;
+export const SCORE_INVALID_AUTO_SEND_CAP = (value: unknown, retained: number | undefined) =>
+  `Invalid SCORE_AUTO_SEND_CAP_MINOR ${JSON.stringify(value)}; retaining last valid value ${String(
+    retained,
+  )}`;
 
 // Auth
 export const AUTH_PROFILE_FETCHED = 'Profile fetched successfully';
@@ -188,3 +194,9 @@ export const MATCH_DEGRADED =
   'Embedding service unavailable; falling back to lexical-only matching';
 export const MATCH_SKIPPED_EMPTY = 'Line item skipped: raw text is empty';
 export const MATCH_SKIPPED_UNKNOWN = 'Line item skipped: raw text is UNKNOWN';
+export const MATCH_CLOSE_TIE_REASON = (top1: number, top2: number) =>
+  `Two candidates within margin (scores: ${top1.toFixed(2)}, ${top2.toFixed(2)})`;
+
+// Line items
+export const LINE_ITEM_NOT_FOUND = (id: string) => `Line item ${id} not found`;
+export const CANDIDATES_RETRIEVED = 'Candidates retrieved successfully';

@@ -131,6 +131,9 @@ export class MatchNode implements PipelineNode {
 
       const existingFlags = Array.isArray(item.flags) ? (item.flags as string[]) : [];
       const flags: string[] = isCloseTie ? [...existingFlags, 'close_tie'] : existingFlags;
+      const matchRoutingReason = isCloseTie
+        ? SYS_MSG.MATCH_CLOSE_TIE_REASON(best.score, candidates[1].score)
+        : null;
 
       await this.dataSource.transaction(async (em) => {
         await this.candidateActions.replaceForLineItem(item.id, candidateRows, em);
@@ -142,6 +145,7 @@ export class MatchNode implements PipelineNode {
             match_confidence: best.score,
             match_method: method,
             flags: flags as unknown as object[],
+            match_routing_reason: matchRoutingReason,
           },
         );
       });
