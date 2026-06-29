@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import * as SYS_MSG from '@constants/system-messages';
 import { ResumeReason } from '../enums/resume-reason.enum';
 import { RequestStatus } from '../enums/request-status.enum';
@@ -15,6 +15,7 @@ const DECLINE_SOURCES = [
   RequestStatus.NEEDS_CLARIFICATION,
   RequestStatus.PRICED,
   RequestStatus.READY,
+  RequestStatus.FAILED,
 ];
 
 @Injectable()
@@ -67,16 +68,25 @@ export class RequestActions {
     );
 
     if (!didTransition) {
-      this.logger.log({
-        event: 'decline_request_idempotent',
-        requestId: request.id,
-        status: RequestStatus.DECLINED,
+      const current = await this.requestModelAction.get({
+        identifierOptions: { id: request.id },
       });
-      return {
-        request_id: request.id,
-        status: RequestStatus.DECLINED,
-        reason,
-      };
+      if (current?.status === RequestStatus.DECLINED) {
+        this.logger.log({
+          event: 'decline_request_idempotent',
+          requestId: request.id,
+          status: RequestStatus.DECLINED,
+        });
+        return {
+          request_id: request.id,
+          status: RequestStatus.DECLINED,
+          reason,
+        };
+      }
+      throw new HttpException(
+        `Request ${request.id} cannot be declined from its current status`,
+        HttpStatus.CONFLICT,
+      );
     }
 
     this.logger.log({
