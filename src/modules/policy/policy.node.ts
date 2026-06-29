@@ -65,17 +65,31 @@ export class PolicyNode implements PipelineNode {
     const rules = await this.policyRules.getRuleSetForOrg(orgId);
     const result = this.policy.evaluate(inputs, rules);
 
-    if (result.breached) {
-      await this.persistFlags(priced, result);
-    }
+    // Always reconcile flags, not only on a breach: a rerun after repricing or a rule change must
+    // clear stale breach flags from now-healthy lines, otherwise the score node's hard gate keeps
+    // forcing needs_review for a quote that no longer breaches.
+    await this.persistFlags(priced, result);
     await this.emitCompleted(orgId, requestId, result);
     return { kind: 'advance', next: this.nextNode };
   }
 
-  /** Merges breach flags onto the offending lines in one transaction (idempotent on re-run). */
+  /**
+   * Reconciles the policy-managed flags on every priced line in one transaction. Each line starts
+   * from its current flags with the policy-managed set stripped, then this run's breaches (or the
+   * fail-closed block) are re-added. A line is written only when its flag set actually changes, so a
+   * healthy rerun drops stale flags, an unchanged line is left untouched, and non-policy flags
+   * (e.g. close_tie) are preserved.
+   */
   private async persistFlags(priced: LineItem[], result: PolicyEvaluation): Promise<void> {
     const flagsByLine = new Map<string, Set<string>>(
-      priced.map((li) => [li.id, new Set(Array.isArray(li.flags) ? (li.flags as string[]) : [])]),
+      priced.map((li) => [
+        li.id,
+        new Set(
+          (Array.isArray(li.flags) ? (li.flags as string[]) : []).filter(
+            (f) => !POLICY_MANAGED_FLAGS.has(f),
+          ),
+        ),
+      ]),
     );
 
     if (result.failClosed) {
@@ -88,9 +102,12 @@ export class PolicyNode implements PipelineNode {
     }
 
     await this.dataSource.transaction(async (em) => {
-      for (const id of result.flaggedLineItemIds) {
-        const flags = [...(flagsByLine.get(id) ?? [])];
-        await em.update(LineItem, { id }, { flags: flags as unknown as object[] });
+      for (const li of priced) {
+        const before = Array.isArray(li.flags) ? (li.flags as string[]) : [];
+        const after = [...(flagsByLine.get(li.id) ?? [])];
+        if (!sameFlags(before, after)) {
+          await em.update(LineItem, { id: li.id }, { flags: after as unknown as object[] });
+        }
       }
     });
   }
@@ -128,3 +145,17 @@ const EMPTY_RESULT: PolicyEvaluation = {
   breaches: [],
   flaggedLineItemIds: [],
 };
+
+/** The flags this node owns: it adds them on a breach and strips them when a line is healthy. */
+const POLICY_MANAGED_FLAGS = new Set<string>([
+  MARGIN_FLOOR_BREACH_FLAG,
+  MAX_DISCOUNT_BREACH_FLAG,
+  POLICY_BLOCKED_FLAG,
+]);
+
+/** Order-insensitive equality of two flag lists, so an unchanged line is not rewritten. */
+function sameFlags(before: string[], after: string[]): boolean {
+  if (before.length !== after.length) return false;
+  const seen = new Set(before);
+  return after.every((f) => seen.has(f));
+}
