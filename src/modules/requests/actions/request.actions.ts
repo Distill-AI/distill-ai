@@ -10,6 +10,13 @@ import type { Request } from '../entities/request.entity';
 import type { ResumeResponsePayload } from '../interfaces/resume.interface';
 import type { DeclineResponsePayload } from '../interfaces/decline.interface';
 
+const DECLINE_SOURCES = [
+  RequestStatus.NEEDS_REVIEW,
+  RequestStatus.NEEDS_CLARIFICATION,
+  RequestStatus.PRICED,
+  RequestStatus.READY,
+];
+
 @Injectable()
 export class RequestActions {
   private readonly logger = new Logger(RequestActions.name);
@@ -56,6 +63,7 @@ export class RequestActions {
     const didTransition = await this.requestModelAction.trySetStatus(
       request.id,
       RequestStatus.DECLINED,
+      DECLINE_SOURCES,
     );
 
     if (!didTransition) {
@@ -91,6 +99,7 @@ export class RequestActions {
         requestId: request.id,
         error: err instanceof Error ? err.message : String(err),
       });
+      throw err;
     }
 
     this.logger.log({

@@ -19,14 +19,19 @@ import * as SYS_MSG from '@constants/system-messages';
 const BASE_PATH = '/api/v1/requests/{id}/attachments/{attachmentId}/paste';
 const TIMESTAMP_EXAMPLE = '2026-06-19T00:00:00.000Z';
 
-function errorSchema(statusCode: HttpStatus, error: string, message: string | string[]) {
+function errorSchema(
+  statusCode: HttpStatus,
+  error: string,
+  message: string | string[],
+  path?: string,
+) {
   return {
     example: {
       success: false,
       statusCode,
       error,
       message,
-      path: BASE_PATH,
+      path: path ?? BASE_PATH,
       timestamp: TIMESTAMP_EXAMPLE,
     },
   };
@@ -288,6 +293,8 @@ export function PasteAttachmentDocs(): MethodDecorator {
   );
 }
 
+const DECLINE_PATH = '/api/v1/requests/{id}/decline';
+
 export function RequestDeclineDocs(): MethodDecorator {
   return applyDecorators(
     ApiTags('Requests'),
@@ -327,22 +334,37 @@ export function RequestDeclineDocs(): MethodDecorator {
     ApiResponse({
       status: HttpStatus.NOT_FOUND,
       description: SYS_MSG.REQUEST_NOT_FOUND('{id}'),
-      schema: errorSchema(HttpStatus.NOT_FOUND, 'Not Found', SYS_MSG.REQUEST_NOT_FOUND('{id}')),
+      schema: errorSchema(
+        HttpStatus.NOT_FOUND,
+        'Not Found',
+        SYS_MSG.REQUEST_NOT_FOUND('{id}'),
+        DECLINE_PATH,
+      ),
     }),
     ApiResponse({
       status: HttpStatus.BAD_REQUEST,
       description: SYS_MSG.DECLINE_REASON_REQUIRED,
-      schema: errorSchema(HttpStatus.BAD_REQUEST, 'Bad Request', [SYS_MSG.DECLINE_REASON_REQUIRED]),
+      schema: errorSchema(
+        HttpStatus.BAD_REQUEST,
+        'Bad Request',
+        [SYS_MSG.DECLINE_REASON_REQUIRED],
+        DECLINE_PATH,
+      ),
     }),
     ApiResponse({
       status: HttpStatus.UNAUTHORIZED,
       description: SYS_MSG.AUTH_UNAUTHORIZED,
-      schema: errorSchema(HttpStatus.UNAUTHORIZED, 'Unauthorized', SYS_MSG.AUTH_UNAUTHORIZED),
+      schema: errorSchema(
+        HttpStatus.UNAUTHORIZED,
+        'Unauthorized',
+        SYS_MSG.AUTH_UNAUTHORIZED,
+        DECLINE_PATH,
+      ),
     }),
     ApiResponse({
       status: HttpStatus.FORBIDDEN,
       description: SYS_MSG.AUTH_FORBIDDEN,
-      schema: errorSchema(HttpStatus.FORBIDDEN, 'Forbidden', SYS_MSG.AUTH_FORBIDDEN),
+      schema: errorSchema(HttpStatus.FORBIDDEN, 'Forbidden', SYS_MSG.AUTH_FORBIDDEN, DECLINE_PATH),
     }),
   );
 }
