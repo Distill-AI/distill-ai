@@ -24,7 +24,9 @@ export class PricingRuleModelAction extends AbstractModelAction<PricingRule> {
   /**
    * Loads the org's active pricing rules under org scope (SEC-02) and projects them into the
    * deterministic rule set the pricing service consumes. A malformed quantity-break config is
-   * skipped rather than crashing the price node; `hasAnyRules` still reflects that rules exist.
+   * skipped rather than crashing the price node. `hasAnyRules` is derived from the successfully
+   * parsed quantity-break rules - not the raw row count - so an org whose only active rows are
+   * malformed or non-quantity-break still fails closed for review (EC-02) instead of pricing at base.
    */
   async getRuleSetForOrg(orgId: string): Promise<PricingRuleSet> {
     const { payload } = await this.find({
@@ -41,6 +43,6 @@ export class PricingRuleModelAction extends AbstractModelAction<PricingRule> {
       }
     }
 
-    return { quantityBreaks, hasAnyRules: payload.length > 0 };
+    return { quantityBreaks, hasAnyRules: quantityBreaks.length > 0 };
   }
 }
