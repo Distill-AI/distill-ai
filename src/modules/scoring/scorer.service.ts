@@ -6,11 +6,12 @@ import { scoringConfig } from '@config/scoring.config';
 import { RoutingReasonCode } from './enums/routing-reason-code.enum';
 import type { ScoringResultDto } from './dto/scoring-result.dto';
 import type { ScoringLineItem } from './interfaces/scoring-input.interface';
+import type { ScoringThresholds } from './interfaces/scoring-thresholds.interface';
 import type { Extraction } from '@modules/extraction/entities/extraction.entity';
 
 @Injectable()
 export class ScorerService {
-  score(lineItems: ScoringLineItem[]): ScoringResultDto {
+  score(lineItems: ScoringLineItem[], thresholds: ScoringThresholds): ScoringResultDto {
     if (lineItems.length === 0) {
       return {
         routing: RequestRouting.NEEDS_REVIEW,
@@ -32,7 +33,7 @@ export class ScorerService {
       cap,
       hasIncomplete,
       total,
-    } = this.computeDealValueFactor(lineItems);
+    } = this.computeDealValueFactor(lineItems, thresholds.autoSendCapMinor);
 
     const overallConfidence = Math.min(
       lineConfidenceFactor,
@@ -48,10 +49,11 @@ export class ScorerService {
       cap,
       hasIncomplete,
       total,
+      thresholds.autoThreshold,
     );
 
     const routing =
-      overallConfidence >= scoringConfig.autoThreshold
+      overallConfidence >= thresholds.autoThreshold
         ? RequestRouting.AUTO_ELIGIBLE
         : RequestRouting.NEEDS_REVIEW;
 
@@ -87,13 +89,16 @@ export class ScorerService {
     return hasFlags ? scoringConfig.policyFlagPenalty : 1;
   }
 
-  private computeDealValueFactor(lineItems: ScoringLineItem[]): {
+  private computeDealValueFactor(
+    lineItems: ScoringLineItem[],
+    autoSendCapMinor: number | undefined,
+  ): {
     factor: number;
     cap: number | undefined;
     hasIncomplete: boolean;
     total: number;
   } {
-    const cap = scoringConfig.autoSendCapMinor;
+    const cap = autoSendCapMinor;
     if (cap === undefined) {
       return { factor: 1, cap, hasIncomplete: false, total: 0 };
     }
@@ -122,20 +127,18 @@ export class ScorerService {
     lineConfidenceFactor: number,
     policyComplianceFactor: number,
     dealValueFactor: number,
-    _overallConfidence: number,
+    overallConfidence: number,
     cap: number | undefined,
     hasIncomplete: boolean,
     total: number,
+    autoThreshold: number,
   ): { code: RoutingReasonCode; message: string; source: 'confidence' }[] {
     const reasons: { code: RoutingReasonCode; message: string; source: 'confidence' }[] = [];
 
-    if (lineConfidenceFactor < scoringConfig.autoThreshold) {
+    if (lineConfidenceFactor < autoThreshold) {
       reasons.push({
         code: RoutingReasonCode.LOW_LINE_CONFIDENCE,
-        message: SYS_MSG.SCORE_BELOW_AUTO_THRESHOLD(
-          lineConfidenceFactor,
-          scoringConfig.autoThreshold,
-        ),
+        message: SYS_MSG.SCORE_BELOW_AUTO_THRESHOLD(lineConfidenceFactor, autoThreshold),
         source: 'confidence',
       });
     }
@@ -162,6 +165,14 @@ export class ScorerService {
           source: 'confidence',
         });
       }
+    }
+
+    if (overallConfidence >= autoThreshold && reasons.length === 0) {
+      reasons.push({
+        code: RoutingReasonCode.AUTO_ELIGIBLE,
+        message: SYS_MSG.SCORE_AUTO_ELIGIBLE(overallConfidence),
+        source: 'confidence',
+      });
     }
 
     return reasons;

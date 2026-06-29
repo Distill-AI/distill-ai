@@ -6,4 +6,5 @@ export enum RoutingReasonCode {
   NO_LINE_ITEMS = 'no_line_items',
   EXTRACTION_FAILED = 'extraction_failed',
   EXTRACTION_EMPTY_SOURCE = 'extraction_empty_source',
+  AUTO_ELIGIBLE = 'auto_eligible',
 }

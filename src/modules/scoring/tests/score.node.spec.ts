@@ -20,6 +20,7 @@ import { ExtractionStatus } from '@modules/extraction/enums/extraction-status.en
 import { ScoreNode } from '../score.node';
 import { ScorerService } from '../scorer.service';
 import { RoutingReasonCode } from '../enums/routing-reason-code.enum';
+import type { ScoringConfigService } from '../scoring-config.service';
 
 describe('ScoreNode', () => {
   const requestId = 'req-1';
@@ -62,12 +63,16 @@ describe('ScoreNode', () => {
 
     const events = { emit: vi.fn().mockResolvedValue(undefined) } as unknown as EventsService;
     const registry = { register: vi.fn() };
+    const scoringConfig = {
+      getAutoThreshold: vi.fn().mockReturnValue(0.95),
+      getAutoSendCapMinor: vi.fn().mockReturnValue(undefined),
+    } satisfies Pick<ScoringConfigService, 'getAutoThreshold' | 'getAutoSendCapMinor'>;
 
-    return { requests, extractions, lineItems, events, registry };
+    return { requests, extractions, lineItems, events, registry, scoringConfig };
   }
 
   it('persists needs_review routing when extraction schema_valid is false', async () => {
-    const { requests, extractions, lineItems, events, registry } = makeFixture({
+    const { requests, extractions, lineItems, events, registry, scoringConfig } = makeFixture({
       extractionSchemaValid: false,
       extractionStatus: ExtractionStatus.FAILED,
     });
@@ -75,6 +80,7 @@ describe('ScoreNode', () => {
     const node = new ScoreNode(
       registry as never,
       new ScorerService(),
+      scoringConfig as unknown as ScoringConfigService,
       requests,
       extractions,
       lineItems,
@@ -101,13 +107,14 @@ describe('ScoreNode', () => {
   });
 
   it('persists auto_eligible routing when all lines are high confidence', async () => {
-    const { requests, extractions, lineItems, events, registry } = makeFixture({
+    const { requests, extractions, lineItems, events, registry, scoringConfig } = makeFixture({
       lineItems: [{ match_confidence: 0.99, unit_price_minor: 1000, quantity: 1, flags: [] }],
     });
 
     const node = new ScoreNode(
       registry as never,
       new ScorerService(),
+      scoringConfig as unknown as ScoringConfigService,
       requests,
       extractions,
       lineItems,
@@ -126,13 +133,14 @@ describe('ScoreNode', () => {
   });
 
   it('persists needs_review when no line items exist', async () => {
-    const { requests, extractions, lineItems, events, registry } = makeFixture({
+    const { requests, extractions, lineItems, events, registry, scoringConfig } = makeFixture({
       lineItems: [],
     });
 
     const node = new ScoreNode(
       registry as never,
       new ScorerService(),
+      scoringConfig as unknown as ScoringConfigService,
       requests,
       extractions,
       lineItems,
@@ -147,6 +155,37 @@ describe('ScoreNode', () => {
           routing: RequestRouting.NEEDS_REVIEW,
           routing_reasons: [expect.objectContaining({ code: RoutingReasonCode.NO_LINE_ITEMS })],
         }),
+      }),
+    );
+  });
+
+  it('applies a lowered threshold on the next run with no restart (AC-02/EC-02)', async () => {
+    const { requests, extractions, lineItems, events, registry, scoringConfig } = makeFixture({
+      lineItems: [{ match_confidence: 0.92, unit_price_minor: 1000, quantity: 1, flags: [] }],
+    });
+    scoringConfig.getAutoThreshold.mockReturnValueOnce(0.95).mockReturnValueOnce(0.9);
+
+    const node = new ScoreNode(
+      registry as never,
+      new ScorerService(),
+      scoringConfig as unknown as ScoringConfigService,
+      requests,
+      extractions,
+      lineItems,
+      events,
+    );
+
+    await node.run({ requestId, orgId });
+    expect(requests.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        updatePayload: expect.objectContaining({ routing: RequestRouting.NEEDS_REVIEW }),
+      }),
+    );
+
+    await node.run({ requestId, orgId });
+    expect(requests.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        updatePayload: expect.objectContaining({ routing: RequestRouting.AUTO_ELIGIBLE }),
       }),
     );
   });
