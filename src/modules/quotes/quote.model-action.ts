@@ -87,4 +87,26 @@ export class QuoteModelAction extends AbstractModelAction<Quote> {
     }
     return this.dataSource.transaction(replace);
   }
+
+  /**
+   * Removes any quote (and its line items) for a request. Used when a re-run has nothing priceable,
+   * so a stale quote from an earlier run is not left attached to the request (replace-for-request
+   * contract). Idempotent: a no-op when the request has no quote.
+   */
+  async deleteForRequest(requestId: string, transaction?: EntityManager): Promise<void> {
+    const remove = async (em: EntityManager): Promise<void> => {
+      const existing = await em.find(Quote, { where: { request_id: requestId } });
+      if (existing.length === 0) {
+        return;
+      }
+      await em.delete(QuoteLineItem, { quote_id: In(existing.map((q) => q.id)) });
+      await em.delete(Quote, { request_id: requestId });
+    };
+
+    if (transaction) {
+      await remove(transaction);
+      return;
+    }
+    await this.dataSource.transaction(remove);
+  }
 }
