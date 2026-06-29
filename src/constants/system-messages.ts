@@ -114,6 +114,12 @@ export const SCORE_DEAL_VALUE_EXCEEDS_CAP = (total: number, cap: number) =>
   `Deal value ${total} exceeds auto-send cap ${cap}`;
 export const SCORE_DEAL_VALUE_INCOMPLETE =
   'One or more line items have incomplete pricing; routed to review';
+export const SCORE_INVALID_AUTO_THRESHOLD = (value: unknown, retained: number) =>
+  `Invalid SCORE_AUTO_THRESHOLD ${JSON.stringify(value)}; retaining last valid value ${retained}`;
+export const SCORE_INVALID_AUTO_SEND_CAP = (value: unknown, retained: number | undefined) =>
+  `Invalid SCORE_AUTO_SEND_CAP_MINOR ${JSON.stringify(value)}; retaining last valid value ${String(
+    retained,
+  )}`;
 
 // Auth
 export const AUTH_PROFILE_FETCHED = 'Profile fetched successfully';
