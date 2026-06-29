@@ -8,6 +8,13 @@ import type { CandidateMatchModelAction } from '../candidate-match.model-action'
 import { MatchMethod } from '../enums/match-method.enum';
 import { env } from '@config/env';
 
+vi.mock('@config/env', () => ({
+  env: {
+    AUTO_THRESHOLD: 0.95,
+    CLOSE_TIE_MARGIN: 0.05,
+  },
+}));
+
 const requestId = 'req-uuid';
 const orgId = 'org-uuid';
 
@@ -213,6 +220,164 @@ describe('MatchNode', () => {
       expect.anything(),
       { id: 'item-1' },
       expect.objectContaining({ flags: expect.arrayContaining(['close_tie']) }),
+    );
+  });
+
+  it('flags close tie when top-1 is 0.91 and top-2 is 0.89 (AC-01)', async () => {
+    const { node, manager } = makeNode({
+      toolResult: {
+        status: 'ok',
+        latency: 10,
+        result: {
+          candidates: [
+            {
+              sku_id: 'sku-1',
+              sku_code: 'A',
+              name: 'Item A',
+              description: null,
+              score: 0.91,
+              rank: 1,
+              match_method: MatchMethod.FUZZY,
+            },
+            {
+              sku_id: 'sku-2',
+              sku_code: 'B',
+              name: 'Item B',
+              description: null,
+              score: 0.89,
+              rank: 2,
+              match_method: MatchMethod.FUZZY,
+            },
+          ],
+          degraded: false,
+        },
+      },
+    });
+
+    await node.run({ requestId, orgId });
+
+    expect(manager.update).toHaveBeenCalledWith(
+      expect.anything(),
+      { id: 'item-1' },
+      expect.objectContaining({
+        flags: expect.arrayContaining(['close_tie']),
+        match_routing_reason: expect.stringContaining('0.91'),
+      }),
+    );
+  });
+
+  it('does not flag close tie when top-1 is 0.97 and top-2 is 0.40 (AC-02)', async () => {
+    const { node, manager } = makeNode({
+      toolResult: {
+        status: 'ok',
+        latency: 10,
+        result: {
+          candidates: [
+            {
+              sku_id: 'sku-1',
+              sku_code: 'A',
+              name: 'Item A',
+              description: null,
+              score: 0.97,
+              rank: 1,
+              match_method: MatchMethod.FUZZY,
+            },
+            {
+              sku_id: 'sku-2',
+              sku_code: 'B',
+              name: 'Item B',
+              description: null,
+              score: 0.4,
+              rank: 2,
+              match_method: MatchMethod.FUZZY,
+            },
+          ],
+          degraded: false,
+        },
+      },
+    });
+
+    await node.run({ requestId, orgId });
+
+    expect(manager.update).toHaveBeenCalledWith(
+      expect.anything(),
+      { id: 'item-1' },
+      expect.objectContaining({
+        flags: expect.not.arrayContaining(['close_tie']),
+        match_routing_reason: null,
+      }),
+    );
+  });
+
+  it('writes a human-readable reason with both scores when close tie is detected (AC-03)', async () => {
+    const { node, manager } = makeNode({
+      toolResult: {
+        status: 'ok',
+        latency: 10,
+        result: {
+          candidates: [
+            {
+              sku_id: 'sku-1',
+              sku_code: 'A',
+              name: 'Item A',
+              description: null,
+              score: 0.91,
+              rank: 1,
+              match_method: MatchMethod.FUZZY,
+            },
+            {
+              sku_id: 'sku-2',
+              sku_code: 'B',
+              name: 'Item B',
+              description: null,
+              score: 0.89,
+              rank: 2,
+              match_method: MatchMethod.FUZZY,
+            },
+          ],
+          degraded: false,
+        },
+      },
+    });
+
+    await node.run({ requestId, orgId });
+
+    const payload = (manager.update as ReturnType<typeof vi.fn>).mock.calls[0][2];
+    expect(payload.match_routing_reason).toMatch(/0\.91/);
+    expect(payload.match_routing_reason).toMatch(/0\.89/);
+  });
+
+  it('does not flag close tie and writes null reason when only one candidate exists (EC-01)', async () => {
+    const { node, manager } = makeNode({
+      toolResult: {
+        status: 'ok',
+        latency: 10,
+        result: {
+          candidates: [
+            {
+              sku_id: 'sku-1',
+              sku_code: 'A',
+              name: 'Item A',
+              description: null,
+              score: 0.88,
+              rank: 1,
+              match_method: MatchMethod.FUZZY,
+            },
+          ],
+          degraded: false,
+        },
+      },
+    });
+
+    await node.run({ requestId, orgId });
+
+    expect(manager.update).toHaveBeenCalledWith(
+      expect.anything(),
+      { id: 'item-1' },
+      expect.objectContaining({
+        flags: expect.not.arrayContaining(['close_tie']),
+        match_routing_reason: null,
+      }),
     );
   });
 });
