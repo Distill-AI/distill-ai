@@ -6,6 +6,7 @@ import { ToolRegistry } from '@modules/tools/registry';
 import { scoringConfig } from '@config/scoring.config';
 import { ScoreNode } from '../score.node';
 import { ScorerService } from '../scorer.service';
+import { RoutingReasonCode } from '../enums/routing-reason-code.enum';
 import type { ScoringLineItem } from '../interfaces/scoring-input.interface';
 import type { ScoringThresholds } from '../interfaces/scoring-thresholds.interface';
 
@@ -42,7 +43,7 @@ describe('ScorerService', () => {
     expect(result.overallConfidence).toBe(0);
     expect(result.routingReasons).toEqual([
       {
-        code: 'extraction_failed',
+        code: RoutingReasonCode.EXTRACTION_FAILED,
         message: SYS_MSG.EXTRACTION_ESCALATED,
         source: 'extraction',
       },
@@ -57,7 +58,10 @@ describe('ScorerService', () => {
 
     expect(result.routing).toBe(RequestRouting.NEEDS_REVIEW);
     expect(result.routingReasons).toEqual([
-      expect.objectContaining({ code: 'extraction_empty_source', source: 'extraction' }),
+      expect.objectContaining({
+        code: RoutingReasonCode.EXTRACTION_EMPTY_SOURCE,
+        source: 'extraction',
+      }),
     ]);
   });
 
@@ -66,7 +70,7 @@ describe('ScorerService', () => {
 
     expect(result.routing).toBe(RequestRouting.NEEDS_REVIEW);
     expect(result.overallConfidence).toBe(0);
-    expect(result.routingReasons[0]?.code).toBe('extraction_failed');
+    expect(result.routingReasons[0]?.code).toBe(RoutingReasonCode.EXTRACTION_FAILED);
   });
 
   // ── Aggregate scoring ────────────────────────────────────────────────
@@ -76,17 +80,15 @@ describe('ScorerService', () => {
 
     expect(result.overallConfidence).toBe(0.64);
     expect(result.routing).toBe(RequestRouting.NEEDS_REVIEW);
-    expect(result.routingReasons).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          code: 'low_line_confidence',
-          source: 'confidence',
-        }),
-      ]),
-    );
+    expect(result.routingReasons).toEqual([
+      expect.objectContaining({
+        code: RoutingReasonCode.LOW_LINE_CONFIDENCE,
+        source: 'confidence',
+      }),
+    ]);
   });
 
-  it('routes a quote with all high-confidence lines, no flags, under cap to priced (AC-02/AC-03)', () => {
+  it('routes a quote with all high-confidence lines, no flags, under cap to auto-eligible (AC-02/AC-03)', () => {
     const result = scorer.score(
       [line({ matchConfidence: 0.99 }), line({ matchConfidence: 0.98 })],
       thresholds,
@@ -94,9 +96,9 @@ describe('ScorerService', () => {
 
     expect(result.overallConfidence).toBeGreaterThanOrEqual(scoringConfig.autoThreshold);
     expect(result.routing).toBe(RequestRouting.AUTO_ELIGIBLE);
-    expect(result.routingReasons).toEqual(
-      expect.arrayContaining([expect.objectContaining({ code: 'auto_eligible' })]),
-    );
+    expect(result.routingReasons).toEqual([
+      expect.objectContaining({ code: RoutingReasonCode.AUTO_ELIGIBLE }),
+    ]);
   });
 
   it('reflects the minimum line confidence as overall_confidence', () => {
@@ -136,7 +138,9 @@ describe('ScorerService', () => {
 
     expect(result.overallConfidence).toBe(0);
     expect(result.routing).toBe(RequestRouting.NEEDS_REVIEW);
-    expect(result.routingReasons).toEqual([expect.objectContaining({ code: 'no_line_items' })]);
+    expect(result.routingReasons).toEqual([
+      expect.objectContaining({ code: RoutingReasonCode.NO_LINE_ITEMS }),
+    ]);
   });
 
   it('is deterministic for the same inputs (EC-03)', () => {
@@ -151,9 +155,9 @@ describe('ScorerService', () => {
     const result = scorer.score([line({ hasFlags: true, matchConfidence: 0.99 })], thresholds);
 
     expect(result.overallConfidence).toBe(scoringConfig.policyFlagPenalty);
-    expect(result.routingReasons).toEqual(
-      expect.arrayContaining([expect.objectContaining({ code: 'policy_flags_detected' })]),
-    );
+    expect(result.routingReasons).toEqual([
+      expect.objectContaining({ code: RoutingReasonCode.POLICY_FLAGS_DETECTED }),
+    ]);
   });
 
   it('applies deal value penalty when total exceeds cap', () => {
@@ -163,9 +167,9 @@ describe('ScorerService', () => {
     );
 
     expect(result.overallConfidence).toBe(scoringConfig.dealValueExceededPenalty);
-    expect(result.routingReasons).toEqual(
-      expect.arrayContaining([expect.objectContaining({ code: 'deal_value_exceeds_cap' })]),
-    );
+    expect(result.routingReasons).toEqual([
+      expect.objectContaining({ code: RoutingReasonCode.DEAL_VALUE_EXCEEDS_CAP }),
+    ]);
   });
 
   it('routes quote with incomplete pricing to review (fail-closed)', () => {
@@ -179,9 +183,77 @@ describe('ScorerService', () => {
 
     expect(result.overallConfidence).toBe(scoringConfig.dealValueExceededPenalty);
     expect(result.routing).toBe(RequestRouting.NEEDS_REVIEW);
-    expect(result.routingReasons).toEqual(
-      expect.arrayContaining([expect.objectContaining({ code: 'incomplete_deal_value' })]),
+    expect(result.routingReasons).toEqual([
+      expect.objectContaining({ code: RoutingReasonCode.INCOMPLETE_DEAL_VALUE }),
+    ]);
+  });
+
+  // ── AC-02: Multiple triggered conditions ─────────────────────────────
+
+  it('records both low-match and over-cap reasons when both trigger (AC-02)', () => {
+    const result = scorer.score(
+      [line({ matchConfidence: 0.64, unitPriceMinor: 100000, quantity: 10 })],
+      thresholds,
     );
+
+    expect(result.overallConfidence).toBe(0.64);
+    expect(result.routing).toBe(RequestRouting.NEEDS_REVIEW);
+    expect(result.routingReasons).toHaveLength(2);
+    expect(result.routingReasons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: RoutingReasonCode.LOW_LINE_CONFIDENCE }),
+        expect.objectContaining({ code: RoutingReasonCode.DEAL_VALUE_EXCEEDS_CAP }),
+      ]),
+    );
+  });
+
+  it('records low-match, over-cap, and policy-flag reasons when all three trigger', () => {
+    const result = scorer.score(
+      [
+        line({
+          matchConfidence: 0.64,
+          unitPriceMinor: 100000,
+          quantity: 10,
+          hasFlags: true,
+        }),
+      ],
+      thresholds,
+    );
+
+    expect(result.routing).toBe(RequestRouting.NEEDS_REVIEW);
+    expect(result.routingReasons).toHaveLength(3);
+    expect(result.routingReasons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: RoutingReasonCode.LOW_LINE_CONFIDENCE }),
+        expect.objectContaining({ code: RoutingReasonCode.DEAL_VALUE_EXCEEDS_CAP }),
+        expect.objectContaining({ code: RoutingReasonCode.POLICY_FLAGS_DETECTED }),
+      ]),
+    );
+  });
+
+  // ── EC-02: De-duplication ────────────────────────────────────────────
+
+  it('does not duplicate reasons when the same condition appears on multiple lines', () => {
+    const result = scorer.score(
+      [line({ matchConfidence: 0.64 }), line({ matchConfidence: 0.64 })],
+      thresholds,
+    );
+
+    expect(result.routingReasons).toHaveLength(1);
+    expect(result.routingReasons[0]?.code).toBe(RoutingReasonCode.LOW_LINE_CONFIDENCE);
+  });
+
+  it('does not duplicate reasons for multiple flagged lines', () => {
+    const result = scorer.score(
+      [
+        line({ hasFlags: true, matchConfidence: 0.99 }),
+        line({ hasFlags: true, matchConfidence: 0.98 }),
+      ],
+      thresholds,
+    );
+
+    expect(result.routingReasons).toHaveLength(1);
+    expect(result.routingReasons[0]?.code).toBe(RoutingReasonCode.POLICY_FLAGS_DETECTED);
   });
 
   it('routes a 0.92 quote needs_review at 0.95 but auto_eligible at 0.90 (AC-01)', () => {
@@ -194,7 +266,7 @@ describe('ScorerService', () => {
     expect(lowered.overallConfidence).toBe(0.92);
     expect(lowered.routing).toBe(RequestRouting.AUTO_ELIGIBLE);
     expect(lowered.routingReasons).toEqual(
-      expect.arrayContaining([expect.objectContaining({ code: 'auto_eligible' })]),
+      expect.arrayContaining([expect.objectContaining({ code: RoutingReasonCode.AUTO_ELIGIBLE })]),
     );
   });
 });
