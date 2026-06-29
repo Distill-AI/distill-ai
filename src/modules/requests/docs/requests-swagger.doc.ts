@@ -315,6 +315,7 @@ export function RequestDeclineDocs(): MethodDecorator {
     ApiBody({ type: DeclineRequestDto }),
     ApiResponse({
       status: HttpStatus.OK,
+      description: SYS_MSG.REQUEST_DECLINED,
       schema: {
         properties: {
           success: { type: 'boolean', example: true },

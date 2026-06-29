@@ -5,10 +5,10 @@ import { requestStatusLabels } from '../../api/interface/request-status';
 
 interface ReviewActionBarProps {
   requestId: string;
-  status: string;
+  status: RequestStatus;
 }
 
-const REVIEWABLE_STATUSES: ReadonlySet<string> = new Set(['needs_review']);
+const REVIEWABLE_STATUSES: ReadonlySet<RequestStatus> = new Set(['needs_review']);
 
 const DECLINE_REASONS = [
   'Not a relevant request',
@@ -42,7 +42,7 @@ export function ReviewActionBar({ requestId, status }: ReviewActionBarProps) {
     <div className="rounded-card border border-border bg-surface p-4">
       <div className="flex items-center gap-4">
         <span className="text-sm font-medium text-body-text">
-          {requestStatusLabels[status as RequestStatus] ?? status}
+          {requestStatusLabels[status] ?? status}
         </span>
         {REVIEWABLE_STATUSES.has(status) && !showDeclinePicker && (
           <button
@@ -107,7 +107,11 @@ export function ReviewActionBar({ requestId, status }: ReviewActionBarProps) {
               </div>
             </div>
             {declineMutation.isError && (
-              <p className="text-sm text-rose-600">Failed to decline. Please try again.</p>
+              <p className="text-sm text-rose-600">
+                {(declineMutation.error?.response?.status ?? 500) < 500
+                  ? ((declineMutation.error?.response?.data as { message?: string })?.message ?? 'Invalid input.')
+                  : 'Failed to decline. Please try again.'}
+              </p>
             )}
           </div>
         )}
