@@ -109,7 +109,8 @@ export function ReviewActionBar({ requestId, status }: ReviewActionBarProps) {
             {declineMutation.isError && (
               <p className="text-sm text-rose-600">
                 {(declineMutation.error?.response?.status ?? 500) < 500
-                  ? ((declineMutation.error?.response?.data as { message?: string })?.message ?? 'Invalid input.')
+                  ? ((declineMutation.error?.response?.data as { message?: string })?.message ??
+                    'Invalid input.')
                   : 'Failed to decline. Please try again.'}
               </p>
             )}
