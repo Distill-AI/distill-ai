@@ -180,6 +180,13 @@ export const PRICE_NO_MATCHED_LINES = 'No matched line items to price';
 export const PRICE_RULES_MISSING =
   'No pricing rules configured for this organization; quote blocked for review';
 
+// Policy node (US-E4-2)
+export const POLICY_OK = 'No policy breaches';
+export const POLICY_BREACH_FLAGGED = (count: number) =>
+  `${count} policy breach(es) flagged; routing to review`;
+export const POLICY_GATE_REVIEW =
+  'Policy breach detected; routed to review regardless of confidence';
+
 // Catalog matching
 export const MATCH_COMPLETE = (matched: number, total: number) =>
   `Catalog matching complete: ${matched}/${total} items matched`;
