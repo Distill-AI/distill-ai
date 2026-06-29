@@ -1,5 +1,12 @@
 import { applyDecorators, HttpStatus } from '@nestjs/common';
-import { ApiOperation, ApiBody, ApiParam, ApiOkResponse, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiOperation,
+  ApiBody,
+  ApiParam,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiResponse,
+} from '@nestjs/swagger';
 import * as SYS_MSG from '@constants/system-messages';
 
 const errorSchema = (statusCode: HttpStatus, error: string, message: string) => ({
@@ -37,7 +44,7 @@ export function GenerateDraftDocs() {
         required: ['gaps'],
       },
     }),
-    ApiOkResponse({
+    ApiCreatedResponse({
       description: SYS_MSG.CLARIFICATION_DRAFT_GENERATED,
       schema: {
         properties: {
@@ -179,15 +186,6 @@ export function SendClarificationDocs() {
       status: HttpStatus.NOT_FOUND,
       description: 'Clarification not found',
       schema: errorSchema(HttpStatus.NOT_FOUND, 'Not Found', 'Clarification not found'),
-    }),
-    ApiResponse({
-      status: HttpStatus.BAD_REQUEST,
-      description: 'Already sent',
-      schema: errorSchema(
-        HttpStatus.BAD_REQUEST,
-        'Bad Request',
-        SYS_MSG.CLARIFICATION_ALREADY_SENT,
-      ),
     }),
   );
 }

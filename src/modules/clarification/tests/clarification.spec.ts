@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { IsNull } from 'typeorm';
 import { ToolRegistry } from '@modules/tools/registry';
 import { ToolStatus } from '@modules/tools/enums/tools.enums';
 import { ClarificationService } from '../clarification.service';
@@ -145,8 +146,8 @@ describe('ClarificationService', () => {
 
       const result = await service.updateDraft(
         'clar-0001',
-        edited.draft_subject,
-        edited.draft_body,
+        edited.draft_subject ?? undefined,
+        edited.draft_body ?? undefined,
       );
 
       expect(result.draft_subject).toBe('Edited: Please provide missing details');
@@ -193,19 +194,20 @@ describe('ClarificationService', () => {
       expect(mockActions.markSent).toHaveBeenCalledWith('clar-0001', 'user-001');
     });
 
-    it('no other service method sets sent_at', () => {
-      const methodsThatShouldNotSetSentAt = [
-        service.generateDraft,
-        service.updateDraft,
-        service.getByRequestId,
-        service.getById,
-      ];
+    it('getByRequestId never calls markSent', async () => {
+      vi.mocked(mockActions.findByRequestId).mockResolvedValue(
+        makeClarification({ sent_at: null }),
+      );
+      const result = await service.getByRequestId('req-0001');
+      expect(result.sent_at).toBeNull();
+      expect(mockActions.markSent).not.toHaveBeenCalled();
+    });
 
-      for (const method of methodsThatShouldNotSetSentAt) {
-        const proto = Object.getPrototypeOf(method);
-        const fnStr = proto ? proto.constructor.name : 'unknown';
-        expect(fnStr).toBeDefined();
-      }
+    it('getById never calls markSent', async () => {
+      vi.mocked(mockActions.get).mockResolvedValue(makeClarification({ sent_at: null }));
+      const result = await service.getById('clar-0001');
+      expect(result.sent_at).toBeNull();
+      expect(mockActions.markSent).not.toHaveBeenCalled();
     });
   });
 
@@ -290,16 +292,6 @@ describe('ClarificationService', () => {
   /* ── SEC: Security ───────────────────────────────────────────── */
 
   describe('SEC-01 — sent_at is only settable by authenticated Send action', () => {
-    it('markSent is the only DB write that touches sent_at/sent_by', () => {
-      const markSentImpl = mockActions.markSent;
-      const updateDraftImpl = mockActions.updateDraft;
-      const createImpl = mockActions.create;
-
-      expect(markSentImpl).toBeDefined();
-      expect(updateDraftImpl).toBeDefined();
-      expect(createImpl).toBeDefined();
-    });
-
     it('generateDraft never calls markSent', async () => {
       vi.mocked(mockActions.findByRequestId).mockResolvedValue(null);
       vi.mocked(mockToolRegistry.invoke).mockResolvedValue({
@@ -328,18 +320,11 @@ describe('ClarificationService', () => {
       expect(mockActions.markSent).not.toHaveBeenCalled();
     });
 
-    it('Send requires an actor ID', async () => {
-      const unsent = makeClarification({ sent_at: null });
+    it('rejects missing actor IDs', async () => {
+      vi.mocked(mockActions.get).mockResolvedValue(makeClarification({ sent_at: null }));
 
-      vi.mocked(mockActions.get).mockResolvedValue(unsent);
-      vi.mocked(mockActions.markSent).mockResolvedValue(
-        makeClarification({ sent_at: new Date(), sent_by: 'actor-001' }),
-      );
-
-      const result = await service.send('clar-0001', 'actor-001');
-
-      expect(result.sent_by).toBe('actor-001');
-      expect(mockActions.markSent).toHaveBeenCalledWith('clar-0001', 'actor-001');
+      await expect(service.send('clar-0001', '' as never)).rejects.toThrow();
+      expect(mockActions.markSent).not.toHaveBeenCalled();
     });
   });
 
@@ -424,10 +409,10 @@ describe('ClarificationActions – sent_at boundary', () => {
 
     await actions.markSent('clar-0001', 'user-001');
 
-    expect(mockRepo.update).toHaveBeenCalledWith('clar-0001', {
-      sent_at: now,
-      sent_by: 'user-001',
-    });
+    expect(mockRepo.update).toHaveBeenCalledWith(
+      { id: 'clar-0001', sent_at: IsNull() },
+      { sent_at: now, sent_by: 'user-001' },
+    );
 
     vi.useRealTimers();
   });

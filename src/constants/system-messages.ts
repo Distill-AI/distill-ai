@@ -196,5 +196,7 @@ export const CLARIFICATION_NOT_FOUND = 'Clarification not found';
 export const CLARIFICATION_NO_GAPS =
   'At least one gap is required to generate a clarification draft';
 export const CLARIFICATION_ALREADY_SENT = 'Clarification has already been sent';
+export const CLARIFICATION_SEND_ACTOR_REQUIRED =
+  'A valid actor ID is required to send a clarification';
 export const CLARIFICATION_DRAFT_PARSE_FAILED =
   'Failed to parse clarification draft from LLM response';
