@@ -15,10 +15,10 @@ describe('RoutingReasonsBanner', () => {
     expect(screen.queryByRole('button', { name: /why this needs review/i })).not.toBeInTheDocument();
   });
 
-  it('shows all-clear when routing_reasons is empty regardless of routing value', () => {
+  it('shows the disclosure header when routing is needs_review with no reasons', () => {
     render(<RoutingReasonsBanner routing="needs_review" routing_reasons={[]} overall_confidence={null} />);
-    expect(screen.getByText(/all clear/i)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /why this needs review/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/all clear/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /why this needs review/i })).toBeInTheDocument();
   });
 
   it('renders all reason messages in the flagged state', () => {
@@ -43,8 +43,9 @@ describe('RoutingReasonsBanner', () => {
     expect(screen.getByText('Line confidence 0.64 below auto threshold 0.95')).toBeInTheDocument();
   });
 
-  it('shows all-clear when routing is null and reasons is empty', () => {
+  it('does not show all-clear when routing is null and reasons is empty', () => {
     render(<RoutingReasonsBanner routing={null} routing_reasons={[]} overall_confidence={null} />);
-    expect(screen.getByText(/all clear/i)).toBeInTheDocument();
+    expect(screen.queryByText(/all clear/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /why this needs review/i })).toBeInTheDocument();
   });
 });
