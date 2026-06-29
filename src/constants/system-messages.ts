@@ -186,3 +186,15 @@ export const MATCH_CLOSE_TIE_REASON = (top1: number, top2: number) =>
 // Line items
 export const LINE_ITEM_NOT_FOUND = (id: string) => `Line item ${id} not found`;
 export const CANDIDATES_RETRIEVED = 'Candidates retrieved successfully';
+
+// Clarification
+export const CLARIFICATION_DRAFT_GENERATED = 'Clarification draft generated successfully';
+export const CLARIFICATION_DRAFT_UPDATED = 'Clarification draft updated successfully';
+export const CLARIFICATION_SENT = 'Clarification sent successfully';
+export const CLARIFICATION_RETRIEVED = 'Clarification retrieved successfully';
+export const CLARIFICATION_NOT_FOUND = 'Clarification not found';
+export const CLARIFICATION_NO_GAPS =
+  'At least one gap is required to generate a clarification draft';
+export const CLARIFICATION_ALREADY_SENT = 'Clarification has already been sent';
+export const CLARIFICATION_DRAFT_PARSE_FAILED =
+  'Failed to parse clarification draft from LLM response';
