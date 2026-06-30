@@ -4,7 +4,6 @@ interface TraceNodeProps {
   name: string;
   status: 'pending' | 'in-progress' | 'success' | 'failed';
   tool_name?: string;
-  attempt?: number;
   duration_ms?: number;
   summary?: string;
   error?: string;
@@ -31,13 +30,13 @@ export function TraceNode({
   name,
   status,
   tool_name,
-  attempt,
   duration_ms,
   summary,
   error,
 }: TraceNodeProps) {
-  const showTool =
-    status === 'in-progress' && tool_name && (name === 'extract' || name === 'match');
+  const showTool = tool_name && (status === 'success' || status === 'in-progress');
+  const durationLabel = duration_ms !== undefined ? `${(duration_ms / 1000).toFixed(1)}s` : null;
+  const statusLabel = status === 'success' ? 'ok' : 'running';
 
   return (
     <div className="flex flex-col gap-2 py-1">
@@ -48,12 +47,6 @@ export function TraceNode({
         >
           {name}
         </span>
-        {showTool && (
-          <span className="inline-flex items-center rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
-            {tool_name}
-            {attempt ? ` (attempt ${attempt})` : ''}
-          </span>
-        )}
         {duration_ms !== undefined && (
           <span className="text-xs text-muted whitespace-nowrap">{duration_ms}ms</span>
         )}
@@ -66,6 +59,18 @@ export function TraceNode({
           </span>
         )}
       </div>
+      {showTool && (
+        <div className="ml-7">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 text-indigo-700 px-2 py-0.5 text-[11px] font-medium font-mono">
+            🔧 {tool_name}
+            {durationLabel && ` · ${durationLabel}`}
+            {' · '}
+            <span className={status === 'success' ? 'text-success-text' : 'text-indigo-700'}>
+              {statusLabel}
+            </span>
+          </span>
+        </div>
+      )}
     </div>
   );
 }
