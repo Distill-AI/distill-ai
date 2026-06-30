@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useRole } from '../../hooks/useRole';
 import type { Role } from '../../context/RoleContext';
 import { DistillMark } from './DistillMark';
@@ -99,6 +99,7 @@ const NAV_ITEMS: NavItem[] = [
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { role } = useRole();
+  const { pathname } = useLocation();
   const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(role));
   const navRef = useRef<HTMLElement>(null);
 
@@ -158,14 +159,15 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               to={item.to}
               end={item.to === '/'}
               onClick={onClose}
-              className={({ isActive }) =>
-                [
+              className={({ isActive }) => {
+                const active = isActive || (item.to === '/' && pathname.startsWith('/requests/'));
+                return [
                   'flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] transition-colors',
-                  isActive
+                  active
                     ? 'bg-slate-800 text-white shadow-[inset_3px_0_0_#6366F1]'
                     : 'text-muted hover:text-white hover:bg-slate-800/60',
-                ].join(' ')
-              }
+                ].join(' ');
+              }}
             >
               {item.icon}
               {item.label}
