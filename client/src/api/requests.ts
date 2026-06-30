@@ -22,6 +22,45 @@ export interface AttachmentSummary {
   created_at: string;
 }
 
+/** The catalog SKU a parsed line matched to. */
+export interface MatchedSkuSummary {
+  id: string;
+  sku_code: string;
+  name: string;
+}
+
+/** One parsed line for the Review screen's parsed-structure pane (US-E6-1). */
+export interface LineItemDetail {
+  id: string;
+  position: number;
+  raw_text: string;
+  quantity: number | null;
+  unit_price_minor: number | null;
+  match_confidence: number | null;
+  matched_sku: MatchedSkuSummary | null;
+  flags: string[];
+}
+
+/** One priced line of the suggested quote. */
+export interface QuoteLineDetail {
+  position: number;
+  sku_id: string | null;
+  description: string;
+  quantity: number;
+  unit_price_minor: number;
+  amount_minor: number;
+}
+
+/** The suggested quote with its running total (US-E6-1 quote pane). */
+export interface QuoteDetail {
+  subtotal_minor: number;
+  discount_minor: number;
+  total_minor: number;
+  currency: string;
+  lead_time_days: number | null;
+  lines: QuoteLineDetail[];
+}
+
 /** A single request's detail, returned by GET /requests/:id, for the Review screen. */
 export interface RequestDetail {
   id: string;
@@ -36,6 +75,8 @@ export interface RequestDetail {
   current_node: string;
   created_at: string;
   attachments: AttachmentSummary[];
+  line_items: LineItemDetail[];
+  quote: QuoteDetail | null;
 }
 
 export async function fetchRequest(id: string): Promise<RequestDetail> {

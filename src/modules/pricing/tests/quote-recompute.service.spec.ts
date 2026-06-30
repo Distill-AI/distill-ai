@@ -136,4 +136,43 @@ describe('QuoteRecomputeService', () => {
     expect(result.blocked).toBe(false);
     expect(updateCalls[0].payload.unit_price_minor).toBe(850);
   });
+
+  it('clears persisted pricing from a line that dropped out of the quote', async () => {
+    const dropped = makeLine({
+      id: 'li-2',
+      position: 2,
+      matched_sku: null,
+      matched_sku_id: null,
+      unit_price_minor: 999,
+      flags: [PRICING_BLOCKED_FLAG],
+    });
+    const { svc, em, updateCalls } = setup([makeLine({ quantity: 500 }), dropped]);
+    await svc.recompute('req-1', 'org-1', em as never);
+
+    const clear = updateCalls.find((u) => u.where.id === 'li-2');
+    expect(clear?.payload).toMatchObject({ unit_price_minor: null, lead_time_days: null });
+    expect(clear?.payload.flags).not.toContain(PRICING_BLOCKED_FLAG);
+  });
+
+  it('does not mark a manual-override line as blocked in a mixed, rule-missing quote', async () => {
+    const auto = makeLine({ id: 'li-1', position: 1, quantity: 500 });
+    const override = makeLine({
+      id: 'li-2',
+      position: 2,
+      quantity: 100,
+      unit_price_minor: 850,
+      flags: [MANUAL_OVERRIDE_FLAG],
+    });
+    const { svc, em, updateCalls } = setup([auto, override], {
+      hasAnyRules: false,
+      quantityBreaks: [],
+    });
+    const result = await svc.recompute('req-1', 'org-1', em as never);
+
+    expect(result.blocked).toBe(true);
+    const autoUpdate = updateCalls.find((u) => u.where.id === 'li-1');
+    const overrideUpdate = updateCalls.find((u) => u.where.id === 'li-2');
+    expect(autoUpdate?.payload.flags).toContain(PRICING_BLOCKED_FLAG);
+    expect(overrideUpdate?.payload.flags).not.toContain(PRICING_BLOCKED_FLAG);
+  });
 });

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ObjectStoreModule } from '@common/object-store/object-store.module';
 import { ExtractionModule } from '@modules/extraction/extraction.module';
+import { QuotesModule } from '@modules/quotes/quotes.module';
 import { PricingModule } from '@modules/pricing/pricing.module';
 import { Sku } from '@modules/catalog/entities/sku.entity';
 import { QueueClientModule } from '@queue/queue-client.module';
@@ -24,6 +25,8 @@ import { NodeRecoveryActions } from './actions/node-recovery.actions';
     EventsModule,
     ObjectStoreModule,
     ExtractionModule,
+    // QuotesModule provides QuoteModelAction so the Review detail can include the suggested quote.
+    QuotesModule,
     // PricingModule provides QuoteRecomputeService (deterministic re-price reused from US-E4-1).
     PricingModule,
     // Sku repo for org-scoped SKU validation in the re-map action.
