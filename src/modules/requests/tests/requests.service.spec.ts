@@ -1,5 +1,7 @@
 import { RequestsService } from '../services/requests.service';
 import { RequestModelAction } from '../requests.model-action';
+import { LineItemModelAction } from '@modules/catalog/line-item.model-action';
+import { QuoteModelAction } from '@modules/quotes/quote.model-action';
 import { AttachmentsService } from '../services/attachments.service';
 import type { Request } from '../entities/request.entity';
 
@@ -21,6 +23,8 @@ const mockRequest = {
 describe('RequestsService', () => {
   let service: RequestsService;
   let modelAction: Partial<RequestModelAction>;
+  let lineItems: Partial<LineItemModelAction>;
+  let quotes: Partial<QuoteModelAction>;
   let attachmentsService: Partial<AttachmentsService>;
 
   beforeEach(() => {
@@ -28,6 +32,44 @@ describe('RequestsService', () => {
       list: vi.fn().mockResolvedValue({
         payload: [mockRequest],
         paginationMeta: { total: 1, page: 1, limit: 50 },
+      }),
+    };
+    lineItems = {
+      list: vi.fn().mockResolvedValue({
+        payload: [
+          {
+            id: 'li-1',
+            position: 1,
+            raw_text: 'M6 bolts x100',
+            quantity: 100,
+            unit_price_minor: 900,
+            match_confidence: 0.62,
+            matched_sku: { id: 'sku-1', sku_code: 'SKU-061', name: 'M6 Hex Bolt' },
+            flags: ['close_tie'],
+          },
+        ],
+        paginationMeta: { total: 1 },
+      }),
+    };
+    quotes = {
+      getForRequest: vi.fn().mockResolvedValue({
+        quote: {
+          subtotal_minor: 100000,
+          discount_minor: 5000,
+          total_minor: 95000,
+          currency: 'NGN',
+          lead_time_days: 3,
+        },
+        lines: [
+          {
+            position: 1,
+            sku_id: 'sku-1',
+            description: 'M6 Hex Bolt',
+            quantity: 100,
+            unit_price_minor: 950,
+            amount_minor: 95000,
+          },
+        ],
       }),
     };
     attachmentsService = {
@@ -45,6 +87,8 @@ describe('RequestsService', () => {
     };
     service = new RequestsService(
       modelAction as RequestModelAction,
+      lineItems as LineItemModelAction,
+      quotes as QuoteModelAction,
       attachmentsService as AttachmentsService,
     );
   });
@@ -96,6 +140,27 @@ describe('RequestsService', () => {
       expect(detail.attachments[0]).not.toHaveProperty('storage_url');
       expect(detail.attachments[0]).not.toHaveProperty('parsed_text');
       expect(detail).not.toHaveProperty('org_id');
+    });
+
+    it('includes parsed line items (with matched SKU + flags) and the suggested quote (US-E6-1)', async () => {
+      const detail = await service.getDetail(mockRequest);
+
+      expect(detail.line_items).toHaveLength(1);
+      expect(detail.line_items[0]).toMatchObject({
+        position: 1,
+        match_confidence: 0.62,
+        matched_sku: { sku_code: 'SKU-061', name: 'M6 Hex Bolt' },
+        flags: ['close_tie'],
+      });
+      expect(detail.quote).toMatchObject({ total_minor: 95000, currency: 'NGN' });
+      expect(detail.quote?.lines[0]).toMatchObject({ amount_minor: 95000 });
+    });
+
+    it('returns a null quote when the request has not been priced yet (EC-01)', async () => {
+      (quotes.getForRequest as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+      const detail = await service.getDetail(mockRequest);
+      expect(detail.quote).toBeNull();
+      expect(detail.line_items).toHaveLength(1);
     });
   });
 });
