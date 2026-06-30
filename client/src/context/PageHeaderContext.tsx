@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
 
 interface PageHeaderValue {
@@ -25,16 +25,13 @@ interface PageHeaderProviderProps {
 export function PageHeaderProvider({ children, resetKey }: PageHeaderProviderProps) {
   const [title, setTitle] = useState<ReactNode>(null);
   const [actions, setActions] = useState<ReactNode | null>(null);
-  const mounted = useRef(false);
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
 
-  useEffect(() => {
-    if (!mounted.current) {
-      mounted.current = true;
-      return;
-    }
+  if (prevResetKey !== resetKey) {
+    setPrevResetKey(resetKey);
     setTitle(null);
     setActions(null);
-  }, [resetKey]);
+  }
 
   return (
     <PageHeaderContext.Provider value={{ title, actions, setTitle, setActions }}>
