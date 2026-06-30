@@ -1,6 +1,8 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { Review } from './Review';
+import { PageHeaderProvider, usePageHeader } from '../context/PageHeaderContext';
 import type { RequestDetail } from '../api/requests';
 
 const { mockUseRequest, mockDownload, mockUseDeclineRequest } = vi.hoisted(() => ({
@@ -10,6 +12,7 @@ const { mockUseRequest, mockDownload, mockUseDeclineRequest } = vi.hoisted(() =>
     mutate: vi.fn(),
     isPending: false,
     isError: false,
+    reset: vi.fn(),
   })),
 }));
 
@@ -19,6 +22,10 @@ vi.mock('../api/requests', () => ({
 }));
 vi.mock('../api/attachments', () => ({
   downloadAttachment: mockDownload,
+}));
+vi.mock('../components/review/DeclineModal', () => ({
+  DeclineModal: ({ open }: { open: boolean }) =>
+    open ? <div role="dialog">Decline modal</div> : null,
 }));
 
 const detail: RequestDetail = {
@@ -73,13 +80,26 @@ const detail: RequestDetail = {
   },
 };
 
+function PageHeaderSlots() {
+  const { title, actions } = usePageHeader();
+  return (
+    <>
+      <div data-testid="topbar-title">{title}</div>
+      <div data-testid="topbar-actions">{actions}</div>
+    </>
+  );
+}
+
 function renderReview() {
   return render(
-    <MemoryRouter initialEntries={['/requests/req-1/review']}>
-      <Routes>
-        <Route path="/requests/:id/review" element={<Review />} />
-      </Routes>
-    </MemoryRouter>,
+    <PageHeaderProvider>
+      <MemoryRouter initialEntries={['/requests/req-1/review']}>
+        <PageHeaderSlots />
+        <Routes>
+          <Route path="/requests/:id/review" element={<Review />} />
+        </Routes>
+      </MemoryRouter>
+    </PageHeaderProvider>,
   );
 }
 
@@ -156,7 +176,7 @@ describe('Review', () => {
     expect(screen.getByRole('button', { name: /decline/i })).toBeInTheDocument();
   });
 
-  it('shows a declined status banner instead of Decline button when already declined', () => {
+  it('shows a declined notice instead of action buttons when status is declined', () => {
     mockUseRequest.mockReturnValue({
       data: { ...detail, status: 'declined' },
       isLoading: false,
@@ -166,5 +186,22 @@ describe('Review', () => {
 
     expect(screen.queryByRole('button', { name: /decline/i })).not.toBeInTheDocument();
     expect(screen.getByText(/this request has been declined/i)).toBeInTheDocument();
+  });
+
+  it('renders the back button in the title slot', () => {
+    mockUseRequest.mockReturnValue({ data: detail, isLoading: false, isError: false });
+    renderReview();
+
+    expect(screen.getByRole('link', { name: /back to inbox/i })).toBeInTheDocument();
+  });
+
+  it('opens the DeclineModal when Decline is clicked', async () => {
+    const user = userEvent.setup();
+    mockUseRequest.mockReturnValue({ data: detail, isLoading: false, isError: false });
+    renderReview();
+
+    await user.click(screen.getByRole('button', { name: /decline/i }));
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 });
