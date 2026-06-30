@@ -26,9 +26,21 @@ export class ClarificationActions extends AbstractModelAction<Clarification> {
     gaps?: string[],
   ): Promise<Clarification | null> {
     if (gaps !== undefined) {
-      await this.clarificationRepository.update(id, { draft_subject, draft_body, gaps });
+      const result = await this.clarificationRepository.update(
+        { id, sent_at: IsNull() },
+        { draft_subject, draft_body, gaps },
+      );
+      if (!result.affected) {
+        return null;
+      }
     } else {
-      await this.clarificationRepository.update(id, { draft_subject, draft_body });
+      const result = await this.clarificationRepository.update(
+        { id, sent_at: IsNull() },
+        { draft_subject, draft_body },
+      );
+      if (!result.affected) {
+        return null;
+      }
     }
     return this.clarificationRepository.findOne({ where: { id } });
   }

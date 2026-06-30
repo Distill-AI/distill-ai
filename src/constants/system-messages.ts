@@ -214,6 +214,7 @@ export const CLARIFICATION_SEND_ACTOR_REQUIRED =
   'A valid actor ID is required to send a clarification';
 export const CLARIFICATION_DRAFT_PARSE_FAILED =
   'Failed to parse clarification draft from LLM response';
+export const CLARIFICATION_DRAFT_EMPTY = 'Cannot send a clarification with empty draft content';
 
 // Decline
 export const REQUEST_DECLINED = 'Request declined successfully';

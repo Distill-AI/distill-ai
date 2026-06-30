@@ -416,6 +416,7 @@ describe('ClarificationActions – sent_at boundary', () => {
       draft_subject: 'New subject',
       sent_at: null,
     });
+    mockRepo.update.mockResolvedValue({ affected: 1, raw: [] } as never);
 
     await actions.updateDraft('clar-0001', 'New subject', null);
 

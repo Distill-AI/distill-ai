@@ -9,14 +9,12 @@ export class AddClarificationSentBy1782500000000 implements MigrationInterface {
       `ALTER TABLE "clarifications" ADD COLUMN IF NOT EXISTS "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()`,
     );
     await queryRunner.query(
-      `UPDATE "clarifications" SET "sent_by" = '00000000-0000-0000-0000-000000000000' WHERE "sent_at" IS NOT NULL AND "sent_by" IS NULL`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS "idx_clarifications_request_id" ON "clarifications" ("request_id")`,
     );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `UPDATE "clarifications" SET "sent_by" = NULL WHERE "sent_by" = '00000000-0000-0000-0000-000000000000'`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "idx_clarifications_request_id"`);
     await queryRunner.query(`ALTER TABLE "clarifications" DROP COLUMN IF EXISTS "sent_by"`);
     await queryRunner.query(`ALTER TABLE "clarifications" DROP COLUMN IF EXISTS "updated_at"`);
   }
