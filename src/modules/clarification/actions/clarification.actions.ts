@@ -34,10 +34,13 @@ export class ClarificationActions extends AbstractModelAction<Clarification> {
   }
 
   async markSent(id: string, sentBy: string): Promise<Clarification | null> {
-    await this.clarificationRepository.update(
+    const result = await this.clarificationRepository.update(
       { id, sent_at: IsNull() },
       { sent_at: new Date(), sent_by: sentBy },
     );
+    if (!result.affected) {
+      return null;
+    }
     return this.clarificationRepository.findOne({ where: { id } });
   }
 }

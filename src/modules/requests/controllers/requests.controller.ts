@@ -32,12 +32,15 @@ import {
   ListRequestsDocs,
   GetRequestDocs,
   PasteAttachmentDocs,
+  RequestDeclineDocs,
 } from '../docs/requests-swagger.doc';
 import { AttachmentsService } from '../services/attachments.service';
 import { PasteAttachmentDto } from '../dto/paste-attachment.dto';
+import { DeclineRequestDto } from '../dto/decline-request.dto';
 import { parsePagination } from '@common/pagination/parse-pagination';
 import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
 import type { ResumeResponsePayload } from '../interfaces/resume.interface';
+import type { DeclineResponsePayload } from '../interfaces/decline.interface';
 
 @Controller('requests')
 export class RequestsController {
@@ -209,5 +212,36 @@ export class RequestsController {
   ): Promise<{ statusCode: number; message: string }> {
     await this.attachmentsService.paste(req.user, requestId, attachmentId, dto.content);
     return { statusCode: HttpStatus.OK, message: SYS_MSG.ATTACHMENT_PASTE_ACCEPTED };
+  }
+
+  @Post(':id/decline')
+  @HttpCode(HttpStatus.OK)
+  @Roles(Role.ESTIMATOR, Role.ADMIN)
+  @RequestDeclineDocs()
+  async decline(
+    @Param('id') requestId: string,
+    @Body() dto: DeclineRequestDto,
+    @Req() req: { user?: AuthUser },
+  ): Promise<{
+    statusCode: number;
+    message: string;
+    data: DeclineResponsePayload;
+  }> {
+    const request = await this.requestsService.findByIdOrFail(requestId);
+
+    if (authConfig.enabled) {
+      const user = req.user;
+      if (!user || request.org_id !== user.orgId) {
+        throw new NotFoundException(SYS_MSG.REQUEST_NOT_FOUND(requestId));
+      }
+    }
+
+    const result = await this.requestActions.declineRequest(request, dto.reason, req.user?.userId);
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: SYS_MSG.REQUEST_DECLINED,
+      data: result,
+    };
   }
 }

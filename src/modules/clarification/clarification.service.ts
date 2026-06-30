@@ -54,11 +54,22 @@ export class ClarificationService {
         return existing;
       }
 
+      if (existing.sent_at) {
+        return existing;
+      }
+
       const updated = await this.actions.updateDraft(existing.id, draft_subject, draft_body, gaps);
       if (!updated) {
         throw new CustomHttpException(SYS_MSG.CLARIFICATION_NOT_FOUND, HttpStatus.NOT_FOUND);
       }
       return updated;
+    }
+
+    if (!generationSucceeded) {
+      throw new CustomHttpException(
+        SYS_MSG.CLARIFICATION_DRAFT_PARSE_FAILED,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
 
     const created = await this.actions.create({
@@ -101,6 +112,10 @@ export class ClarificationService {
   ): Promise<Clarification> {
     const existing = await this.getById(id);
 
+    if (existing.sent_at) {
+      throw new CustomHttpException(SYS_MSG.CLARIFICATION_ALREADY_SENT, HttpStatus.CONFLICT);
+    }
+
     const updated = await this.actions.updateDraft(
       id,
       draft_subject ?? existing.draft_subject,
@@ -131,6 +146,12 @@ export class ClarificationService {
     const updated = await this.actions.markSent(id, sentBy);
 
     if (!updated) {
+      const recheck = await this.actions.get({
+        identifierOptions: { id } as FindOptionsWhere<Clarification>,
+      });
+      if (recheck?.sent_at) {
+        return recheck;
+      }
       throw new CustomHttpException(SYS_MSG.CLARIFICATION_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
