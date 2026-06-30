@@ -20,15 +20,13 @@ describe('RoutingReasonsBanner', () => {
   it('shows all-clear when routing is auto_eligible', () => {
     render(<RoutingReasonsBanner routing="auto_eligible" routing_reasons={[]} />);
     expect(screen.getByText(/all clear/i)).toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: /why this needs review/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /review flags/i })).not.toBeInTheDocument();
   });
 
   it('shows the disclosure header when routing is needs_review with no reasons', () => {
     render(<RoutingReasonsBanner routing="needs_review" routing_reasons={[]} />);
     expect(screen.queryByText(/all clear/i)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /why this needs review/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /review flags/i })).toBeInTheDocument();
   });
 
   it('renders all reason messages in the flagged state', () => {
@@ -41,7 +39,7 @@ describe('RoutingReasonsBanner', () => {
 
   it('aria-controls points at the panel id', () => {
     render(<RoutingReasonsBanner routing="needs_review" routing_reasons={reasons} />);
-    const btn = screen.getByRole('button', { name: /why this needs review/i });
+    const btn = screen.getByRole('button', { name: /review flags/i });
     const panelId = btn.getAttribute('aria-controls');
     expect(panelId).toBeTruthy();
     expect(document.getElementById(panelId!)).toBeInTheDocument();
@@ -51,7 +49,7 @@ describe('RoutingReasonsBanner', () => {
     const user = userEvent.setup();
     render(<RoutingReasonsBanner routing="needs_review" routing_reasons={reasons} />);
 
-    const btn = screen.getByRole('button', { name: /why this needs review/i });
+    const btn = screen.getByRole('button', { name: /review flags/i });
     expect(btn).toHaveAttribute('aria-expanded', 'true');
 
     await user.click(btn);
