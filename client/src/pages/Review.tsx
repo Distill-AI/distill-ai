@@ -22,6 +22,14 @@ export function Review() {
   const { data: request, isLoading, isError, refetch } = useRequest(id);
   const [downloadError, setDownloadError] = useState('');
 
+  // Clear a stale download error when navigating to a different request (adjust-state-on-prop-change,
+  // not an effect, so there is no extra render pass).
+  const [prevId, setPrevId] = useState(id);
+  if (id !== prevId) {
+    setPrevId(id);
+    setDownloadError('');
+  }
+
   const heading = request?.sender_company ?? request?.sender_contact ?? 'Request';
 
   return (
@@ -54,7 +62,7 @@ export function Review() {
         <div className="flex min-h-0 flex-1 flex-col gap-4">
           {downloadError && <ErrorBanner message={downloadError} />}
 
-          {/* Fixed action bar: it sits above the scrolling panes, so it never scrolls away (FR-1). */}
+          {/* Must stay outside the scrolling grid below so it never scrolls away (FR-1). */}
           <ReviewActionBar requestId={request.id} status={request.status as RequestStatus} />
 
           <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
