@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager, In } from 'typeorm';
 import { LineItem } from '@modules/catalog/entities/line-item.entity';
-import { LineItemModelAction } from '@modules/catalog/line-item.model-action';
+import { Quote } from '@modules/quotes/entities/quote.entity';
+import { QuoteLineItem } from '@modules/quotes/entities/quote-line-item.entity';
 import { QuoteModelAction, type QuoteLineInput } from '@modules/quotes/quote.model-action';
 import { PricingRuleModelAction } from './pricing-rule.model-action';
 import { QuotePricingService } from './quote-pricing.service';
@@ -32,26 +32,25 @@ const EMPTY_RESULT: RecomputeResult = {
 };
 
 /**
- * Re-prices a request's matched lines from the catalog + org rules and replaces its quote in one
- * transaction. It reuses the pure US-E4-1 PricingService and persistence, so a re-map recomputes
- * the same totals the pipeline would (US-E6-2-BE FR-2). It receives no ToolRegistry, so a recompute
- * can never be steered by model output (SEC-02). Manually overridden lines keep their estimator-set
- * unit price; everything else is rule-priced.
+ * Re-prices a request's matched lines and replaces its quote, all within the caller's transaction
+ * (`em`) so a re-map's line update, the recompute, and the status change commit or roll back together
+ * (US-E6-2-BE FR-2). Reads and deletes are org-scoped, so it only ever touches the given org. It
+ * reuses the pure US-E4-1 PricingService and receives no ToolRegistry, so a recompute can never be
+ * steered by model output (SEC-02). Manually overridden lines keep their unit price; the rest are
+ * rule-priced.
  */
 @Injectable()
 export class QuoteRecomputeService {
   constructor(
-    private readonly lineItems: LineItemModelAction,
     private readonly pricingRules: PricingRuleModelAction,
     private readonly pricing: QuotePricingService,
     private readonly quotes: QuoteModelAction,
-    @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
-  /** Recomputes and persists the quote for a request; org-scoped so it only ever touches its own org. */
-  async recompute(requestId: string, orgId: string): Promise<RecomputeResult> {
-    const { payload: lines } = await this.lineItems.list({
-      filterRecordOptions: { request_id: requestId, request: { org_id: orgId } },
+  /** Recomputes and persists the quote for a request inside the caller's transaction. */
+  async recompute(requestId: string, orgId: string, em: EntityManager): Promise<RecomputeResult> {
+    const lines = await em.find(LineItem, {
+      where: { request_id: requestId, request: { org_id: orgId } },
       relations: { matched_sku: true },
       order: { position: 'ASC' },
     });
@@ -60,8 +59,13 @@ export class QuoteRecomputeService {
       (li) => li.matched_sku !== null && li.quantity !== null && li.quantity > 0,
     );
     if (priceable.length === 0) {
-      // Nothing priceable left: drop any stale quote so the request carries no orphaned totals.
-      await this.quotes.deleteForRequest(requestId);
+      // Nothing priceable: drop any stale quote. Scoped by (request_id, org_id) so a mismatched
+      // request/org pair can never delete another org's quote (defence in depth).
+      const existing = await em.find(Quote, { where: { request_id: requestId, org_id: orgId } });
+      if (existing.length > 0) {
+        await em.delete(QuoteLineItem, { quote_id: In(existing.map((q) => q.id)) });
+        await em.delete(Quote, { request_id: requestId, org_id: orgId });
+      }
       return EMPTY_RESULT;
     }
 
@@ -112,23 +116,21 @@ export class QuoteRecomputeService {
     );
     const currency = priceable[0].matched_sku?.currency ?? 'GBP';
 
-    const quote = await this.dataSource.transaction(async (em) => {
-      await this.persistLinePrices(em, allLines, blocked, flagsById);
-      return this.quotes.replaceForRequest(
-        {
-          requestId,
-          orgId,
-          quoteNumber: `Q-${requestId}`,
-          subtotalMinor,
-          discountMinor: subtotalMinor - totalMinor,
-          totalMinor,
-          leadTimeDays,
-          currency,
-          lines: allLines.map(toQuoteLine),
-        },
-        em,
-      );
-    });
+    await this.persistLinePrices(em, allLines, blocked, flagsById);
+    const quote = await this.quotes.replaceForRequest(
+      {
+        requestId,
+        orgId,
+        quoteNumber: `Q-${requestId}`,
+        subtotalMinor,
+        discountMinor: subtotalMinor - totalMinor,
+        totalMinor,
+        leadTimeDays,
+        currency,
+        lines: allLines.map(toQuoteLine),
+      },
+      em,
+    );
 
     return {
       quoteId: quote.id,
