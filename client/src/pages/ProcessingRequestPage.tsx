@@ -3,10 +3,12 @@ import { useParams, Link } from 'react-router-dom';
 import { ProcessingTrace } from '../components/ProcessingTrace';
 import { usePageHeader } from '../context/PageHeaderContext';
 import { ChevronLeftIcon } from '../components/ui/ChevronLeftIcon';
+import { useSSEEvents } from '../hooks/useSSEEvents';
 
 export function ProcessingRequestPage() {
   const { id } = useParams<{ id?: string }>();
   const { setTitle, setActions } = usePageHeader();
+  const { nodes, connection, finalOutput, reconnect } = useSSEEvents(id ?? null);
 
   useEffect(() => {
     setTitle(
@@ -53,7 +55,12 @@ export function ProcessingRequestPage() {
 
   return (
     <div className="px-6 py-6">
-      <ProcessingTrace requestId={id} />
+      <ProcessingTrace
+        nodes={nodes}
+        connection={connection}
+        finalOutput={finalOutput}
+        reconnect={reconnect}
+      />
     </div>
   );
 }
