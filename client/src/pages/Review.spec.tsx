@@ -42,6 +42,35 @@ const detail: RequestDetail = {
       created_at: '2026-06-24T10:00:00.000Z',
     },
   ],
+  line_items: [
+    {
+      id: 'li-1',
+      position: 1,
+      raw_text: '200x steel brackets',
+      quantity: 200,
+      unit_price_minor: 1425,
+      match_confidence: 0.62,
+      matched_sku: { id: 'sku-1', sku_code: 'SKU-061', name: 'Steel Bracket' },
+      flags: ['close_tie'],
+    },
+  ],
+  quote: {
+    subtotal_minor: 300000,
+    discount_minor: 15000,
+    total_minor: 285000,
+    currency: 'NGN',
+    lead_time_days: 5,
+    lines: [
+      {
+        position: 1,
+        sku_id: 'sku-1',
+        description: 'Steel Bracket',
+        quantity: 200,
+        unit_price_minor: 1425,
+        amount_minor: 285000,
+      },
+    ],
+  },
 };
 
 function renderReview() {
@@ -82,13 +111,42 @@ describe('Review', () => {
     expect(screen.getByRole('button', { name: /download rfq_apex\.pdf/i })).toBeInTheDocument();
   });
 
-  it('renders the parsed-structure and suggested-quote panes as placeholders', () => {
+  it('renders all three panes with real parsed lines and the suggested-quote total (AC-01, AC-03)', () => {
     mockUseRequest.mockReturnValue({ data: detail, isLoading: false, isError: false });
     renderReview();
 
+    // Pane headings.
     expect(screen.getByText(/parsed structure/i)).toBeInTheDocument();
     expect(screen.getByText(/suggested quote/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/coming soon/i)).toHaveLength(2);
+
+    // Parsed pane: the line, its matched SKU, a confidence chip (62%) and a visible flag marker.
+    expect(screen.getByText('200x steel brackets')).toBeInTheDocument();
+    expect(screen.getByText('SKU-061')).toBeInTheDocument();
+    expect(screen.getByText('62%')).toBeInTheDocument();
+    expect(screen.getByText(/close tie/i)).toBeInTheDocument();
+
+    // Quote pane: the running total renders.
+    expect(screen.getByTestId('quote-total')).toHaveTextContent(/2,850\.00/);
+  });
+
+  it('shows a defined not-priced state in the quote pane when there is no quote (EC-01)', () => {
+    mockUseRequest.mockReturnValue({
+      data: { ...detail, quote: null },
+      isLoading: false,
+      isError: false,
+    });
+    renderReview();
+
+    expect(screen.getByText(/not priced yet/i)).toBeInTheDocument();
+  });
+
+  it('offers a retry on a failed fetch (EC-02)', () => {
+    const refetch = vi.fn();
+    mockUseRequest.mockReturnValue({ data: undefined, isLoading: false, isError: true, refetch });
+    renderReview();
+
+    screen.getByRole('button', { name: /retry/i }).click();
+    expect(refetch).toHaveBeenCalled();
   });
 
   it('renders the Decline button for a needs_review request', () => {

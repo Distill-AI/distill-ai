@@ -29,6 +29,45 @@ export interface AttachmentSummary {
   created_at: Date;
 }
 
+/** The catalog SKU a line matched to, trimmed to what the parsed-structure pane renders. */
+export interface MatchedSkuSummary {
+  id: string;
+  sku_code: string;
+  name: string;
+}
+
+/** One parsed line for the Review screen's parsed-structure pane (US-E6-1). */
+export interface LineItemDetail {
+  id: string;
+  position: number;
+  raw_text: string;
+  quantity: number | null;
+  unit_price_minor: number | null;
+  match_confidence: number | null;
+  matched_sku: MatchedSkuSummary | null;
+  flags: string[];
+}
+
+/** One priced line of the suggested quote. */
+export interface QuoteLineDetail {
+  position: number;
+  sku_id: string | null;
+  description: string;
+  quantity: number;
+  unit_price_minor: number;
+  amount_minor: number;
+}
+
+/** The suggested quote with its running total, for the Review screen's quote pane (US-E6-1). */
+export interface QuoteDetail {
+  subtotal_minor: number;
+  discount_minor: number;
+  total_minor: number;
+  currency: string;
+  lead_time_days: number | null;
+  lines: QuoteLineDetail[];
+}
+
 /** Full request detail for the Review screen. Read model for `GET /requests/:id`. */
 export interface RequestDetail extends RequestSummary {
   sender_email: string | null;
@@ -37,4 +76,7 @@ export interface RequestDetail extends RequestSummary {
   routing: RequestRouting | null;
   routing_reasons: RoutingReason[];
   attachments: AttachmentSummary[];
+  // US-E6-1: parsed structure + suggested quote, so the Review workspace binds to one payload.
+  line_items: LineItemDetail[];
+  quote: QuoteDetail | null;
 }
