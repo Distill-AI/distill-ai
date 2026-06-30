@@ -65,7 +65,11 @@ export function TopBar({ isOpen, menuButtonRef, onMenuClick }: TopBarProps) {
         {actions && (
           <>
             <div className="hidden md:flex items-center gap-2">{actions}</div>
-            <div className="hidden md:block h-5 w-px bg-border" aria-hidden="true" data-testid="header-divider" />
+            <div
+              className="hidden md:block h-5 w-px bg-border"
+              aria-hidden="true"
+              data-testid="header-divider"
+            />
           </>
         )}
         <UserAvatar name={DEMO_USER.name} initials={DEMO_USER.initials} />
