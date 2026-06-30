@@ -122,7 +122,7 @@ describe('Review', () => {
     mockUseRequest.mockReturnValue({ data: detail, isLoading: false, isError: false });
     renderReview();
 
-    expect(screen.getByRole('button', { name: /why this needs review/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /review flags/i })).toBeInTheDocument();
   });
 
   it('shows an all-clear banner for auto-eligible requests', () => {
@@ -131,8 +131,6 @@ describe('Review', () => {
     renderReview();
 
     expect(screen.getByText(/all clear/i)).toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: /why this needs review/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /review flags/i })).not.toBeInTheDocument();
   });
 });

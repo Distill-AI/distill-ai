@@ -2,27 +2,11 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useRequest } from '../api/requests';
 import type { RequestStatus } from '../api/interface/request-status';
-import type { RoutingReason } from '../api/requests';
 import { OriginalRequestPane } from '../components/review/OriginalRequestPane';
 import { ReviewActionBar } from '../components/review/ReviewActionBar';
 import { RoutingReasonsBanner } from '../components/review/RoutingReasonsBanner';
 import { ErrorBanner } from '../components/inbox/ErrorBanner';
-
-const REASON_SHORT_LABEL: Record<string, string> = {
-  low_line_confidence: 'line below match threshold',
-  deal_value_exceeds_cap: 'deal value over auto-send cap',
-  deal_value_cap: 'deal value over auto-send cap',
-  policy_flags_detected: 'policy flags',
-  incomplete_deal_value: 'incomplete pricing',
-  no_line_items: 'no line items',
-  policy_breach: 'policy breach',
-  extraction_failed: 'extraction failed',
-  extraction_empty_source: 'empty source',
-};
-
-function reasonsSummary(reasons: RoutingReason[]): string {
-  return reasons.map((r) => REASON_SHORT_LABEL[r.code] ?? r.code).join(' · ');
-}
+import { reasonsSummary } from '../lib/routing-reason';
 
 const ROUTING_BADGE: Record<
   'auto_eligible' | 'needs_review',

@@ -34,7 +34,7 @@ export function RoutingReasonsBanner({ routing, routing_reasons }: RoutingReason
         onClick={() => setOpen((prev) => !prev)}
         className="flex items-center gap-1.5"
       >
-        <span className="text-sm font-medium text-slate-600">Why this needs review</span>
+        <span className="text-sm font-medium text-slate-600">Review flags</span>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 12 12"
@@ -57,8 +57,8 @@ export function RoutingReasonsBanner({ routing, routing_reasons }: RoutingReason
         className="mt-2 max-h-40 overflow-y-auto rounded-lg bg-canvas p-3.5"
       >
         <ul role="list" className="flex flex-col gap-1.5">
-          {routing_reasons.map((reason, index) => (
-            <li key={`${reason.code}-${reason.source}-${index}`} className="flex items-start gap-2">
+          {routing_reasons.map((reason) => (
+            <li key={`${reason.code}-${reason.source}`} className="flex items-start gap-2">
               <span
                 className="mt-1.75 h-1.5 w-1.5 shrink-0 rounded-full bg-muted"
                 aria-hidden="true"
