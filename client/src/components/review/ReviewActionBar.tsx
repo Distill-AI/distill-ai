@@ -45,13 +45,33 @@ export function ReviewActionBar({ requestId, status }: ReviewActionBarProps) {
           {requestStatusLabels[status] ?? status}
         </span>
         {REVIEWABLE_STATUSES.has(status) && !showDeclinePicker && (
-          <button
-            type="button"
-            onClick={() => setShowDeclinePicker(true)}
-            className="rounded-lg border border-rose-300 bg-white px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50"
-          >
-            Decline
-          </button>
+          <div className="ml-auto flex items-center gap-2">
+            {/* Request clarification and Approve are owned by sibling tickets; present here so the
+                fixed action bar holds all three controls (US-E6-1 FR-1). */}
+            <button
+              type="button"
+              disabled
+              title="Coming soon"
+              className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-body-text disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Request clarification
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowDeclinePicker(true)}
+              className="rounded-lg border border-rose-300 bg-white px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50"
+            >
+              Decline
+            </button>
+            <button
+              type="button"
+              disabled
+              title="Coming soon"
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Approve and generate
+            </button>
+          </div>
         )}
         {REVIEWABLE_STATUSES.has(status) && showDeclinePicker && (
           <div className="flex flex-1 flex-col gap-3">
