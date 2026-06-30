@@ -70,7 +70,7 @@ export function Review() {
               <OriginalRequestPane request={request} onError={setDownloadError} />
             </Pane>
             <Pane>
-              <ParsedStructurePane lines={request.line_items} />
+              <ParsedStructurePane requestId={request.id} lines={request.line_items} />
             </Pane>
             <Pane>
               <SuggestedQuotePane quote={request.quote} />
