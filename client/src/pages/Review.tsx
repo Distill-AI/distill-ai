@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { useRequest } from '../api/requests';
 import type { RequestStatus } from '../api/interface/request-status';
 import { OriginalRequestPane } from '../components/review/OriginalRequestPane';
+import { ParsedStructurePane } from '../components/review/ParsedStructurePane';
+import { SuggestedQuotePane } from '../components/review/SuggestedQuotePane';
 import { ReviewActionBar } from '../components/review/ReviewActionBar';
 import { RoutingReasonsBanner } from '../components/review/RoutingReasonsBanner';
 import { ErrorBanner } from '../components/inbox/ErrorBanner';
@@ -35,29 +37,32 @@ function ConfidenceRoutingBadge({ confidence, routing }: ConfidenceRoutingBadgeP
   );
 }
 
-function PlaceholderPane({ title }: { title: string }) {
-  const headingId = `${title.toLowerCase().replace(/\s+/g, '-')}-heading`;
+/** One independently-scrolling pane of the 3-pane workspace (EC-03). */
+function Pane({ children }: { children: React.ReactNode }) {
   return (
-    <section aria-labelledby={headingId} className="flex flex-1 flex-col gap-4">
-      <h2 id={headingId} className="text-xs font-semibold uppercase tracking-wide text-muted">
-        {title}
-      </h2>
-      <div className="flex flex-1 items-center justify-center rounded-card border border-dashed border-border py-10 text-sm text-muted">
-        Coming soon
-      </div>
-    </section>
+    <div className="min-h-0 overflow-y-auto rounded-card border border-border bg-surface p-4">
+      {children}
+    </div>
   );
 }
 
 export function Review() {
   const { id } = useParams<{ id: string }>();
-  const { data: request, isLoading, isError } = useRequest(id);
+  const { data: request, isLoading, isError, refetch } = useRequest(id);
   const [downloadError, setDownloadError] = useState('');
+
+  // Clear a stale download error when navigating to a different request (adjust-state-on-prop-change,
+  // not an effect, so there is no extra render pass).
+  const [prevId, setPrevId] = useState(id);
+  if (id !== prevId) {
+    setPrevId(id);
+    setDownloadError('');
+  }
 
   const heading = request?.sender_company ?? request?.sender_contact ?? 'Request';
 
   return (
-    <div className="px-6 py-6">
+    <div className="flex h-full flex-col px-6 py-6">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h1 className="text-xl font-semibold text-slate-900">Review · {heading}</h1>
@@ -90,37 +95,33 @@ export function Review() {
         </div>
       </div>
 
-      {downloadError && (
-        <div className="mb-4">
-          <ErrorBanner message={downloadError} />
-        </div>
-      )}
-
       {isLoading ? (
         <div className="rounded-card border border-border bg-surface px-4 py-12 text-center text-sm text-muted">
           Loading request…
         </div>
       ) : isError || !request ? (
-        <div className="rounded-card border border-border bg-surface px-4 py-12 text-center text-sm text-muted">
-          Could not load this request.
-        </div>
+        // EC-02: a failed fetch shows the error variant with a retry, never a blank workspace.
+        <ErrorBanner message="Could not load this request." onRetry={() => void refetch()} />
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-4">
+          {downloadError && <ErrorBanner message={downloadError} />}
+
+          {/* Must stay outside the scrolling grid below so it never scrolls away (FR-1). */}
           <ReviewActionBar requestId={request.id} status={request.status as RequestStatus} />
           <RoutingReasonsBanner
             routing={request.routing}
             routing_reasons={request.routing_reasons}
           />
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <div className="rounded-card border border-border bg-surface p-4">
+          <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
+            <Pane>
               <OriginalRequestPane request={request} onError={setDownloadError} />
-            </div>
-            <div className="flex rounded-card border border-border bg-surface p-4">
-              <PlaceholderPane title="Parsed structure" />
-            </div>
-            <div className="flex rounded-card border border-border bg-surface p-4">
-              <PlaceholderPane title="Suggested quote" />
-            </div>
+            </Pane>
+            <Pane>
+              <ParsedStructurePane requestId={request.id} lines={request.line_items} />
+            </Pane>
+            <Pane>
+              <SuggestedQuotePane quote={request.quote} />
+            </Pane>
           </div>
         </div>
       )}

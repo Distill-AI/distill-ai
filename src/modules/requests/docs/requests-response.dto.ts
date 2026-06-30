@@ -90,4 +90,87 @@ export class RequestDetailResponseDto extends RequestSummaryResponseDto {
 
   @ApiProperty({ type: [AttachmentSummaryResponseDto] })
   attachments: AttachmentSummaryResponseDto[];
+
+  @ApiProperty({
+    description:
+      'Parsed line items with match confidence and flags (US-E6-1 parsed-structure pane)',
+    type: 'array',
+    items: {
+      type: 'object',
+      required: [
+        'id',
+        'position',
+        'raw_text',
+        'quantity',
+        'unit_price_minor',
+        'match_confidence',
+        'matched_sku',
+        'flags',
+      ],
+      properties: {
+        id: { type: 'string', format: 'uuid' },
+        position: { type: 'number', example: 1 },
+        raw_text: { type: 'string', example: 'M6 hex bolts x 100' },
+        quantity: { type: 'number', nullable: true, example: 100 },
+        unit_price_minor: { type: 'number', nullable: true, example: 900 },
+        match_confidence: { type: 'number', nullable: true, example: 0.62 },
+        matched_sku: {
+          type: 'object',
+          nullable: true,
+          required: ['id', 'sku_code', 'name'],
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            sku_code: { type: 'string', example: 'SKU-061' },
+            name: { type: 'string', example: 'M6 Hex Bolt Zinc Plated' },
+          },
+        },
+        flags: { type: 'array', items: { type: 'string' }, example: ['close_tie'] },
+      },
+    },
+  })
+  line_items: unknown[];
+
+  @ApiProperty({
+    description: 'Suggested quote with running total, or null until priced (US-E6-1 quote pane)',
+    nullable: true,
+    type: 'object',
+    required: [
+      'subtotal_minor',
+      'discount_minor',
+      'total_minor',
+      'currency',
+      'lead_time_days',
+      'lines',
+    ],
+    properties: {
+      subtotal_minor: { type: 'number', example: 230000 },
+      discount_minor: { type: 'number', example: 11500 },
+      total_minor: { type: 'number', example: 218500 },
+      currency: { type: 'string', example: 'NGN' },
+      lead_time_days: { type: 'number', nullable: true, example: 3 },
+      lines: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: [
+            'position',
+            'sku_id',
+            'description',
+            'quantity',
+            'unit_price_minor',
+            'amount_minor',
+          ],
+          properties: {
+            position: { type: 'number', example: 1 },
+            sku_id: { type: 'string', format: 'uuid', nullable: true },
+            description: { type: 'string', example: 'M6 Socket Cap Screw' },
+            quantity: { type: 'number', example: 100 },
+            unit_price_minor: { type: 'number', example: 1710 },
+            amount_minor: { type: 'number', example: 171000 },
+          },
+        },
+      },
+    },
+  })
+  quote: unknown | null;
 }
