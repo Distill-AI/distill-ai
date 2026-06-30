@@ -167,7 +167,9 @@ export function Review() {
             </span>
             {request.sender_company && request.sender_contact && (
               <>
-                <span aria-hidden="true" className="text-border">|</span>
+                <span aria-hidden="true" className="text-border">
+                  |
+                </span>
                 <span className="text-sm text-muted">{request.sender_contact}</span>
               </>
             )}
@@ -179,9 +181,7 @@ export function Review() {
               routing={request.routing}
             />
             {request.routing_reasons.length > 0 && (
-              <span className="text-sm text-muted">
-                {reasonsSummary(request.routing_reasons)}
-              </span>
+              <span className="text-sm text-muted">{reasonsSummary(request.routing_reasons)}</span>
             )}
           </div>
 
