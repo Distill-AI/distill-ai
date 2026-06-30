@@ -42,8 +42,18 @@ describe('Sidebar active state', () => {
     expect(inboxLink()).toHaveAttribute('aria-current', 'page');
   });
 
+  it('highlights Inbox at /requests/', () => {
+    renderSidebar('/requests/');
+    expect(inboxLink()).toHaveAttribute('aria-current', 'page');
+  });
+
   it('does not highlight Inbox at /quotes', () => {
     renderSidebar('/quotes');
+    expect(inboxLink()).not.toHaveAttribute('aria-current', 'page');
+  });
+
+  it('does not highlight Inbox at /quotes/some-id', () => {
+    renderSidebar('/quotes/some-id');
     expect(inboxLink()).not.toHaveAttribute('aria-current', 'page');
   });
 

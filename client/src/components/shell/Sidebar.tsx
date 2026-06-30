@@ -14,6 +14,7 @@ interface NavItem {
   to: string;
   icon: React.ReactNode;
   roles: Role[];
+  match?: (pathname: string) => boolean;
 }
 
 function InboxIcon() {
@@ -85,7 +86,13 @@ function SettingsIcon() {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Inbox', to: '/', icon: <InboxIcon />, roles: ['RevOps', 'Sales', 'Admin'] },
+  {
+    label: 'Inbox',
+    to: '/',
+    icon: <InboxIcon />,
+    roles: ['RevOps', 'Sales', 'Admin'],
+    match: (p) => p === '/' || p === '/requests' || p.startsWith('/requests/'),
+  },
   { label: 'Quotes', to: '/quotes', icon: <QuotesIcon />, roles: ['RevOps', 'Sales', 'Admin'] },
   { label: 'Catalog', to: '/catalog', icon: <CatalogIcon />, roles: ['RevOps', 'Admin'] },
   { label: 'Analytics', to: '/analytics', icon: <AnalyticsIcon />, roles: ['RevOps', 'Admin'] },
@@ -154,10 +161,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       <ul className="flex-1 px-2 space-y-0.5" role="list">
         {visibleItems.map((item) => {
-          const isActive =
-            item.to === '/'
-              ? pathname === '/' || pathname === '/requests' || pathname.startsWith('/requests/')
-              : pathname === item.to || pathname.startsWith(item.to + '/');
+          const isActive = item.match
+            ? item.match(pathname)
+            : pathname === item.to || pathname.startsWith(item.to + '/');
           return (
             <li key={item.to}>
               <Link
