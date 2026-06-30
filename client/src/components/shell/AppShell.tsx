@@ -38,7 +38,7 @@ export function AppShell({ children }: AppShellProps) {
         />
       )}
       <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
-      <PageHeaderProvider key={location.pathname}>
+      <PageHeaderProvider resetKey={location.pathname}>
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
           <TopBar
             isOpen={sidebarOpen}

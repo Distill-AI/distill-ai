@@ -1,5 +1,6 @@
 import type { RefObject } from 'react';
 import { usePageHeader } from '../../context/PageHeaderContext';
+import { useUser } from '../../context/UserContext';
 import { DistillMark } from './DistillMark';
 
 interface TopBarProps {
@@ -7,8 +8,6 @@ interface TopBarProps {
   menuButtonRef: RefObject<HTMLButtonElement | null>;
   onMenuClick: () => void;
 }
-
-const DEMO_USER = { name: 'Avery Reed', initials: 'AR' };
 
 interface UserAvatarProps {
   name: string;
@@ -28,6 +27,7 @@ function UserAvatar({ name, initials }: UserAvatarProps) {
 
 export function TopBar({ isOpen, menuButtonRef, onMenuClick }: TopBarProps) {
   const { title, actions } = usePageHeader();
+  const user = useUser();
 
   return (
     <header
@@ -72,7 +72,7 @@ export function TopBar({ isOpen, menuButtonRef, onMenuClick }: TopBarProps) {
             />
           </>
         )}
-        <UserAvatar name={DEMO_USER.name} initials={DEMO_USER.initials} />
+        <UserAvatar name={user.name} initials={user.initials} />
       </div>
     </header>
   );
