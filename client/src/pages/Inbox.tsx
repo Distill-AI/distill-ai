@@ -1,8 +1,24 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { NewRequestModal } from '../components/inbox/NewRequestModal';
 import { InboxTabs, type InboxTab } from '../components/inbox/InboxTabs';
 import { InboxList } from '../components/inbox/InboxList';
 import { useRequests, type RequestSummary } from '../api/requests';
+import { usePageHeader } from '../context/PageHeaderContext';
+import { QuestionMarkCircleIcon } from '../components/ui/QuestionMarkCircleIcon';
+
+function BellIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 function matchesTab(request: RequestSummary, tab: InboxTab): boolean {
   return tab === 'all' || request.status === tab;
@@ -22,8 +38,46 @@ export function Inbox() {
   const [tab, setTab] = useState<InboxTab>('all');
   const [search, setSearch] = useState('');
   const newRequestButtonRef = useRef<HTMLButtonElement>(null);
+  const { setTitle, setActions } = usePageHeader();
 
   const { data, isLoading, isError } = useRequests();
+
+  useEffect(() => {
+    setTitle(<h1 className="truncate text-lg font-semibold text-slate-900">Inbox</h1>);
+    setActions(
+      <div className="flex items-center gap-2">
+        <button
+          ref={newRequestButtonRef}
+          type="button"
+          onClick={() => setModalOpen(true)}
+          aria-haspopup="dialog"
+          className="flex h-9 items-center gap-2 rounded-button bg-indigo-600 px-4 text-sm font-medium text-white hover:bg-indigo-700"
+        >
+          + New request
+        </button>
+        <button
+          type="button"
+          disabled
+          aria-label="Notifications"
+          className="flex h-9 w-9 items-center justify-center rounded-button text-body-text disabled:opacity-50"
+        >
+          <BellIcon />
+        </button>
+        <button
+          type="button"
+          disabled
+          aria-label="Help"
+          className="flex h-9 w-9 items-center justify-center rounded-button text-body-text disabled:opacity-50"
+        >
+          <QuestionMarkCircleIcon size={18} />
+        </button>
+      </div>,
+    );
+    return () => {
+      setTitle(null);
+      setActions(null);
+    };
+  }, [setTitle, setActions, setModalOpen]);
 
   const visibleRequests = useMemo(() => {
     const requests = data ?? [];
@@ -36,19 +90,6 @@ export function Inbox() {
 
   return (
     <div className="px-6 py-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold text-slate-900">Inbox</h1>
-        <button
-          ref={newRequestButtonRef}
-          type="button"
-          onClick={() => setModalOpen(true)}
-          aria-haspopup="dialog"
-          className="h-9 px-4 rounded-button bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors"
-        >
-          + New request
-        </button>
-      </div>
-
       <div className="mb-4">
         <input
           type="search"
