@@ -201,6 +201,9 @@ export const MATCH_CLOSE_TIE_REASON = (top1: number, top2: number) =>
 export const LINE_ITEM_NOT_FOUND = (id: string) => `Line item ${id} not found`;
 export const CANDIDATES_RETRIEVED = 'Candidates retrieved successfully';
 
+// Catalog search (US-E6-2 manual re-map fallback)
+export const SKUS_RETRIEVED = 'SKUs retrieved successfully';
+
 // Decline
 export const REQUEST_DECLINED = 'Request declined successfully';
 export const DECLINE_REASON_REQUIRED = 'Decline reason is required and must not be empty';
