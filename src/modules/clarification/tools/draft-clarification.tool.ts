@@ -47,9 +47,9 @@ export class DraftClarificationToolFactory {
       maxTokens: 500,
     });
 
-    const text = response.text.trim();
-
     try {
+      const raw = response?.text;
+      const text = typeof raw === 'string' ? raw.trim() : '';
       const wrapped = text.match(/^\s*```(?:json)?\s*([\s\S]*)\s*```\s*$/i);
       const cleaned = (wrapped ? wrapped[1] : text).trim();
       const parsed = JSON.parse(cleaned) as Record<string, unknown>;

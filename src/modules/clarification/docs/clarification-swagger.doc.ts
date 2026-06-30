@@ -77,6 +77,15 @@ export function GenerateDraftDocs() {
       description: 'No gaps provided',
       schema: errorSchema(HttpStatus.BAD_REQUEST, 'Bad Request', SYS_MSG.CLARIFICATION_NO_GAPS),
     }),
+    ApiResponse({
+      status: HttpStatus.FAILED_DEPENDENCY,
+      description: 'Failed to parse clarification draft from LLM response',
+      schema: errorSchema(
+        HttpStatus.FAILED_DEPENDENCY,
+        'Failed Dependency',
+        SYS_MSG.CLARIFICATION_DRAFT_PARSE_FAILED,
+      ),
+    }),
   );
 }
 
@@ -156,14 +165,6 @@ export function SendClarificationDocs() {
         'This is the human-gate trust boundary: no AI-drafted message reaches a customer without explicit reviewer approval.',
     }),
     ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Clarification UUID' }),
-    ApiBody({
-      schema: {
-        properties: {
-          sent_by: { type: 'string', format: 'uuid', description: 'User ID of the reviewer' },
-        },
-        required: ['sent_by'],
-      },
-    }),
     ApiOkResponse({
       description: SYS_MSG.CLARIFICATION_SENT,
       schema: {

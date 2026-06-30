@@ -1,4 +1,4 @@
-import { ArrayMinSize, IsArray, IsOptional, IsString, IsUUID } from 'class-validator';
+import { ArrayMinSize, IsArray, IsOptional, IsString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class GenerateDraftDto {
@@ -24,8 +24,4 @@ export class UpdateDraftDto {
   draft_body?: string;
 }
 
-export class SendClarificationDto {
-  @ApiProperty({ description: 'User ID of the reviewer sending the clarification' })
-  @IsUUID()
-  sent_by: string;
-}
+export class SendClarificationDto {} // reserved; sent_by is populated from auth context

@@ -8,11 +8,13 @@ import {
   ParseUUIDPipe,
   Post,
   Put,
+  Req,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import * as SYS_MSG from '@constants/system-messages';
+import type { AuthUser } from '@modules/auth/interfaces/auth-user.interface';
 import { ClarificationService } from './clarification.service';
-import { GenerateDraftDto, UpdateDraftDto, SendClarificationDto } from './dto/clarification.dto';
+import { GenerateDraftDto, UpdateDraftDto } from './dto/clarification.dto';
 import {
   GenerateDraftDocs,
   GetClarificationDocs,
@@ -78,9 +80,9 @@ export class ClarificationController {
   @SendClarificationDocs()
   async send(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: SendClarificationDto,
+    @Req() req: { user?: AuthUser },
   ): Promise<{ statusCode: number; message: string; data: unknown }> {
-    const result = await this.clarificationService.send(id, dto.sent_by);
+    const result = await this.clarificationService.send(id, req.user!.userId);
     return {
       statusCode: HttpStatus.OK,
       message: SYS_MSG.CLARIFICATION_SENT,

@@ -20,7 +20,7 @@ export class ClarificationService {
   ) {}
 
   async generateDraft(requestId: string, gaps: string[]): Promise<Clarification> {
-    if (!gaps || gaps.length === 0) {
+    if (!gaps || gaps.length === 0 || gaps.some((gap) => gap.trim().length === 0)) {
       throw new CustomHttpException(SYS_MSG.CLARIFICATION_NO_GAPS, HttpStatus.BAD_REQUEST);
     }
 
@@ -141,6 +141,13 @@ export class ClarificationService {
 
     if (clarification.sent_at) {
       return clarification;
+    }
+
+    if (!clarification.draft_subject?.trim() || !clarification.draft_body?.trim()) {
+      throw new CustomHttpException(
+        SYS_MSG.CLARIFICATION_DRAFT_EMPTY,
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
     }
 
     const updated = await this.actions.markSent(id, sentBy);
