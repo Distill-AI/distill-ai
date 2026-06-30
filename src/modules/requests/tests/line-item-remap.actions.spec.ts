@@ -144,6 +144,14 @@ describe('LineItemRemapActions', () => {
     expect(lineUpdate()?.flags).toContain(MANUAL_OVERRIDE_FLAG);
   });
 
+  it('rejects a contradictory unit_price_minor + override:false payload with a 400', async () => {
+    const { action, recompute } = setup();
+    await expect(
+      action.remap(REQUEST, 'li-1', { unit_price_minor: 1234, override: false }),
+    ).rejects.toBeInstanceOf(CustomHttpException);
+    expect(recompute.recompute).not.toHaveBeenCalled();
+  });
+
   it('clears the override flag when override:false is sent', async () => {
     const { action, lineUpdate } = setup({
       line: {
