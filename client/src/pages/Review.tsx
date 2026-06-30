@@ -11,6 +11,13 @@ import { ErrorBanner } from '../components/inbox/ErrorBanner';
 import { usePageHeader } from '../context/PageHeaderContext';
 import { QuestionMarkCircleIcon } from '../components/ui/QuestionMarkCircleIcon';
 import { ChevronLeftIcon } from '../components/ui/ChevronLeftIcon';
+import { reasonsSummary } from '../lib/routing-reason';
+
+const REQUEST_TYPE_LABELS: Record<string, string> = {
+  catalog_rfq: 'Catalog RFQ',
+  direct_order: 'Direct Order',
+  spot_quote: 'Spot Quote',
+};
 
 const ROUTING_BADGE: Record<
   'auto_eligible' | 'needs_review',
@@ -90,12 +97,6 @@ export function Review() {
           <ChevronLeftIcon />
         </Link>
         <h1 className="truncate text-lg font-semibold text-slate-900">Review · {heading}</h1>
-        {request && (
-          <ConfidenceRoutingBadge
-            confidence={request.overall_confidence}
-            routing={request.routing}
-          />
-        )}
       </div>,
     );
     return () => setTitle(null);
@@ -159,6 +160,30 @@ export function Review() {
       ) : (
         <div className="flex min-h-0 flex-1 flex-col gap-4">
           {downloadError && <ErrorBanner message={downloadError} />}
+
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="font-semibold text-slate-900">
+              {request.sender_company ?? request.sender_contact ?? 'Unknown sender'}
+            </span>
+            {request.sender_company && request.sender_contact && (
+              <>
+                <span aria-hidden="true" className="text-border">|</span>
+                <span className="text-sm text-muted">{request.sender_contact}</span>
+              </>
+            )}
+            <span className="rounded bg-canvas px-2 py-0.5 text-xs font-medium text-body-text">
+              {REQUEST_TYPE_LABELS[request.request_type] ?? request.request_type}
+            </span>
+            <ConfidenceRoutingBadge
+              confidence={request.overall_confidence}
+              routing={request.routing}
+            />
+            {request.routing_reasons.length > 0 && (
+              <span className="text-sm text-muted">
+                {reasonsSummary(request.routing_reasons)}
+              </span>
+            )}
+          </div>
 
           <RoutingReasonsBanner
             routing={request.routing}
