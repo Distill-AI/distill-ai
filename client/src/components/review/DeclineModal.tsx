@@ -29,12 +29,13 @@ export function DeclineModal({ requestId, open, onClose, triggerRef }: DeclineMo
 
   const handleClose = useCallback(() => {
     tokenRef.current += 1;
+    mutation.reset();
     setReason('');
     setCustomReason('');
     setError(null);
     onClose();
     triggerRef.current?.focus();
-  }, [onClose, triggerRef]);
+  }, [mutation, onClose, triggerRef]);
 
   function handleConfirm() {
     const finalReason = reason === 'Other' ? customReason.trim() : reason;
@@ -45,7 +46,7 @@ export function DeclineModal({ requestId, open, onClose, triggerRef }: DeclineMo
       {
         onSuccess: () => {
           if (token !== tokenRef.current) return;
-          onClose();
+          handleClose();
         },
         onError: (err: AxiosError) => {
           if (token !== tokenRef.current) return;
@@ -75,7 +76,7 @@ export function DeclineModal({ requestId, open, onClose, triggerRef }: DeclineMo
       if (!dialog) return;
       const focusable = Array.from(
         dialog.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), select, textarea, input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          'a[href], button:not([disabled]), select:not([disabled]), textarea, input:not([disabled]), [tabindex]:not([tabindex="-1"])',
         ),
       ).filter((el) => el.offsetParent !== null);
       if (focusable.length === 0) return;
@@ -98,13 +99,17 @@ export function DeclineModal({ requestId, open, onClose, triggerRef }: DeclineMo
     !reason || (reason === 'Other' && !customReason.trim()) || mutation.isPending;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
+      onClick={handleClose}
+    >
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="decline-modal-title"
         className="w-full max-w-md rounded-card bg-surface p-6 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
       >
         <h2 id="decline-modal-title" className="mb-4 text-base font-semibold text-slate-900">
           Decline request
