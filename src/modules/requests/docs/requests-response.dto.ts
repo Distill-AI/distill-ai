@@ -97,6 +97,16 @@ export class RequestDetailResponseDto extends RequestSummaryResponseDto {
     type: 'array',
     items: {
       type: 'object',
+      required: [
+        'id',
+        'position',
+        'raw_text',
+        'quantity',
+        'unit_price_minor',
+        'match_confidence',
+        'matched_sku',
+        'flags',
+      ],
       properties: {
         id: { type: 'string', format: 'uuid' },
         position: { type: 'number', example: 1 },
@@ -107,6 +117,7 @@ export class RequestDetailResponseDto extends RequestSummaryResponseDto {
         matched_sku: {
           type: 'object',
           nullable: true,
+          required: ['id', 'sku_code', 'name'],
           properties: {
             id: { type: 'string', format: 'uuid' },
             sku_code: { type: 'string', example: 'SKU-061' },
@@ -123,6 +134,14 @@ export class RequestDetailResponseDto extends RequestSummaryResponseDto {
     description: 'Suggested quote with running total, or null until priced (US-E6-1 quote pane)',
     nullable: true,
     type: 'object',
+    required: [
+      'subtotal_minor',
+      'discount_minor',
+      'total_minor',
+      'currency',
+      'lead_time_days',
+      'lines',
+    ],
     properties: {
       subtotal_minor: { type: 'number', example: 230000 },
       discount_minor: { type: 'number', example: 11500 },
@@ -133,6 +152,14 @@ export class RequestDetailResponseDto extends RequestSummaryResponseDto {
         type: 'array',
         items: {
           type: 'object',
+          required: [
+            'position',
+            'sku_id',
+            'description',
+            'quantity',
+            'unit_price_minor',
+            'amount_minor',
+          ],
           properties: {
             position: { type: 'number', example: 1 },
             sku_id: { type: 'string', format: 'uuid', nullable: true },
