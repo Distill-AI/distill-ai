@@ -112,18 +112,21 @@ export class QuoteModelAction extends AbstractModelAction<Quote> {
 
   /**
    * Loads the request's quote and its line items for the Review screen (US-E6-1), or null when the
-   * request has not been priced yet. Lines are ordered by position so the suggested-quote pane is
-   * stable across reads.
+   * request has not been priced yet. Both reads run in one transaction so the quote and its lines
+   * come from a single consistent snapshot, never a half-replaced quote from a concurrent recompute.
+   * Lines are ordered by position so the suggested-quote pane is stable across reads.
    */
   async getForRequest(requestId: string): Promise<{ quote: Quote; lines: QuoteLineItem[] } | null> {
-    const quote = await this.repository.findOne({ where: { request_id: requestId } });
-    if (!quote) {
-      return null;
-    }
-    const lines = await this.dataSource.getRepository(QuoteLineItem).find({
-      where: { quote_id: quote.id },
-      order: { position: 'ASC' },
+    return this.dataSource.transaction(async (em) => {
+      const quote = await em.findOne(Quote, { where: { request_id: requestId } });
+      if (!quote) {
+        return null;
+      }
+      const lines = await em.find(QuoteLineItem, {
+        where: { quote_id: quote.id },
+        order: { position: 'ASC' },
+      });
+      return { quote, lines };
     });
-    return { quote, lines };
   }
 }
