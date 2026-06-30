@@ -33,12 +33,7 @@ function renderModal(open = true) {
 
   render(
     <MemoryRouter>
-      <DeclineModal
-        requestId="req-1"
-        open={open}
-        onClose={onClose}
-        triggerRef={triggerRef}
-      />
+      <DeclineModal requestId="req-1" open={open} onClose={onClose} triggerRef={triggerRef} />
     </MemoryRouter>,
   );
 
@@ -91,10 +86,7 @@ describe('DeclineModal', () => {
     const user = userEvent.setup();
     const { onClose } = renderModal();
 
-    await user.selectOptions(
-      screen.getByLabelText(/decline reason/i),
-      'Not a relevant request',
-    );
+    await user.selectOptions(screen.getByLabelText(/decline reason/i), 'Not a relevant request');
     await user.click(screen.getByRole('button', { name: /confirm decline/i }));
 
     expect(mockMutate).toHaveBeenCalledWith({
@@ -113,10 +105,7 @@ describe('DeclineModal', () => {
     const user = userEvent.setup();
     renderModal();
 
-    await user.selectOptions(
-      screen.getByLabelText(/decline reason/i),
-      'Not a relevant request',
-    );
+    await user.selectOptions(screen.getByLabelText(/decline reason/i), 'Not a relevant request');
     await user.click(screen.getByRole('button', { name: /confirm decline/i }));
 
     act(() => {
@@ -132,10 +121,7 @@ describe('DeclineModal', () => {
     const user = userEvent.setup();
     renderModal();
 
-    await user.selectOptions(
-      screen.getByLabelText(/decline reason/i),
-      'Not a relevant request',
-    );
+    await user.selectOptions(screen.getByLabelText(/decline reason/i), 'Not a relevant request');
     await user.click(screen.getByRole('button', { name: /confirm decline/i }));
 
     act(() => {
