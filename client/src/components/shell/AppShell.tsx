@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
+import { PageHeaderProvider } from '../../context/PageHeaderContext';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 
@@ -26,23 +27,25 @@ export function AppShell({ children }: AppShellProps) {
   }, [sidebarOpen]);
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 md:hidden"
-          onClick={closeSidebar}
-          aria-hidden="true"
-        />
-      )}
-      <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <TopBar
-          isOpen={sidebarOpen}
-          menuButtonRef={menuButtonRef}
-          onMenuClick={() => setSidebarOpen(true)}
-        />
-        <main className="flex-1 overflow-y-auto bg-canvas">{children}</main>
+    <PageHeaderProvider>
+      <div className="flex h-screen overflow-hidden">
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/50 md:hidden"
+            onClick={closeSidebar}
+            aria-hidden="true"
+          />
+        )}
+        <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
+        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+          <TopBar
+            isOpen={sidebarOpen}
+            menuButtonRef={menuButtonRef}
+            onMenuClick={() => setSidebarOpen(true)}
+          />
+          <main className="flex-1 overflow-y-auto bg-canvas">{children}</main>
+        </div>
       </div>
-    </div>
+    </PageHeaderProvider>
   );
 }
