@@ -69,6 +69,12 @@ export class LineItemRemapActions {
       throw new CustomHttpException(SYS_MSG.REMAP_OVERRIDE_PRICE_REQUIRED, HttpStatus.BAD_REQUEST);
     }
 
+    // A manual price with override:false is contradictory (set a price, then disable the override
+    // that would keep it); reject it rather than persisting a price recompute would overwrite.
+    if (dto.override === false && dto.unit_price_minor !== undefined) {
+      throw new CustomHttpException(SYS_MSG.REMAP_OVERRIDE_CONFLICT, HttpStatus.BAD_REQUEST);
+    }
+
     const totals = await this.dataSource.transaction(async (em) => {
       await em.update(LineItem, { id: lineId }, this.buildUpdate(line, dto));
       const result = await this.recompute.recompute(request.id, request.org_id, em);
@@ -100,7 +106,11 @@ export class LineItemRemapActions {
     };
   }
 
-  /** Builds the line update: a confirmed re-map is 100% and no longer a close tie; override locks the price. */
+  /**
+   * Builds the line update: a confirmed re-map is 100% and no longer a close tie. A supplied manual
+   * price is always persisted and, since a manual price is by definition an override, marks the line
+   * overridden so recompute keeps it; an explicit `override: false` clears that flag.
+   */
   private buildUpdate(line: LineItem, dto: PatchLineItemDto): QueryDeepPartialEntity<LineItem> {
     const flags = new Set(Array.isArray(line.flags) ? (line.flags as string[]) : []);
     const update: QueryDeepPartialEntity<LineItem> = {};
@@ -113,13 +123,14 @@ export class LineItemRemapActions {
     if (dto.quantity !== undefined) {
       update.quantity = dto.quantity;
     }
-    if (dto.override === true) {
-      flags.add(MANUAL_OVERRIDE_FLAG);
-      if (dto.unit_price_minor !== undefined) {
-        update.unit_price_minor = dto.unit_price_minor;
-      }
-    } else if (dto.override === false) {
+    if (dto.unit_price_minor !== undefined) {
+      update.unit_price_minor = dto.unit_price_minor;
+    }
+
+    if (dto.override === false) {
       flags.delete(MANUAL_OVERRIDE_FLAG);
+    } else if (dto.override === true || dto.unit_price_minor !== undefined) {
+      flags.add(MANUAL_OVERRIDE_FLAG);
     }
 
     update.flags = [...flags] as unknown as object[];
