@@ -27,7 +27,7 @@ export function ProcessingTrace({ requestId, lineItems, thresholds }: Processing
           )}
           <div className="p-5 flex flex-col flex-1">
             <h3 className="font-semibold text-[15px] text-white mb-6">Extraction trace</h3>
-            <div className="space-y-1">
+            <div className="space-y-1" role="status" aria-live="polite">
               {nodes.map((node) => (
                 <TraceNode key={node.id} {...node} />
               ))}

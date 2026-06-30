@@ -7,26 +7,30 @@ describe('TraceNode', () => {
     expect(screen.getByText('parse')).toBeInTheDocument();
   });
 
-  it('shows pending icon and gray styling', () => {
-    render(<TraceNode name="parse" status="pending" />);
-    const icon = screen.getByText('\u2022');
-    expect(icon).toBeInTheDocument();
-    expect(icon.className).toContain('text-gray-400');
+  it('shows pending bullet and muted label', () => {
+    const { container } = render(<TraceNode name="parse" status="pending" />);
+    expect(container.querySelector('.bg-body-text')).toBeInTheDocument();
+    expect(screen.getByText('parse').className).toContain('text-muted');
   });
 
   it('shows in-progress icon with spin animation', () => {
-    render(<TraceNode name="extract" status="in-progress" />);
-    const icon = screen.getByText('\u27F3');
+    const { container } = render(<TraceNode name="extract" status="in-progress" />);
+    const icon = container.querySelector('svg');
     expect(icon).toBeInTheDocument();
-    expect(icon.className).toContain('animate-spin');
-    expect(icon.className).toContain('text-blue-400');
+    expect(icon?.getAttribute('class')).toContain('animate-spin');
+    expect(icon?.getAttribute('class')).toContain('text-blue-400');
   });
 
-  it('shows success checkmark in green', () => {
-    render(<TraceNode name="parse" status="success" />);
-    const icon = screen.getByText('\u2713');
+  it('shows success checkmark icon', () => {
+    const { container } = render(<TraceNode name="parse" status="success" />);
+    const icon = container.querySelector('svg');
     expect(icon).toBeInTheDocument();
-    expect(icon.className).toContain('text-green-400');
+    expect(icon?.getAttribute('class')).toContain('text-success-icon');
+  });
+
+  it('exposes node status to assistive tech via row aria-label', () => {
+    render(<TraceNode name="extract" status="in-progress" />);
+    expect(screen.getByLabelText('extract: in-progress')).toBeInTheDocument();
   });
 
   it('shows failed cross in red', () => {
@@ -70,9 +74,9 @@ describe('TraceNode', () => {
     expect(screen.getByText('Parsed email')).toBeInTheDocument();
   });
 
-  it('renders with bold name for non-pending status', () => {
+  it('renders with white name text for non-pending status', () => {
     render(<TraceNode name="parse" status="success" />);
-    expect(screen.getByText('parse').className).toContain('text-slate-900');
+    expect(screen.getByText('parse').className).toContain('text-white');
   });
 
   it('shows error text when status is failed and error is provided', () => {

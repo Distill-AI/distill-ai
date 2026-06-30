@@ -74,8 +74,8 @@ describe('ProcessingTrace', () => {
 
   it('shows success nodes with checkmarks', () => {
     mockHook = { ...mockHook, nodes: mockNodes };
-    render(<ProcessingTrace requestId="test-uuid" />);
-    const checks = screen.getAllByText('\u2713');
+    const { container } = render(<ProcessingTrace requestId="test-uuid" />);
+    const checks = container.querySelectorAll('svg.lucide-check');
     expect(checks).toHaveLength(7);
   });
 
