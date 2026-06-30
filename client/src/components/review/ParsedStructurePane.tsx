@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import type { LineItemDetail } from '../../api/requests';
 import { ConfidenceChip } from '../ConfidenceChip';
+import { RemapDrawer } from './RemapDrawer';
 
 interface ParsedStructurePaneProps {
+  requestId: string;
   lines: LineItemDetail[];
 }
 
@@ -24,7 +27,9 @@ function FlagMarker({ flag }: { flag: string }) {
  * per-line confidence chip, and visible flag markers. All request-derived text (raw_text, SKU
  * name) is rendered as React children, so it is escaped before display (SEC-01).
  */
-export function ParsedStructurePane({ lines }: ParsedStructurePaneProps) {
+export function ParsedStructurePane({ requestId, lines }: ParsedStructurePaneProps) {
+  const [remapLine, setRemapLine] = useState<LineItemDetail | null>(null);
+
   return (
     <section aria-labelledby="parsed-structure-heading" className="flex flex-1 flex-col gap-3">
       <h2
@@ -63,15 +68,12 @@ export function ParsedStructurePane({ lines }: ParsedStructurePaneProps) {
                 <ConfidenceChip value={line.match_confidence} />
               </div>
 
+              {/* Quantity + flags only; the priced unit/amount is shown (and currency-formatted) in
+                  the Suggested Quote pane, so it is not rendered here as a raw minor-unit number. */}
               <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
                 <span>
                   Qty <span className="font-medium text-body-text">{line.quantity ?? '—'}</span>
                 </span>
-                {line.unit_price_minor !== null && (
-                  <span>
-                    Unit <span className="font-medium text-body-text">{line.unit_price_minor}</span>
-                  </span>
-                )}
                 {line.flags.length > 0 && (
                   <span className="flex flex-wrap items-center gap-1">
                     {line.flags.map((flag) => (
@@ -79,10 +81,27 @@ export function ParsedStructurePane({ lines }: ParsedStructurePaneProps) {
                     ))}
                   </span>
                 )}
+                <button
+                  type="button"
+                  onClick={() => setRemapLine(line)}
+                  className="ml-auto rounded border border-border px-2 py-0.5 text-xs font-medium text-accent hover:bg-surface"
+                >
+                  Re-map
+                </button>
               </div>
             </li>
           ))}
         </ul>
+      )}
+
+      {remapLine && (
+        <RemapDrawer
+          key={remapLine.id}
+          requestId={requestId}
+          lineId={remapLine.id}
+          lineLabel={remapLine.raw_text}
+          onClose={() => setRemapLine(null)}
+        />
       )}
     </section>
   );
