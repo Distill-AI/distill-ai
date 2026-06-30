@@ -1,14 +1,23 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useRequest } from '../api/requests';
 import type { RequestStatus } from '../api/interface/request-status';
 import { OriginalRequestPane } from '../components/review/OriginalRequestPane';
 import { ParsedStructurePane } from '../components/review/ParsedStructurePane';
 import { SuggestedQuotePane } from '../components/review/SuggestedQuotePane';
-import { ReviewActionBar } from '../components/review/ReviewActionBar';
+import { DeclineModal } from '../components/review/DeclineModal';
 import { RoutingReasonsBanner } from '../components/review/RoutingReasonsBanner';
 import { ErrorBanner } from '../components/inbox/ErrorBanner';
+import { usePageHeader } from '../context/PageHeaderContext';
+import { QuestionMarkCircleIcon } from '../components/ui/QuestionMarkCircleIcon';
+import { ChevronLeftIcon } from '../components/ui/ChevronLeftIcon';
 import { reasonsSummary } from '../lib/routing-reason';
+
+const REQUEST_TYPE_LABELS: Record<string, string> = {
+  catalog_rfq: 'Catalog RFQ',
+  direct_order: 'Direct Order',
+  spot_quote: 'Spot Quote',
+};
 
 const ROUTING_BADGE: Record<
   'auto_eligible' | 'needs_review',
@@ -37,6 +46,20 @@ function ConfidenceRoutingBadge({ confidence, routing }: ConfidenceRoutingBadgeP
   );
 }
 
+function CheckIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M5 13l4 4L19 7"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /** One independently-scrolling pane of the 3-pane workspace (EC-03). */
 function Pane({ children }: { children: React.ReactNode }) {
   return (
@@ -50,6 +73,9 @@ export function Review() {
   const { id } = useParams<{ id: string }>();
   const { data: request, isLoading, isError, refetch } = useRequest(id);
   const [downloadError, setDownloadError] = useState('');
+  const [declineOpen, setDeclineOpen] = useState(false);
+  const declineBtnRef = useRef<HTMLButtonElement>(null);
+  const { setTitle, setActions } = usePageHeader();
 
   // Clear a stale download error when navigating to a different request (adjust-state-on-prop-change,
   // not an effect, so there is no extra render pass).
@@ -59,42 +85,71 @@ export function Review() {
     setDownloadError('');
   }
 
-  const heading = request?.sender_company ?? request?.sender_contact ?? 'Request';
+  useEffect(() => {
+    const heading = request?.sender_company ?? request?.sender_contact ?? 'Request';
+    setTitle(
+      <div className="flex min-w-0 items-center gap-3">
+        <Link
+          to="/"
+          className="flex h-8 w-8 flex-none items-center justify-center rounded text-body-text hover:bg-canvas"
+          aria-label="Back to inbox"
+        >
+          <ChevronLeftIcon />
+        </Link>
+        <h1 className="truncate text-lg font-semibold text-slate-900">Review · {heading}</h1>
+      </div>,
+    );
+    return () => setTitle(null);
+  }, [request, setTitle]);
+
+  useEffect(() => {
+    if (!request) {
+      setActions(null);
+      return () => setActions(null);
+    }
+
+    if (request.status === 'declined') {
+      setActions(
+        <span className="text-sm font-medium text-rose-600">This request has been declined.</span>,
+      );
+      return () => setActions(null);
+    }
+
+    setActions(
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          disabled
+          className="flex h-9 items-center gap-2 px-3 text-sm text-body-text disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <QuestionMarkCircleIcon />
+          Request clarification
+        </button>
+        <button
+          ref={declineBtnRef}
+          type="button"
+          onClick={() => setDeclineOpen(true)}
+          disabled={(request.status as RequestStatus) !== 'needs_review'}
+          aria-haspopup="dialog"
+          className="h-9 rounded-lg border border-border bg-surface px-4 text-sm font-medium text-slate-900 shadow-sm hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Decline
+        </button>
+        <button
+          type="button"
+          disabled
+          className="flex h-9 items-center gap-2 rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <CheckIcon />
+          Approve &amp; generate
+        </button>
+      </div>,
+    );
+    return () => setActions(null);
+  }, [request, setActions]);
 
   return (
     <div className="flex h-full flex-col px-6 py-6">
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="text-xl font-semibold text-slate-900">Review · {heading}</h1>
-          {request && (request.overall_confidence !== null || request.routing) && (
-            <div className="mt-1.5 flex flex-wrap items-center gap-2">
-              <ConfidenceRoutingBadge
-                confidence={request.overall_confidence}
-                routing={request.routing}
-              />
-              {request.routing_reasons.length > 0 && (
-                <span className="text-sm text-muted">
-                  {reasonsSummary(request.routing_reasons)}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-        <div className="flex shrink-0 items-center gap-4">
-          {id && (
-            <Link
-              to={`/requests/${id}`}
-              className="text-sm font-medium text-accent hover:underline"
-            >
-              Back to processing
-            </Link>
-          )}
-          <Link to="/" className="text-sm font-medium text-accent hover:underline">
-            Back to inbox
-          </Link>
-        </div>
-      </div>
-
       {isLoading ? (
         <div className="rounded-card border border-border bg-surface px-4 py-12 text-center text-sm text-muted">
           Loading request…
@@ -106,8 +161,30 @@ export function Review() {
         <div className="flex min-h-0 flex-1 flex-col gap-4">
           {downloadError && <ErrorBanner message={downloadError} />}
 
-          {/* Must stay outside the scrolling grid below so it never scrolls away (FR-1). */}
-          <ReviewActionBar requestId={request.id} status={request.status as RequestStatus} />
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="font-semibold text-slate-900">
+              {request.sender_company ?? request.sender_contact ?? 'Unknown sender'}
+            </span>
+            {request.sender_company && request.sender_contact && (
+              <>
+                <span aria-hidden="true" className="text-border">
+                  |
+                </span>
+                <span className="text-sm text-muted">{request.sender_contact}</span>
+              </>
+            )}
+            <span className="rounded bg-canvas px-2 py-0.5 text-xs font-medium text-body-text">
+              {REQUEST_TYPE_LABELS[request.request_type] ?? request.request_type}
+            </span>
+            <ConfidenceRoutingBadge
+              confidence={request.overall_confidence}
+              routing={request.routing}
+            />
+            {request.routing_reasons.length > 0 && (
+              <span className="text-sm text-muted">{reasonsSummary(request.routing_reasons)}</span>
+            )}
+          </div>
+
           <RoutingReasonsBanner
             routing={request.routing}
             routing_reasons={request.routing_reasons}
@@ -124,6 +201,15 @@ export function Review() {
             </Pane>
           </div>
         </div>
+      )}
+
+      {request && (
+        <DeclineModal
+          requestId={request.id}
+          open={declineOpen}
+          onClose={() => setDeclineOpen(false)}
+          triggerRef={declineBtnRef}
+        />
       )}
     </div>
   );
