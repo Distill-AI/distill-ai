@@ -38,6 +38,8 @@ export class LLMProvider {
           messages: [{ role: 'user', content: prompt }],
           temperature,
           max_tokens: maxTokens,
+          // suppresses extended thinking mode on providers that default it on (causes timeouts)
+          enable_thinking: false,
         }),
         signal: controller.signal,
       });

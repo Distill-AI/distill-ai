@@ -6,10 +6,38 @@ import { OriginalRequestPane } from '../components/review/OriginalRequestPane';
 import { ParsedStructurePane } from '../components/review/ParsedStructurePane';
 import { SuggestedQuotePane } from '../components/review/SuggestedQuotePane';
 import { DeclineModal } from '../components/review/DeclineModal';
+import { RoutingReasonsBanner } from '../components/review/RoutingReasonsBanner';
 import { ErrorBanner } from '../components/inbox/ErrorBanner';
 import { usePageHeader } from '../context/PageHeaderContext';
 import { QuestionMarkCircleIcon } from '../components/ui/QuestionMarkCircleIcon';
 import { ChevronLeftIcon } from '../components/ui/ChevronLeftIcon';
+
+const ROUTING_BADGE: Record<
+  'auto_eligible' | 'needs_review',
+  { badge: string; dot: string; label: string }
+> = {
+  needs_review: { badge: 'bg-md-bg text-md-tx', dot: 'bg-md-dot', label: 'Needs review' },
+  auto_eligible: { badge: 'bg-hi-bg text-hi-tx', dot: 'bg-hi-dot', label: 'Auto eligible' },
+};
+
+interface ConfidenceRoutingBadgeProps {
+  confidence: number | null;
+  routing: 'auto_eligible' | 'needs_review' | null;
+}
+
+function ConfidenceRoutingBadge({ confidence, routing }: ConfidenceRoutingBadgeProps) {
+  if (!routing || confidence === null) return null;
+  const pct = Math.round(Math.min(Math.max(confidence, 0), 1) * 100);
+  const { badge, dot, label } = ROUTING_BADGE[routing];
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${badge}`}
+    >
+      <span aria-hidden="true" className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
+      Overall {pct}% · {label}
+    </span>
+  );
+}
 
 function CheckIcon() {
   return (
@@ -62,6 +90,12 @@ export function Review() {
           <ChevronLeftIcon />
         </Link>
         <h1 className="truncate text-lg font-semibold text-slate-900">Review · {heading}</h1>
+        {request && (
+          <ConfidenceRoutingBadge
+            confidence={request.overall_confidence}
+            routing={request.routing}
+          />
+        )}
       </div>,
     );
     return () => setTitle(null);
@@ -126,6 +160,10 @@ export function Review() {
         <div className="flex min-h-0 flex-1 flex-col gap-4">
           {downloadError && <ErrorBanner message={downloadError} />}
 
+          <RoutingReasonsBanner
+            routing={request.routing}
+            routing_reasons={request.routing_reasons}
+          />
           <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
             <Pane>
               <OriginalRequestPane request={request} onError={setDownloadError} />
