@@ -69,8 +69,7 @@ export function ParsedStructurePane({ lines }: ParsedStructurePaneProps) {
                 </span>
                 {line.unit_price_minor !== null && (
                   <span>
-                    Unit{' '}
-                    <span className="font-medium text-body-text">{line.unit_price_minor}</span>
+                    Unit <span className="font-medium text-body-text">{line.unit_price_minor}</span>
                   </span>
                 )}
                 {line.flags.length > 0 && (
