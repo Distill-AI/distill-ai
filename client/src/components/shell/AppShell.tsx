@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
+import { PageHeaderProvider } from '../../context/PageHeaderContext';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 
@@ -35,14 +36,16 @@ export function AppShell({ children }: AppShellProps) {
         />
       )}
       <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <TopBar
-          isOpen={sidebarOpen}
-          menuButtonRef={menuButtonRef}
-          onMenuClick={() => setSidebarOpen(true)}
-        />
-        <main className="flex-1 overflow-y-auto bg-canvas">{children}</main>
-      </div>
+      <PageHeaderProvider resetKey={location.pathname}>
+        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+          <TopBar
+            isOpen={sidebarOpen}
+            menuButtonRef={menuButtonRef}
+            onMenuClick={() => setSidebarOpen((open) => !open)}
+          />
+          <main className="flex-1 overflow-y-auto bg-canvas">{children}</main>
+        </div>
+      </PageHeaderProvider>
     </div>
   );
 }

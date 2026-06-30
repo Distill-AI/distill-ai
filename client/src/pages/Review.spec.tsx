@@ -1,24 +1,24 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { Review } from './Review';
+import { PageHeaderProvider, usePageHeader } from '../context/PageHeaderContext';
 import type { RequestDetail } from '../api/requests';
 
-const { mockUseRequest, mockDownload, mockUseDeclineRequest } = vi.hoisted(() => ({
+const { mockUseRequest, mockDownload } = vi.hoisted(() => ({
   mockUseRequest: vi.fn(),
   mockDownload: vi.fn(),
-  mockUseDeclineRequest: vi.fn(() => ({
-    mutate: vi.fn(),
-    isPending: false,
-    isError: false,
-  })),
 }));
 
 vi.mock('../api/requests', () => ({
   useRequest: () => mockUseRequest(),
-  useDeclineRequest: () => mockUseDeclineRequest(),
 }));
 vi.mock('../api/attachments', () => ({
   downloadAttachment: mockDownload,
+}));
+vi.mock('../components/review/DeclineModal', () => ({
+  DeclineModal: ({ open }: { open: boolean }) =>
+    open ? <div role="dialog">Decline modal</div> : null,
 }));
 
 const detail: RequestDetail = {
@@ -33,6 +33,14 @@ const detail: RequestDetail = {
   overall_confidence: 0.96,
   current_node: 'extract',
   created_at: '2026-06-24T10:00:00.000Z',
+  routing: 'needs_review',
+  routing_reasons: [
+    {
+      code: 'low_line_confidence',
+      message: 'Line confidence 0.64 below auto threshold 0.95',
+      source: 'confidence',
+    },
+  ],
   attachments: [
     {
       id: 'att-1',
@@ -42,15 +50,57 @@ const detail: RequestDetail = {
       created_at: '2026-06-24T10:00:00.000Z',
     },
   ],
+  line_items: [
+    {
+      id: 'li-1',
+      position: 1,
+      raw_text: '200x steel brackets',
+      quantity: 200,
+      unit_price_minor: 1425,
+      match_confidence: 0.62,
+      matched_sku: { id: 'sku-1', sku_code: 'SKU-061', name: 'Steel Bracket' },
+      flags: ['close_tie'],
+    },
+  ],
+  quote: {
+    subtotal_minor: 300000,
+    discount_minor: 15000,
+    total_minor: 285000,
+    currency: 'NGN',
+    lead_time_days: 5,
+    lines: [
+      {
+        position: 1,
+        sku_id: 'sku-1',
+        description: 'Steel Bracket',
+        quantity: 200,
+        unit_price_minor: 1425,
+        amount_minor: 285000,
+      },
+    ],
+  },
 };
+
+function PageHeaderSlots() {
+  const { title, actions } = usePageHeader();
+  return (
+    <>
+      <div data-testid="topbar-title">{title}</div>
+      <div data-testid="topbar-actions">{actions}</div>
+    </>
+  );
+}
 
 function renderReview() {
   return render(
-    <MemoryRouter initialEntries={['/requests/req-1/review']}>
-      <Routes>
-        <Route path="/requests/:id/review" element={<Review />} />
-      </Routes>
-    </MemoryRouter>,
+    <PageHeaderProvider>
+      <MemoryRouter initialEntries={['/requests/req-1/review']}>
+        <PageHeaderSlots />
+        <Routes>
+          <Route path="/requests/:id/review" element={<Review />} />
+        </Routes>
+      </MemoryRouter>
+    </PageHeaderProvider>,
   );
 }
 
@@ -82,13 +132,42 @@ describe('Review', () => {
     expect(screen.getByRole('button', { name: /download rfq_apex\.pdf/i })).toBeInTheDocument();
   });
 
-  it('renders the parsed-structure and suggested-quote panes as placeholders', () => {
+  it('renders all three panes with real parsed lines and the suggested-quote total (AC-01, AC-03)', () => {
     mockUseRequest.mockReturnValue({ data: detail, isLoading: false, isError: false });
     renderReview();
 
+    // Pane headings.
     expect(screen.getByText(/parsed structure/i)).toBeInTheDocument();
     expect(screen.getByText(/suggested quote/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/coming soon/i)).toHaveLength(2);
+
+    // Parsed pane: the line, its matched SKU, a confidence chip (62%) and a visible flag marker.
+    expect(screen.getByText('200x steel brackets')).toBeInTheDocument();
+    expect(screen.getByText('SKU-061')).toBeInTheDocument();
+    expect(screen.getByText('62%')).toBeInTheDocument();
+    expect(screen.getByText(/close tie/i)).toBeInTheDocument();
+
+    // Quote pane: the running total renders.
+    expect(screen.getByTestId('quote-total')).toHaveTextContent(/2,850\.00/);
+  });
+
+  it('shows a defined not-priced state in the quote pane when there is no quote (EC-01)', () => {
+    mockUseRequest.mockReturnValue({
+      data: { ...detail, quote: null },
+      isLoading: false,
+      isError: false,
+    });
+    renderReview();
+
+    expect(screen.getByText(/not priced yet/i)).toBeInTheDocument();
+  });
+
+  it('offers a retry on a failed fetch (EC-02)', () => {
+    const refetch = vi.fn();
+    mockUseRequest.mockReturnValue({ data: undefined, isLoading: false, isError: true, refetch });
+    renderReview();
+
+    screen.getByRole('button', { name: /retry/i }).click();
+    expect(refetch).toHaveBeenCalled();
   });
 
   it('renders the Decline button for a needs_review request', () => {
@@ -98,7 +177,7 @@ describe('Review', () => {
     expect(screen.getByRole('button', { name: /decline/i })).toBeInTheDocument();
   });
 
-  it('shows a declined status banner instead of Decline button when already declined', () => {
+  it('shows a declined notice instead of action buttons when status is declined', () => {
     mockUseRequest.mockReturnValue({
       data: { ...detail, status: 'declined' },
       isLoading: false,
@@ -108,5 +187,38 @@ describe('Review', () => {
 
     expect(screen.queryByRole('button', { name: /decline/i })).not.toBeInTheDocument();
     expect(screen.getByText(/this request has been declined/i)).toBeInTheDocument();
+  });
+
+  it('renders the back button in the title slot', () => {
+    mockUseRequest.mockReturnValue({ data: detail, isLoading: false, isError: false });
+    renderReview();
+
+    expect(screen.getByRole('link', { name: /back to inbox/i })).toBeInTheDocument();
+  });
+
+  it('opens the DeclineModal when Decline is clicked', async () => {
+    const user = userEvent.setup();
+    mockUseRequest.mockReturnValue({ data: detail, isLoading: false, isError: false });
+    renderReview();
+
+    await user.click(screen.getByRole('button', { name: /decline/i }));
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('renders the routing-reasons banner with flagged reasons', () => {
+    mockUseRequest.mockReturnValue({ data: detail, isLoading: false, isError: false });
+    renderReview();
+
+    expect(screen.getByRole('button', { name: /review flags/i })).toBeInTheDocument();
+  });
+
+  it('shows an all-clear banner for auto-eligible requests', () => {
+    const autoDetail = { ...detail, routing: 'auto_eligible', routing_reasons: [] };
+    mockUseRequest.mockReturnValue({ data: autoDetail, isLoading: false, isError: false });
+    renderReview();
+
+    expect(screen.getByText(/all clear/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /review flags/i })).not.toBeInTheDocument();
   });
 });

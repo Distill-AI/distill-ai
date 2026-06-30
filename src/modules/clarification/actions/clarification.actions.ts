@@ -13,10 +13,40 @@ export class ClarificationActions extends AbstractModelAction<Clarification> {
     super(clarificationRepository, Clarification);
   }
 
-  async findByRequestId(requestId: string): Promise<Clarification | null> {
-    return this.clarificationRepository.findOne({
-      where: { request_id: requestId },
-    });
+  async findByRequestId(requestId: string, orgId?: string): Promise<Clarification | null> {
+    if (!orgId) {
+      return this.clarificationRepository.findOne({
+        where: { request_id: requestId },
+      });
+    }
+
+    return this.clarificationRepository
+      .createQueryBuilder('clarification')
+      .innerJoin('clarification.request', 'request')
+      .where('clarification.request_id = :requestId', { requestId })
+      .andWhere('request.org_id = :orgId', { orgId })
+      .getOne();
+  }
+
+  async findByIdWithOrg(id: string, orgId?: string): Promise<Clarification | null> {
+    if (!orgId) {
+      return this.clarificationRepository.findOne({ where: { id } });
+    }
+
+    return this.clarificationRepository
+      .createQueryBuilder('clarification')
+      .innerJoin('clarification.request', 'request')
+      .where('clarification.id = :id', { id })
+      .andWhere('request.org_id = :orgId', { orgId })
+      .getOne();
+  }
+
+  async findRequestOrgId(requestId: string): Promise<string | null> {
+    const rows = await this.clarificationRepository.query(
+      'SELECT org_id FROM requests WHERE id = $1',
+      [requestId],
+    );
+    return rows.length > 0 ? rows[0].org_id : null;
   }
 
   async updateDraft(
@@ -45,7 +75,7 @@ export class ClarificationActions extends AbstractModelAction<Clarification> {
     return this.clarificationRepository.findOne({ where: { id } });
   }
 
-  async markSent(id: string, sentBy: string): Promise<Clarification | null> {
+  async markSent(id: string, sentBy?: string): Promise<Clarification | null> {
     const result = await this.clarificationRepository.update(
       { id, sent_at: IsNull() },
       { sent_at: new Date(), sent_by: sentBy },

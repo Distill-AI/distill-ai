@@ -1,8 +1,48 @@
+import { useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ProcessingTrace } from '../components/ProcessingTrace';
+import { usePageHeader } from '../context/PageHeaderContext';
+import { ChevronLeftIcon } from '../components/ui/ChevronLeftIcon';
 
 export function ProcessingRequestPage() {
   const { id } = useParams<{ id?: string }>();
+  const { setTitle, setActions } = usePageHeader();
+
+  useEffect(() => {
+    setTitle(
+      <div className="flex min-w-0 items-center gap-3">
+        <Link
+          to="/"
+          className="flex h-8 w-8 flex-none items-center justify-center rounded text-body-text hover:bg-canvas"
+          aria-label="Back to inbox"
+        >
+          <ChevronLeftIcon />
+        </Link>
+        <h1 className="truncate text-lg font-semibold text-slate-900">
+          Processing Request
+          {id && <span className="ml-2 text-sm font-normal text-gray-500">#{id}</span>}
+        </h1>
+      </div>,
+    );
+    return () => setTitle(null);
+  }, [id, setTitle]);
+
+  useEffect(() => {
+    if (!id) {
+      setActions(null);
+      return;
+    }
+    setActions(
+      <Link
+        to={`/requests/${id}/review`}
+        className="flex h-9 items-center rounded-lg border border-border bg-surface px-4 text-sm font-medium text-indigo-600 shadow-sm hover:bg-canvas"
+      >
+        Open review
+      </Link>,
+    );
+    return () => setActions(null);
+  }, [id, setActions]);
+
   if (!id) {
     return (
       <div className="px-6 py-6">
@@ -13,19 +53,6 @@ export function ProcessingRequestPage() {
 
   return (
     <div className="px-6 py-6">
-      <div className="mb-6 flex items-center gap-4">
-        <Link to="/" className="text-sm text-indigo-600 hover:text-indigo-700 transition-colors">
-          &larr; Back to Inbox
-        </Link>
-        <h1 className="text-xl font-semibold text-slate-900">Processing Request</h1>
-        <span className="text-xs font-mono text-gray-400 bg-gray-100 rounded px-2 py-1">{id}</span>
-        <Link
-          to={`/requests/${id}/review`}
-          className="ml-auto text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
-        >
-          Open review
-        </Link>
-      </div>
       <ProcessingTrace requestId={id} />
     </div>
   );

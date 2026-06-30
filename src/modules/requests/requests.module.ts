@@ -1,6 +1,10 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { ObjectStoreModule } from '@common/object-store/object-store.module';
 import { ExtractionModule } from '@modules/extraction/extraction.module';
+import { QuotesModule } from '@modules/quotes/quotes.module';
+import { PricingModule } from '@modules/pricing/pricing.module';
+import { Sku } from '@modules/catalog/entities/sku.entity';
 import { QueueClientModule } from '@queue/queue-client.module';
 import { SseModule } from '../../sse/sse.module';
 import { EventsModule } from '../events/events.module';
@@ -10,6 +14,7 @@ import { StreamService } from './services/stream.service';
 import { AttachmentsService } from './services/attachments.service';
 import { RequestsController } from './controllers/requests.controller';
 import { RequestActions } from './actions/request.actions';
+import { LineItemRemapActions } from './actions/line-item-remap.actions';
 import { NodeRecoveryActions } from './actions/node-recovery.actions';
 
 @Module({
@@ -20,6 +25,12 @@ import { NodeRecoveryActions } from './actions/node-recovery.actions';
     EventsModule,
     ObjectStoreModule,
     ExtractionModule,
+    // QuotesModule provides QuoteModelAction so the Review detail can include the suggested quote.
+    QuotesModule,
+    // PricingModule provides QuoteRecomputeService (deterministic re-price reused from US-E4-1).
+    PricingModule,
+    // Sku repo for org-scoped SKU validation in the re-map action.
+    TypeOrmModule.forFeature([Sku]),
     QueueClientModule,
   ],
   controllers: [RequestsController],
@@ -27,6 +38,7 @@ import { NodeRecoveryActions } from './actions/node-recovery.actions';
     AttachmentsService,
     RequestsService,
     RequestActions,
+    LineItemRemapActions,
     StreamService,
     NodeRecoveryActions,
   ],
@@ -34,6 +46,7 @@ import { NodeRecoveryActions } from './actions/node-recovery.actions';
     RequestsDataModule,
     RequestsService,
     RequestActions,
+    LineItemRemapActions,
     StreamService,
     NodeRecoveryActions,
     AttachmentsService,

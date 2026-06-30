@@ -1,8 +1,10 @@
 interface ErrorBannerProps {
   message: string;
+  /** When provided, renders a Retry control (e.g. to refetch a failed query). */
+  onRetry?: () => void;
 }
 
-export function ErrorBanner({ message }: ErrorBannerProps) {
+export function ErrorBanner({ message, onRetry }: ErrorBannerProps) {
   return (
     <div
       role="alert"
@@ -11,7 +13,16 @@ export function ErrorBanner({ message }: ErrorBannerProps) {
       <span aria-hidden="true" className="mt-px shrink-0">
         !
       </span>
-      <span>{message}</span>
+      <span className="flex-1">{message}</span>
+      {onRetry && (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="shrink-0 rounded border border-lo-tx/30 px-2 py-0.5 text-xs font-medium text-lo-tx hover:bg-lo-tx/10"
+        >
+          Retry
+        </button>
+      )}
     </div>
   );
 }

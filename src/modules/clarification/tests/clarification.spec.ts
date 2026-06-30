@@ -33,6 +33,8 @@ function makeClarification(overrides: Partial<Clarification> = {}): Clarificatio
 function createMockActions(): ClarificationActions {
   return {
     findByRequestId: vi.fn(),
+    findByIdWithOrg: vi.fn(),
+    findRequestOrgId: vi.fn(),
     get: vi.fn(),
     create: vi.fn(),
     updateDraft: vi.fn(),
@@ -141,7 +143,7 @@ describe('ClarificationService', () => {
         sent_at: null,
       });
 
-      vi.mocked(mockActions.get).mockResolvedValue(original);
+      vi.mocked(mockActions.findByIdWithOrg).mockResolvedValue(original);
       vi.mocked(mockActions.updateDraft).mockResolvedValue(edited);
 
       const result = await service.updateDraft(
@@ -166,7 +168,7 @@ describe('ClarificationService', () => {
         sent_at: null,
       });
 
-      vi.mocked(mockActions.get).mockResolvedValue(original);
+      vi.mocked(mockActions.findByIdWithOrg).mockResolvedValue(original);
       vi.mocked(mockActions.updateDraft).mockResolvedValue(afterSubjectUpdate);
 
       const result = await service.updateDraft('clar-0001', 'New subject', undefined);
@@ -184,7 +186,7 @@ describe('ClarificationService', () => {
         sent_by: 'user-001',
       });
 
-      vi.mocked(mockActions.get).mockResolvedValue(unsent);
+      vi.mocked(mockActions.findByIdWithOrg).mockResolvedValue(unsent);
       vi.mocked(mockActions.markSent).mockResolvedValue(sent);
 
       const result = await service.send('clar-0001', 'user-001');
@@ -204,7 +206,9 @@ describe('ClarificationService', () => {
     });
 
     it('getById never calls markSent', async () => {
-      vi.mocked(mockActions.get).mockResolvedValue(makeClarification({ sent_at: null }));
+      vi.mocked(mockActions.findByIdWithOrg).mockResolvedValue(
+        makeClarification({ sent_at: null }),
+      );
       const result = await service.getById('clar-0001');
       expect(result.sent_at).toBeNull();
       expect(mockActions.markSent).not.toHaveBeenCalled();
@@ -235,7 +239,7 @@ describe('ClarificationService', () => {
         sent_by: 'user-001',
       });
 
-      vi.mocked(mockActions.get).mockResolvedValue(alreadySent);
+      vi.mocked(mockActions.findByIdWithOrg).mockResolvedValue(alreadySent);
 
       const result = await service.send('clar-0001', 'user-002');
 
@@ -305,7 +309,9 @@ describe('ClarificationService', () => {
     });
 
     it('updateDraft never calls markSent', async () => {
-      vi.mocked(mockActions.get).mockResolvedValue(makeClarification({ sent_at: null }));
+      vi.mocked(mockActions.findByIdWithOrg).mockResolvedValue(
+        makeClarification({ sent_at: null }),
+      );
       vi.mocked(mockActions.updateDraft).mockResolvedValue(
         makeClarification({ sent_at: null, draft_subject: 'new' }),
       );
@@ -315,11 +321,25 @@ describe('ClarificationService', () => {
       expect(mockActions.markSent).not.toHaveBeenCalled();
     });
 
-    it('rejects missing actor IDs', async () => {
-      vi.mocked(mockActions.get).mockResolvedValue(makeClarification({ sent_at: null }));
-
-      await expect(service.send('clar-0001', '' as never)).rejects.toThrow();
+    it('rejects missing actor IDs when auth is active', async () => {
+      await expect(service.send('clar-0001', '' as never, 'org-0001')).rejects.toThrow();
       expect(mockActions.markSent).not.toHaveBeenCalled();
+    });
+
+    it('allows send without actor ID when auth is disabled', async () => {
+      const unsent = makeClarification({ sent_at: null });
+      const sent = makeClarification({
+        sent_at: new Date('2026-06-29T12:00:00Z'),
+        sent_by: undefined as never,
+      });
+
+      vi.mocked(mockActions.findByIdWithOrg).mockResolvedValue(unsent);
+      vi.mocked(mockActions.markSent).mockResolvedValue(sent);
+
+      const result = await service.send('clar-0001');
+
+      expect(result.sent_at).toBeInstanceOf(Date);
+      expect(mockActions.markSent).toHaveBeenCalledWith('clar-0001', undefined);
     });
   });
 
