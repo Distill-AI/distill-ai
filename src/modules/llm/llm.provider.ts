@@ -38,6 +38,7 @@ export class LLMProvider {
           messages: [{ role: 'user', content: prompt }],
           temperature,
           max_tokens: maxTokens,
+          enable_thinking: false,
         }),
         signal: controller.signal,
       });
