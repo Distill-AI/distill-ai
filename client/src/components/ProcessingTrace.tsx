@@ -1,20 +1,28 @@
 import { RotateCw } from 'lucide-react';
-import { useSSEEvents } from '../hooks/useSSEEvents';
 import { TraceNode } from './TraceNode';
 import { MatchedLineRow } from './MatchedLineRow';
 import { StructuredOutput } from './StructuredOutput';
+import type { NodeState, SseConnectionState } from '../hooks/useSSEEvents';
 import type { MatchedLine } from '../api/interface/line-item';
 import type { ConfidenceThresholds } from '../config/thresholds';
 
 interface ProcessingTraceProps {
-  requestId: string;
+  nodes: NodeState[];
+  connection: SseConnectionState;
+  finalOutput: Record<string, unknown> | null;
+  reconnect: () => void;
   lineItems?: MatchedLine[];
   thresholds?: ConfidenceThresholds;
 }
 
-export function ProcessingTrace({ requestId, lineItems, thresholds }: ProcessingTraceProps) {
-  const { nodes, connection, finalOutput, reconnect } = useSSEEvents(requestId);
-
+export function ProcessingTrace({
+  nodes,
+  connection,
+  finalOutput,
+  reconnect,
+  lineItems,
+  thresholds,
+}: ProcessingTraceProps) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-6 lg:flex-row">
