@@ -24,31 +24,31 @@ function quotesLink() {
 describe('Sidebar active state', () => {
   it('highlights Inbox at /', () => {
     renderSidebar('/');
-    expect(inboxLink().className).toContain('shadow-[inset_3px_0_0_#6366F1]');
+    expect(inboxLink()).toHaveAttribute('aria-current', 'page');
   });
 
   it('highlights Inbox at /requests', () => {
     renderSidebar('/requests');
-    expect(inboxLink().className).toContain('shadow-[inset_3px_0_0_#6366F1]');
+    expect(inboxLink()).toHaveAttribute('aria-current', 'page');
   });
 
   it('highlights Inbox at /requests/some-id', () => {
     renderSidebar('/requests/some-id');
-    expect(inboxLink().className).toContain('shadow-[inset_3px_0_0_#6366F1]');
+    expect(inboxLink()).toHaveAttribute('aria-current', 'page');
   });
 
   it('highlights Inbox at /requests/some-id/review', () => {
     renderSidebar('/requests/some-id/review');
-    expect(inboxLink().className).toContain('shadow-[inset_3px_0_0_#6366F1]');
+    expect(inboxLink()).toHaveAttribute('aria-current', 'page');
   });
 
   it('does not highlight Inbox at /quotes', () => {
     renderSidebar('/quotes');
-    expect(inboxLink().className).not.toContain('shadow-[inset_3px_0_0_#6366F1]');
+    expect(inboxLink()).not.toHaveAttribute('aria-current', 'page');
   });
 
   it('highlights Quotes at /quotes', () => {
     renderSidebar('/quotes');
-    expect(quotesLink().className).toContain('shadow-[inset_3px_0_0_#6366F1]');
+    expect(quotesLink()).toHaveAttribute('aria-current', 'page');
   });
 });

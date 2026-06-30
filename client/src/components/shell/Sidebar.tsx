@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useRole } from '../../hooks/useRole';
 import type { Role } from '../../context/RoleContext';
 import { DistillMark } from './DistillMark';
@@ -153,30 +153,30 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       </div>
 
       <ul className="flex-1 px-2 space-y-0.5" role="list">
-        {visibleItems.map((item) => (
-          <li key={item.to}>
-            <NavLink
-              to={item.to}
-              end={item.to === '/'}
-              onClick={onClose}
-              className={({ isActive }) => {
-                const active =
-                  isActive ||
-                  (item.to === '/' &&
-                    (pathname === '/requests' || pathname.startsWith('/requests/')));
-                return [
+        {visibleItems.map((item) => {
+          const isActive =
+            item.to === '/'
+              ? pathname === '/' || pathname === '/requests' || pathname.startsWith('/requests/')
+              : pathname === item.to || pathname.startsWith(item.to + '/');
+          return (
+            <li key={item.to}>
+              <Link
+                to={item.to}
+                onClick={onClose}
+                aria-current={isActive ? 'page' : undefined}
+                className={[
                   'flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] transition-colors',
-                  active
+                  isActive
                     ? 'bg-slate-800 text-white shadow-[inset_3px_0_0_#6366F1]'
                     : 'text-muted hover:text-white hover:bg-slate-800/60',
-                ].join(' ');
-              }}
-            >
-              {item.icon}
-              {item.label}
-            </NavLink>
-          </li>
-        ))}
+                ].join(' ')}
+              >
+                {item.icon}
+                {item.label}
+              </Link>
+            </li>
+          );
+        })}
       </ul>
 
       <div className="flex items-center gap-3 px-4 py-4 border-t border-white/10">
