@@ -18,11 +18,14 @@ export function ProcessingRequestPage() {
         >
           <ChevronLeftIcon />
         </Link>
-        <h1 className="truncate text-lg font-semibold text-slate-900">Processing Request</h1>
+        <h1 className="truncate text-lg font-semibold text-slate-900">
+          Processing Request
+          {id && <span className="ml-2 text-sm font-normal text-gray-500">#{id}</span>}
+        </h1>
       </div>,
     );
     return () => setTitle(null);
-  }, [setTitle]);
+  }, [id, setTitle]);
 
   useEffect(() => {
     if (!id) {
