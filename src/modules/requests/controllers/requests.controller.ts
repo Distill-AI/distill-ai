@@ -7,6 +7,7 @@ import {
   Logger,
   NotFoundException,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -24,6 +25,7 @@ import * as SYS_MSG from '@constants/system-messages';
 import { RequestsService } from '../services/requests.service';
 import { StreamService } from '../services/stream.service';
 import { RequestActions } from '../actions/request.actions';
+import { LineItemRemapActions } from '../actions/line-item-remap.actions';
 import { ResumeReason } from '../enums/resume-reason.enum';
 import {
   RequestEventsDocs,
@@ -33,14 +35,17 @@ import {
   GetRequestDocs,
   PasteAttachmentDocs,
   RequestDeclineDocs,
+  RequestLineItemRemapDocs,
 } from '../docs/requests-swagger.doc';
 import { AttachmentsService } from '../services/attachments.service';
 import { PasteAttachmentDto } from '../dto/paste-attachment.dto';
 import { DeclineRequestDto } from '../dto/decline-request.dto';
+import { PatchLineItemDto } from '../dto/patch-line-item.dto';
 import { parsePagination } from '@common/pagination/parse-pagination';
 import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
 import type { ResumeResponsePayload } from '../interfaces/resume.interface';
 import type { DeclineResponsePayload } from '../interfaces/decline.interface';
+import type { RemapResponsePayload } from '../interfaces/remap.interface';
 
 @Controller('requests')
 export class RequestsController {
@@ -50,6 +55,7 @@ export class RequestsController {
     private readonly requestsService: RequestsService,
     private readonly streamService: StreamService,
     private readonly requestActions: RequestActions,
+    private readonly lineItemRemapActions: LineItemRemapActions,
     private readonly attachmentsService: AttachmentsService,
   ) {}
 
@@ -243,5 +249,29 @@ export class RequestsController {
       message: SYS_MSG.REQUEST_DECLINED,
       data: result,
     };
+  }
+
+  @Patch(':id/line-items/:lineId')
+  @HttpCode(HttpStatus.OK)
+  @Roles(Role.ESTIMATOR, Role.ADMIN)
+  @RequestLineItemRemapDocs()
+  async remapLineItem(
+    @Param('id') requestId: string,
+    @Param('lineId') lineId: string,
+    @Body() dto: PatchLineItemDto,
+    @Req() req: { user?: AuthUser },
+  ): Promise<{ statusCode: number; message: string; data: RemapResponsePayload }> {
+    const request = await this.requestsService.findByIdOrFail(requestId);
+
+    if (authConfig.enabled) {
+      const user = req.user;
+      if (!user || request.org_id !== user.orgId) {
+        throw new NotFoundException(SYS_MSG.REQUEST_NOT_FOUND(requestId));
+      }
+    }
+
+    const data = await this.lineItemRemapActions.remap(request, lineId, dto);
+
+    return { statusCode: HttpStatus.OK, message: SYS_MSG.LINE_ITEM_REMAPPED, data };
   }
 }
