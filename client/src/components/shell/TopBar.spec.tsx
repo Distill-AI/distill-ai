@@ -73,6 +73,6 @@ describe('TopBar', () => {
 
   it('does not render the divider when actions is null', () => {
     renderTopBar();
-    expect(screen.queryByRole('separator')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('header-divider')).not.toBeInTheDocument();
   });
 });
