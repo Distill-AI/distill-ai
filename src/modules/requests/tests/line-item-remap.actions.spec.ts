@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CustomHttpException } from '@common/exceptions/custom-http.exception';
+import { LineItem } from '@modules/catalog/entities/line-item.entity';
 import { MANUAL_OVERRIDE_FLAG } from '@modules/pricing/quote-recompute.service';
 import { LineItemRemapActions } from '../actions/line-item-remap.actions';
+import { Request } from '../entities/request.entity';
 import { RequestStatus } from '../enums/request-status.enum';
-import type { Request } from '../entities/request.entity';
 import type { PatchLineItemDto } from '../dto/patch-line-item.dto';
 
 const REQUEST = { id: 'req-1', org_id: 'org-1' } as Request;
@@ -31,6 +32,7 @@ function setup(
           request_id: 'req-1',
           matched_sku_id: 'sku-old',
           quantity: 100,
+          unit_price_minor: null,
           flags: ['close_tie'],
         }
       : overrides.line;
@@ -42,15 +44,7 @@ function setup(
     match_confidence: 1,
   };
 
-  const lineItemGet = vi.fn().mockResolvedValueOnce(line).mockResolvedValue(updated);
-  const updateCalls: Array<Record<string, unknown>> = [];
-  const lineItems = {
-    get: lineItemGet,
-    update: vi.fn((opts: { updatePayload: Record<string, unknown> }) => {
-      updateCalls.push(opts.updatePayload);
-      return Promise.resolve(updated);
-    }),
-  };
+  const lineItems = { get: vi.fn().mockResolvedValueOnce(line).mockResolvedValue(updated) };
   const skus = {
     findOne: vi
       .fn()
@@ -59,34 +53,46 @@ function setup(
       ),
   };
   const recompute = { recompute: vi.fn().mockResolvedValue(overrides.recompute ?? RECOMPUTE_OK) };
-  const requests = { setStatus: vi.fn().mockResolvedValue(undefined) };
+
+  // The whole flow runs in one transaction: capture every em.update with its entity.
+  const emUpdates: Array<{
+    entity: unknown;
+    where: { id: string };
+    payload: Record<string, unknown>;
+  }> = [];
+  const em = {
+    update: vi.fn((entity: unknown, where: { id: string }, payload: Record<string, unknown>) => {
+      emUpdates.push({ entity, where, payload });
+      return Promise.resolve();
+    }),
+  };
+  const dataSource = { transaction: vi.fn((cb: (em: unknown) => Promise<unknown>) => cb(em)) };
 
   const action = new LineItemRemapActions(
     lineItems as never,
     skus as never,
     recompute as never,
-    requests as never,
+    dataSource as never,
   );
-  return { action, lineItems, skus, recompute, requests, updateCalls };
+  const lineUpdate = () => emUpdates.find((u) => u.entity === LineItem)?.payload;
+  const requestUpdate = () => emUpdates.find((u) => u.entity === Request)?.payload;
+  return { action, lineItems, skus, recompute, em, lineUpdate, requestUpdate };
 }
 
 describe('LineItemRemapActions', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('AC-01/AC-02: re-maps the line to 100%, recomputes, and returns server totals', async () => {
-    const { action, recompute, updateCalls } = setup();
+  it('AC-01/AC-02: re-maps the line to 100%, recomputes in a transaction, returns server totals', async () => {
+    const { action, recompute, em, lineUpdate } = setup();
     const dto: PatchLineItemDto = { sku_id: 'sku-new' };
 
     const result = await action.remap(REQUEST, 'li-1', dto);
 
-    expect(updateCalls[0]).toMatchObject({ matched_sku_id: 'sku-new', match_confidence: 1 });
-    expect(updateCalls[0].flags).not.toContain('close_tie'); // a confirmed match is no longer a close tie
-    expect(recompute.recompute).toHaveBeenCalledWith('req-1', 'org-1');
-    expect(result.quote).toMatchObject({
-      total_minor: 90000,
-      subtotal_minor: 100000,
-      blocked: false,
-    });
+    expect(lineUpdate()).toMatchObject({ matched_sku_id: 'sku-new', match_confidence: 1 });
+    expect(lineUpdate()?.flags).not.toContain('close_tie');
+    // recompute runs with the SAME transaction manager that applied the line update (atomic).
+    expect(recompute.recompute).toHaveBeenCalledWith('req-1', 'org-1', em);
+    expect(result.quote).toMatchObject({ total_minor: 90000, blocked: false });
     expect(result.line.id).toBe('li-1');
   });
 
@@ -110,16 +116,24 @@ describe('LineItemRemapActions', () => {
     expect(recompute.recompute).not.toHaveBeenCalled();
   });
 
-  it('EC-04: routes the request to needs_review when recompute is blocked', async () => {
-    const { action, requests } = setup({ recompute: { ...RECOMPUTE_OK, blocked: true } });
+  it('rejects override:true with no manual price (in body or persisted) with a 400', async () => {
+    const { action, recompute } = setup();
+    await expect(action.remap(REQUEST, 'li-1', { override: true })).rejects.toBeInstanceOf(
+      CustomHttpException,
+    );
+    expect(recompute.recompute).not.toHaveBeenCalled();
+  });
+
+  it('EC-04: routes the request to needs_review (in the same transaction) when blocked', async () => {
+    const { action, requestUpdate } = setup({ recompute: { ...RECOMPUTE_OK, blocked: true } });
     await action.remap(REQUEST, 'li-1', { sku_id: 'sku-new' });
-    expect(requests.setStatus).toHaveBeenCalledWith('req-1', RequestStatus.NEEDS_REVIEW);
+    expect(requestUpdate()).toMatchObject({ status: RequestStatus.NEEDS_REVIEW });
   });
 
   it('marks the line overridden and stores the manual price when override is set', async () => {
-    const { action, updateCalls } = setup();
+    const { action, lineUpdate } = setup();
     await action.remap(REQUEST, 'li-1', { override: true, unit_price_minor: 1234 });
-    expect(updateCalls[0].flags).toContain(MANUAL_OVERRIDE_FLAG);
-    expect(updateCalls[0].unit_price_minor).toBe(1234);
+    expect(lineUpdate()?.flags).toContain(MANUAL_OVERRIDE_FLAG);
+    expect(lineUpdate()?.unit_price_minor).toBe(1234);
   });
 });

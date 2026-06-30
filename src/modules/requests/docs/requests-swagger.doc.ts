@@ -432,7 +432,7 @@ export function RequestLineItemRemapDocs(): MethodDecorator {
     }),
     ApiResponse({
       status: HttpStatus.BAD_REQUEST,
-      description: SYS_MSG.REMAP_NOTHING_TO_UPDATE,
+      description: `${SYS_MSG.REMAP_NOTHING_TO_UPDATE}; ${SYS_MSG.REMAP_OVERRIDE_PRICE_REQUIRED}`,
       schema: errorSchema(
         HttpStatus.BAD_REQUEST,
         'Bad Request',
@@ -442,11 +442,13 @@ export function RequestLineItemRemapDocs(): MethodDecorator {
     }),
     ApiResponse({
       status: HttpStatus.NOT_FOUND,
-      description: SYS_MSG.REMAP_LINE_NOT_IN_REQUEST('{lineId}'),
+      // 404 covers an unknown/cross-org request, a line not in the request, and an unknown/cross-org
+      // SKU - all with neutral messages so the response cannot be used to enumerate ids (SEC-01).
+      description: `${SYS_MSG.REQUEST_NOT_FOUND('{id}')} | ${SYS_MSG.REMAP_LINE_NOT_FOUND} | ${SYS_MSG.REMAP_SKU_NOT_FOUND}`,
       schema: errorSchema(
         HttpStatus.NOT_FOUND,
         'Not Found',
-        SYS_MSG.REMAP_LINE_NOT_IN_REQUEST('{lineId}'),
+        SYS_MSG.REMAP_LINE_NOT_FOUND,
         REMAP_PATH,
       ),
     }),
