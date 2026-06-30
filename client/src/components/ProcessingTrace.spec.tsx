@@ -62,9 +62,9 @@ describe('ProcessingTrace', () => {
     expect(screen.getByText('score')).toBeInTheDocument();
   });
 
-  it('renders Extraction Trace heading', () => {
+  it('renders Extraction trace heading', () => {
     render(<ProcessingTrace requestId="test-uuid" />);
-    expect(screen.getByText('Extraction Trace')).toBeInTheDocument();
+    expect(screen.getByText('Extraction trace')).toBeInTheDocument();
   });
 
   it('renders Run Summary heading', () => {
