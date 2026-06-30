@@ -5,10 +5,12 @@ import { RequestsController } from '../controllers/requests.controller';
 import { RequestsService } from '../services/requests.service';
 import { StreamService } from '../services/stream.service';
 import { RequestActions } from '../actions/request.actions';
+import { LineItemRemapActions } from '../actions/line-item-remap.actions';
 import { ResumeReason } from '../enums/resume-reason.enum';
 import { RequestStatus } from '../enums/request-status.enum';
 import { CurrentNode } from '../enums/current-node.enum';
 import { DeclineRequestDto } from '../dto/decline-request.dto';
+import { PatchLineItemDto } from '../dto/patch-line-item.dto';
 import { AttachmentsService } from '../services/attachments.service';
 import type { Request as RequestEntity } from '../entities/request.entity';
 import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
@@ -20,6 +22,7 @@ describe('RequestsController', () => {
   let requestsService: Partial<RequestsService>;
   let streamService: Partial<StreamService>;
   let requestActions: Partial<RequestActions>;
+  let lineItemRemapActions: Partial<LineItemRemapActions>;
   let attachmentsService: Partial<AttachmentsService>;
 
   const mockUser: AuthUser = {
@@ -85,6 +88,26 @@ describe('RequestsController', () => {
         reason: 'Not a relevant request',
       }),
     };
+    lineItemRemapActions = {
+      remap: vi.fn().mockResolvedValue({
+        request_id: 'req-1',
+        line: {
+          id: 'li-1',
+          matched_sku_id: 'sku-new',
+          quantity: 100,
+          unit_price_minor: 900,
+          match_confidence: 1,
+        },
+        quote: {
+          quote_id: 'quote-1',
+          subtotal_minor: 100000,
+          discount_minor: 10000,
+          total_minor: 90000,
+          lead_time_days: 7,
+          blocked: false,
+        },
+      }),
+    };
     attachmentsService = {
       getForDownload: vi.fn().mockResolvedValue({
         attachment: {
@@ -102,6 +125,7 @@ describe('RequestsController', () => {
       requestsService as RequestsService,
       streamService as StreamService,
       requestActions as RequestActions,
+      lineItemRemapActions as LineItemRemapActions,
       attachmentsService as AttachmentsService,
     );
   });
@@ -259,6 +283,29 @@ describe('RequestsController', () => {
 
       expect(result.statusCode).toBe(200);
       expect(result.data.status).toBe(RequestStatus.DECLINED);
+    });
+  });
+
+  describe('remap line item (PATCH /:id/line-items/:lineId)', () => {
+    const dto: PatchLineItemDto = { sku_id: 'sku-new' };
+
+    it('re-maps the line and returns the server-confirmed totals (AC-01, AC-02)', async () => {
+      const result = await controller.remapLineItem('req-1', 'li-1', dto, { user: mockUser });
+
+      expect(result.statusCode).toBe(200);
+      expect(result.data.quote.total_minor).toBe(90000);
+      expect(result.data.line.match_confidence).toBe(1);
+      expect(lineItemRemapActions.remap).toHaveBeenCalledWith(mockRequest, 'li-1', dto);
+    });
+
+    it('throws NotFoundException when the org_id does not match (SEC-01)', async () => {
+      const wrongOrgReq = { ...mockRequest, org_id: 'org-2' } as RequestEntity;
+      vi.spyOn(requestsService, 'findByIdOrFail').mockResolvedValueOnce(wrongOrgReq);
+
+      await expect(
+        controller.remapLineItem('req-1', 'li-1', dto, { user: mockUser }),
+      ).rejects.toThrow(NotFoundException);
+      expect(lineItemRemapActions.remap).not.toHaveBeenCalled();
     });
   });
 
