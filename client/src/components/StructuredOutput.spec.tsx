@@ -9,9 +9,11 @@ describe('StructuredOutput', () => {
     expect(screen.getByText(/success/)).toBeInTheDocument();
   });
 
-  it('shows "No output" placeholder when data is null', () => {
+  it('shows "No output" placeholder with muted styling when data is null', () => {
     render(<StructuredOutput data={null} />);
-    expect(screen.getByText('No output')).toBeInTheDocument();
+    const placeholder = screen.getByText('No output');
+    expect(placeholder.className).toContain('text-muted');
+    expect(placeholder.className).not.toContain('bg-gray-50');
   });
 
   it('renders in a pre/code block with font-mono', () => {
@@ -20,5 +22,27 @@ describe('StructuredOutput', () => {
     const pre = document.querySelector('pre');
     expect(pre).toBeInTheDocument();
     expect(pre?.className).toContain('font-mono');
+  });
+
+  it('colors object keys with the accent token', () => {
+    render(<StructuredOutput data={{ company: 'Acme' }} />);
+    expect(screen.getByText('"company"').className).toContain('text-accent');
+  });
+
+  it('colors string values with the success-text token', () => {
+    render(<StructuredOutput data={{ company: 'Acme' }} />);
+    expect(screen.getByText('"Acme"').className).toContain('text-success-text');
+  });
+
+  it('collapses array values to a "[ n items ]" placeholder instead of expanding them', () => {
+    render(<StructuredOutput data={{ line_items: [1, 2, 3] }} />);
+    const placeholder = screen.getByText('[ 3 items ]');
+    expect(placeholder.className).toContain('text-body-text');
+    expect(screen.queryByText('1')).not.toBeInTheDocument();
+  });
+
+  it('uses singular "item" when the array has exactly one element', () => {
+    render(<StructuredOutput data={{ line_items: [1] }} />);
+    expect(screen.getByText('[ 1 item ]')).toBeInTheDocument();
   });
 });
