@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ObjectStoreModule } from '@common/object-store/object-store.module';
 import { ExtractionModule } from '@modules/extraction/extraction.module';
+import { QuotesModule } from '@modules/quotes/quotes.module';
 import { QueueClientModule } from '@queue/queue-client.module';
 import { SseModule } from '../../sse/sse.module';
 import { EventsModule } from '../events/events.module';
@@ -20,6 +21,8 @@ import { NodeRecoveryActions } from './actions/node-recovery.actions';
     EventsModule,
     ObjectStoreModule,
     ExtractionModule,
+    // QuotesModule provides QuoteModelAction so the Review detail can include the suggested quote.
+    QuotesModule,
     QueueClientModule,
   ],
   controllers: [RequestsController],
