@@ -1,7 +1,6 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { toToolName } from '@modules/pipeline/types';
 import type { DeepPartial } from 'typeorm';
-import type { FindOptionsWhere } from 'typeorm';
 import * as SYS_MSG from '@constants/system-messages';
 import { ToolRegistry } from '@modules/tools/registry';
 import { ClarificationActions } from './actions/clarification.actions';
@@ -163,9 +162,7 @@ export class ClarificationService {
     const updated = await this.actions.markSent(id, sentBy);
 
     if (!updated) {
-      const recheck = await this.actions.get({
-        identifierOptions: { id } as FindOptionsWhere<Clarification>,
-      });
+      const recheck = await this.actions.findByIdWithOrg(id, callerOrgId);
       if (recheck?.sent_at) {
         return recheck;
       }
