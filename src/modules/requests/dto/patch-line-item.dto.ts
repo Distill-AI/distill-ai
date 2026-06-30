@@ -1,4 +1,4 @@
-import { IsBoolean, IsInt, IsNumber, IsOptional, Matches, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, Matches, Min } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 // Lenient UUID shape (8-4-4-4-12 hex, any version) - matches the ids Postgres stores and that the
@@ -17,9 +17,9 @@ export class PatchLineItemDto {
   @Matches(UUID_SHAPE, { message: 'sku_id must be a valid id' })
   sku_id?: string;
 
-  @ApiPropertyOptional({ description: 'Corrected quantity for the line', minimum: 0 })
+  @ApiPropertyOptional({ description: 'Corrected quantity for the line (whole units)', minimum: 0 })
   @IsOptional()
-  @IsNumber()
+  @IsInt()
   @Min(0)
   quantity?: number;
 

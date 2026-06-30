@@ -205,10 +205,12 @@ export const CANDIDATES_RETRIEVED = 'Candidates retrieved successfully';
 export const REQUEST_DECLINED = 'Request declined successfully';
 export const DECLINE_REASON_REQUIRED = 'Decline reason is required and must not be empty';
 
-// Re-map line item (US-E6-2-BE)
+// Re-map line item (US-E6-2-BE). Not-found messages are fixed strings (no id echo) so a 404 cannot
+// be used to probe whether an id exists in another org (SEC-01, no enumeration).
 export const LINE_ITEM_REMAPPED = 'Line item re-mapped and quote recomputed';
 export const REMAP_NOTHING_TO_UPDATE =
   'Provide at least one of sku_id, quantity, unit_price_minor, or override';
-export const REMAP_SKU_NOT_FOUND = (id: string) => `SKU ${id} not found`;
-export const REMAP_LINE_NOT_IN_REQUEST = (lineId: string) =>
-  `Line item ${lineId} not found for this request`;
+export const REMAP_SKU_NOT_FOUND = 'SKU not found';
+export const REMAP_LINE_NOT_FOUND = 'Line item not found for this request';
+export const REMAP_OVERRIDE_PRICE_REQUIRED =
+  'override requires unit_price_minor (or a line that already has a manual price)';
