@@ -68,7 +68,7 @@ export class ClarificationService {
     if (!generationSucceeded) {
       throw new CustomHttpException(
         SYS_MSG.CLARIFICATION_DRAFT_PARSE_FAILED,
-        HttpStatus.INTERNAL_SERVER_ERROR,
+        HttpStatus.FAILED_DEPENDENCY,
       );
     }
 
