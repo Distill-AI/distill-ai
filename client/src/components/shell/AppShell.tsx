@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import { PageHeaderProvider } from '../../context/PageHeaderContext';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
@@ -11,6 +12,7 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const location = useLocation();
 
   function closeSidebar() {
     setSidebarOpen(false);
@@ -27,16 +29,16 @@ export function AppShell({ children }: AppShellProps) {
   }, [sidebarOpen]);
 
   return (
-    <PageHeaderProvider>
-      <div className="flex h-screen overflow-hidden">
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 z-40 bg-black/50 md:hidden"
-            onClick={closeSidebar}
-            aria-hidden="true"
-          />
-        )}
-        <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
+    <div className="flex h-screen overflow-hidden">
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={closeSidebar}
+          aria-hidden="true"
+        />
+      )}
+      <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
+      <PageHeaderProvider key={location.pathname}>
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
           <TopBar
             isOpen={sidebarOpen}
@@ -45,7 +47,7 @@ export function AppShell({ children }: AppShellProps) {
           />
           <main className="flex-1 overflow-y-auto bg-canvas">{children}</main>
         </div>
-      </div>
-    </PageHeaderProvider>
+      </PageHeaderProvider>
+    </div>
   );
 }
