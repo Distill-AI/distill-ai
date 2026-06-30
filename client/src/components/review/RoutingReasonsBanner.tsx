@@ -58,7 +58,7 @@ export function RoutingReasonsBanner({ routing, routing_reasons }: RoutingReason
       >
         <ul role="list" className="flex flex-col gap-1.5">
           {routing_reasons.map((reason) => (
-            <li key={`${reason.code}-${reason.source}`} className="flex items-start gap-2">
+            <li key={`${reason.code}-${reason.source}-${reason.message}`} className="flex items-start gap-2">
               <span
                 className="mt-1.75 h-1.5 w-1.5 shrink-0 rounded-full bg-muted"
                 aria-hidden="true"
