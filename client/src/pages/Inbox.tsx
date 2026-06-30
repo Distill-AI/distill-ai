@@ -43,7 +43,7 @@ export function Inbox() {
   const { data, isLoading, isError } = useRequests();
 
   useEffect(() => {
-    setTitle('Inbox');
+    setTitle(<h1 className="truncate text-lg font-semibold text-slate-900">Inbox</h1>);
     setActions(
       <div className="flex items-center gap-2">
         <button
