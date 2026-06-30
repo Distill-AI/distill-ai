@@ -8,13 +8,20 @@ interface TopBarProps {
   onMenuClick: () => void;
 }
 
-function UserAvatar() {
+const DEMO_USER = { name: 'Avery Reed', initials: 'AR' };
+
+interface UserAvatarProps {
+  name: string;
+  initials: string;
+}
+
+function UserAvatar({ name, initials }: UserAvatarProps) {
   return (
     <div
-      aria-label="Signed in as Avery Reed"
+      aria-label={`Signed in as ${name}`}
       className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white"
     >
-      AR
+      {initials}
     </div>
   );
 }
@@ -64,7 +71,7 @@ export function TopBar({ isOpen, menuButtonRef, onMenuClick }: TopBarProps) {
             <div className="hidden md:block h-5 w-px bg-border" aria-hidden="true" data-testid="header-divider" />
           </>
         )}
-        <UserAvatar />
+        <UserAvatar name={DEMO_USER.name} initials={DEMO_USER.initials} />
       </div>
     </header>
   );
