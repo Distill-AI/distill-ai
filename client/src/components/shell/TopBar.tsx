@@ -64,7 +64,7 @@ export function TopBar({ isOpen, menuButtonRef, onMenuClick }: TopBarProps) {
       <div className="ml-auto flex items-center gap-3">
         {actions && (
           <>
-            <div className="hidden md:flex items-center gap-2">{actions}</div>
+            <div className="flex items-center gap-2">{actions}</div>
             <div
               className="hidden md:block h-5 w-px bg-border"
               aria-hidden="true"
