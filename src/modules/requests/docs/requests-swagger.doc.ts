@@ -13,6 +13,7 @@ import {
 } from '@nestjs/swagger';
 import { PasteAttachmentDto } from '../dto/paste-attachment.dto';
 import { DeclineRequestDto } from '../dto/decline-request.dto';
+import { PatchLineItemDto } from '../dto/patch-line-item.dto';
 import { RequestSummaryResponseDto, RequestDetailResponseDto } from './requests-response.dto';
 import * as SYS_MSG from '@constants/system-messages';
 
@@ -366,6 +367,103 @@ export function RequestDeclineDocs(): MethodDecorator {
       status: HttpStatus.FORBIDDEN,
       description: SYS_MSG.AUTH_FORBIDDEN,
       schema: errorSchema(HttpStatus.FORBIDDEN, 'Forbidden', SYS_MSG.AUTH_FORBIDDEN, DECLINE_PATH),
+    }),
+  );
+}
+
+const REMAP_PATH = '/api/v1/requests/{id}/line-items/{lineId}';
+
+export function RequestLineItemRemapDocs(): MethodDecorator {
+  return applyDecorators(
+    ApiTags('Requests'),
+    ApiOperation({
+      summary: 'Re-map a line item and recompute the quote',
+      description:
+        'Updates a line item (matched SKU, quantity, manual price, override flag) and re-prices the ' +
+        'request deterministically through the US-E4-1 PricingService, returning the server-confirmed ' +
+        'line price and quote totals. A SKU with no applicable pricing rule blocks auto-send and routes ' +
+        'the request to needs_review (EC-04).',
+    }),
+    ApiParam({ name: 'id', description: 'UUID of the request', required: true, format: 'uuid' }),
+    ApiParam({
+      name: 'lineId',
+      description: 'UUID of the line item to re-map',
+      required: true,
+      format: 'uuid',
+    }),
+    ApiBody({ type: PatchLineItemDto }),
+    ApiResponse({
+      status: HttpStatus.OK,
+      description: SYS_MSG.LINE_ITEM_REMAPPED,
+      schema: {
+        properties: {
+          success: { type: 'boolean', example: true },
+          statusCode: { type: 'number', example: HttpStatus.OK },
+          message: { type: 'string', example: SYS_MSG.LINE_ITEM_REMAPPED },
+          data: {
+            type: 'object',
+            properties: {
+              request_id: { type: 'string', format: 'uuid' },
+              line: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string', format: 'uuid' },
+                  matched_sku_id: { type: 'string', format: 'uuid', nullable: true },
+                  quantity: { type: 'number', nullable: true, example: 100 },
+                  unit_price_minor: { type: 'number', nullable: true, example: 900 },
+                  match_confidence: { type: 'number', nullable: true, example: 1 },
+                },
+              },
+              quote: {
+                type: 'object',
+                properties: {
+                  quote_id: { type: 'string', format: 'uuid', nullable: true },
+                  subtotal_minor: { type: 'number', example: 100000 },
+                  discount_minor: { type: 'number', example: 10000 },
+                  total_minor: { type: 'number', example: 90000 },
+                  lead_time_days: { type: 'number', nullable: true, example: 7 },
+                  blocked: { type: 'boolean', example: false },
+                },
+              },
+            },
+          },
+        },
+      },
+    }),
+    ApiResponse({
+      status: HttpStatus.BAD_REQUEST,
+      description: SYS_MSG.REMAP_NOTHING_TO_UPDATE,
+      schema: errorSchema(
+        HttpStatus.BAD_REQUEST,
+        'Bad Request',
+        [SYS_MSG.REMAP_NOTHING_TO_UPDATE],
+        REMAP_PATH,
+      ),
+    }),
+    ApiResponse({
+      status: HttpStatus.NOT_FOUND,
+      description: SYS_MSG.REMAP_LINE_NOT_IN_REQUEST('{lineId}'),
+      schema: errorSchema(
+        HttpStatus.NOT_FOUND,
+        'Not Found',
+        SYS_MSG.REMAP_LINE_NOT_IN_REQUEST('{lineId}'),
+        REMAP_PATH,
+      ),
+    }),
+    ApiResponse({
+      status: HttpStatus.UNAUTHORIZED,
+      description: SYS_MSG.AUTH_UNAUTHORIZED,
+      schema: errorSchema(
+        HttpStatus.UNAUTHORIZED,
+        'Unauthorized',
+        SYS_MSG.AUTH_UNAUTHORIZED,
+        REMAP_PATH,
+      ),
+    }),
+    ApiResponse({
+      status: HttpStatus.FORBIDDEN,
+      description: SYS_MSG.AUTH_FORBIDDEN,
+      schema: errorSchema(HttpStatus.FORBIDDEN, 'Forbidden', SYS_MSG.AUTH_FORBIDDEN, REMAP_PATH),
     }),
   );
 }
