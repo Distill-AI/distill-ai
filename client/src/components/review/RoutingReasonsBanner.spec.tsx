@@ -63,10 +63,9 @@ describe('RoutingReasonsBanner', () => {
     expect(screen.getByText('Line confidence 0.64 below auto threshold 0.95')).toBeVisible();
   });
 
-  it('does not show all-clear when routing is null and reasons is empty', () => {
-    render(<RoutingReasonsBanner routing={null} routing_reasons={[]} />);
-    expect(screen.queryByText(/all clear/i)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /why this needs review/i })).toBeInTheDocument();
+  it('renders nothing when routing is null and reasons is empty', () => {
+    const { container } = render(<RoutingReasonsBanner routing={null} routing_reasons={[]} />);
+    expect(container).toBeEmptyDOMElement();
   });
 
   it('shows the disclosure with reasons when routing is null and reasons are present', () => {
