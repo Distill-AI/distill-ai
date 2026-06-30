@@ -136,4 +136,24 @@ describe('LineItemRemapActions', () => {
     expect(lineUpdate()?.flags).toContain(MANUAL_OVERRIDE_FLAG);
     expect(lineUpdate()?.unit_price_minor).toBe(1234);
   });
+
+  it('persists a manual price sent without an explicit override (price implies override)', async () => {
+    const { action, lineUpdate } = setup();
+    await action.remap(REQUEST, 'li-1', { unit_price_minor: 1234 });
+    expect(lineUpdate()?.unit_price_minor).toBe(1234);
+    expect(lineUpdate()?.flags).toContain(MANUAL_OVERRIDE_FLAG);
+  });
+
+  it('clears the override flag when override:false is sent', async () => {
+    const { action, lineUpdate } = setup({
+      line: {
+        id: 'li-1',
+        request_id: 'req-1',
+        unit_price_minor: 900,
+        flags: [MANUAL_OVERRIDE_FLAG],
+      },
+    });
+    await action.remap(REQUEST, 'li-1', { override: false });
+    expect(lineUpdate()?.flags).not.toContain(MANUAL_OVERRIDE_FLAG);
+  });
 });
