@@ -47,14 +47,15 @@ export function DeclineModal({ requestId, open, onClose, triggerRef }: DeclineMo
           if (token !== tokenRef.current) return;
           onClose();
         },
-        onError: (err: AxiosError<{ message?: string }>) => {
+        onError: (err: AxiosError) => {
           if (token !== tokenRef.current) return;
           const status = err.response?.status;
           if (!status || status >= 500) {
             setError('Failed to decline. Please try again.');
             return;
           }
-          setError(err.response?.data?.message ?? 'Invalid input.');
+          const data = err.response?.data as { message?: string } | undefined;
+          setError(data?.message ?? 'Invalid input.');
         },
       },
     );
