@@ -58,9 +58,15 @@ export class QuoteRecomputeService {
     const priceable = lines.filter(
       (li) => li.matched_sku !== null && li.quantity !== null && li.quantity > 0,
     );
+    const priceableIds = new Set(priceable.map((li) => li.id));
+    // Lines no longer in the quote must shed any stale price/flag from a prior run, or a later
+    // request-detail read would show an unpriceable line that still looks priced.
+    const nonPriceable = lines.filter((li) => !priceableIds.has(li.id));
+
     if (priceable.length === 0) {
-      // Nothing priceable: drop any stale quote. Scoped by (request_id, org_id) so a mismatched
-      // request/org pair can never delete another org's quote (defence in depth).
+      await this.clearLinePricing(em, nonPriceable);
+      // Drop any stale quote. Scoped by (request_id, org_id) so a mismatched request/org pair can
+      // never delete another org's quote (defence in depth).
       const existing = await em.find(Quote, { where: { request_id: requestId, org_id: orgId } });
       if (existing.length > 0) {
         await em.delete(QuoteLineItem, { quote_id: In(existing.map((q) => q.id)) });
@@ -108,15 +114,19 @@ export class QuoteRecomputeService {
     const totalMinor = allLines.reduce((sum, l) => sum + l.amountMinor, 0);
     const leadDays = allLines.map((l) => l.leadTimeDays).filter((d): d is number => d !== null);
     const leadTimeDays = leadDays.length > 0 ? Math.max(...leadDays) : null;
-    // Only the rule-priced lines can be blocked by a missing rule; an all-override quote never is.
+    // Only the rule-priced lines can be blocked by a missing rule; manual-override lines never are.
     const blocked = autoPriced.blocked;
+    const blockedLineIds = blocked
+      ? new Set(autoPriced.lines.map((l) => l.lineItemId))
+      : new Set<string>();
 
     const flagsById = new Map<string, string[]>(
       priceable.map((li) => [li.id, Array.isArray(li.flags) ? [...(li.flags as string[])] : []]),
     );
     const currency = priceable[0].matched_sku?.currency ?? 'GBP';
 
-    await this.persistLinePrices(em, allLines, blocked, flagsById);
+    await this.clearLinePricing(em, nonPriceable);
+    await this.persistLinePrices(em, allLines, blockedLineIds, flagsById);
     const quote = await this.quotes.replaceForRequest(
       {
         requestId,
@@ -142,16 +152,20 @@ export class QuoteRecomputeService {
     };
   }
 
-  /** Writes each line's recomputed unit price + lead time, toggling the blocked flag (EC-04). */
+  /**
+   * Writes each line's recomputed unit price + lead time. The blocked flag is added only to the
+   * lines in `blockedLineIds` (the rule-priced ones when a rule is missing), so a manual-override
+   * line in a mixed quote is never mislabelled as blocked (EC-04).
+   */
   private async persistLinePrices(
     em: EntityManager,
     lines: PricedLine[],
-    blocked: boolean,
+    blockedLineIds: Set<string>,
     flagsById: Map<string, string[]>,
   ): Promise<void> {
     for (const line of lines) {
       let flags = flagsById.get(line.lineItemId) ?? [];
-      if (blocked) {
+      if (blockedLineIds.has(line.lineItemId)) {
         if (!flags.includes(PRICING_BLOCKED_FLAG)) flags.push(PRICING_BLOCKED_FLAG);
       } else {
         flags = flags.filter((f) => f !== PRICING_BLOCKED_FLAG);
@@ -163,6 +177,27 @@ export class QuoteRecomputeService {
           unit_price_minor: line.unitPriceMinor,
           lead_time_days: line.leadTimeDays,
           flags: flags as unknown as object[],
+        },
+      );
+    }
+  }
+
+  /** Clears persisted pricing from lines that are no longer in the quote (only when they carry it). */
+  private async clearLinePricing(em: EntityManager, lines: LineItem[]): Promise<void> {
+    for (const li of lines) {
+      const current = Array.isArray(li.flags) ? (li.flags as string[]) : [];
+      const hasPricing =
+        li.unit_price_minor !== null ||
+        li.lead_time_days !== null ||
+        current.includes(PRICING_BLOCKED_FLAG);
+      if (!hasPricing) continue;
+      await em.update(
+        LineItem,
+        { id: li.id },
+        {
+          unit_price_minor: null,
+          lead_time_days: null,
+          flags: current.filter((f) => f !== PRICING_BLOCKED_FLAG) as unknown as object[],
         },
       );
     }

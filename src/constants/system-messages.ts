@@ -217,3 +217,4 @@ export const REMAP_SKU_NOT_FOUND = 'SKU not found';
 export const REMAP_LINE_NOT_FOUND = 'Line item not found for this request';
 export const REMAP_OVERRIDE_PRICE_REQUIRED =
   'override requires unit_price_minor (or a line that already has a manual price)';
+export const REMAP_OVERRIDE_CONFLICT = 'unit_price_minor cannot be combined with override:false';
