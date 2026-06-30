@@ -46,5 +46,8 @@ export function SearchSkusDocs(): MethodDecorator {
         },
       },
     }),
+    // Auth is enforced when enabled; document the same 401/403 contract as the sibling endpoints.
+    ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: SYS_MSG.AUTH_UNAUTHORIZED }),
+    ApiResponse({ status: HttpStatus.FORBIDDEN, description: SYS_MSG.AUTH_FORBIDDEN }),
   );
 }

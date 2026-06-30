@@ -77,7 +77,7 @@ describe('RemapDrawer', () => {
       isFetching: false,
     });
     renderDrawer();
-    fireEvent.click(screen.getByRole('button', { name: /search catalog/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /search catalog/i }));
     fireEvent.change(screen.getByLabelText(/search catalog/i), { target: { value: 'washer' } });
     fireEvent.click(screen.getByText('SKU-099', { exact: false }));
     fireEvent.click(screen.getByRole('button', { name: /confirm match/i }));
@@ -90,7 +90,7 @@ describe('RemapDrawer', () => {
 
   it('EC-02: a search with no results shows a no-results state', () => {
     renderDrawer();
-    fireEvent.click(screen.getByRole('button', { name: /search catalog/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /search catalog/i }));
     fireEvent.change(screen.getByLabelText(/search catalog/i), { target: { value: 'zzz' } });
     expect(screen.getByText(/no skus match/i)).toBeInTheDocument();
   });

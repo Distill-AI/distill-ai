@@ -68,15 +68,12 @@ export function ParsedStructurePane({ requestId, lines }: ParsedStructurePanePro
                 <ConfidenceChip value={line.match_confidence} />
               </div>
 
+              {/* Quantity + flags only; the priced unit/amount is shown (and currency-formatted) in
+                  the Suggested Quote pane, so it is not rendered here as a raw minor-unit number. */}
               <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
                 <span>
                   Qty <span className="font-medium text-body-text">{line.quantity ?? '—'}</span>
                 </span>
-                {line.unit_price_minor !== null && (
-                  <span>
-                    Unit <span className="font-medium text-body-text">{line.unit_price_minor}</span>
-                  </span>
-                )}
                 {line.flags.length > 0 && (
                   <span className="flex flex-wrap items-center gap-1">
                     {line.flags.map((flag) => (
@@ -99,6 +96,7 @@ export function ParsedStructurePane({ requestId, lines }: ParsedStructurePanePro
 
       {remapLine && (
         <RemapDrawer
+          key={remapLine.id}
           requestId={requestId}
           lineId={remapLine.id}
           lineLabel={remapLine.raw_text}
