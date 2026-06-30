@@ -51,10 +51,12 @@ export function SuggestedQuotePane({ quote }: SuggestedQuotePaneProps) {
               <dt>Subtotal</dt>
               <dd>{formatMoney(quote.subtotal_minor, quote.currency)}</dd>
             </div>
-            <div className="flex justify-between py-0.5 text-muted">
-              <dt>Discount</dt>
-              <dd>-{formatMoney(quote.discount_minor, quote.currency)}</dd>
-            </div>
+            {quote.discount_minor > 0 && (
+              <div className="flex justify-between py-0.5 text-muted">
+                <dt>Discount</dt>
+                <dd>-{formatMoney(quote.discount_minor, quote.currency)}</dd>
+              </div>
+            )}
             <div className="mt-1 flex justify-between border-t border-border pt-2 font-semibold text-body-text">
               <dt>Total</dt>
               <dd data-testid="quote-total">{formatMoney(quote.total_minor, quote.currency)}</dd>
