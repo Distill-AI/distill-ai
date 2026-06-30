@@ -34,7 +34,6 @@ export function TopBar({ isOpen, menuButtonRef, onMenuClick }: TopBarProps) {
       className="flex flex-none items-center px-4 h-12 md:h-14 bg-slate-900 md:bg-surface md:border-b md:border-border md:shadow-sm"
       aria-label="Page header"
     >
-      {/* Mobile: hamburger + logo */}
       <div className="flex items-center gap-3 md:hidden">
         <button
           ref={menuButtonRef}
@@ -60,10 +59,8 @@ export function TopBar({ isOpen, menuButtonRef, onMenuClick }: TopBarProps) {
         </span>
       </div>
 
-      {/* Desktop: title from context */}
       <div className="hidden md:flex min-w-0 items-center gap-3">{title}</div>
 
-      {/* Right side: actions (desktop only) + avatar (always) */}
       <div className="ml-auto flex items-center gap-3">
         {actions && (
           <>
