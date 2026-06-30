@@ -69,6 +69,12 @@ export class LineItemRemapActions {
       throw new CustomHttpException(SYS_MSG.REMAP_OVERRIDE_PRICE_REQUIRED, HttpStatus.BAD_REQUEST);
     }
 
+    // A manual price with override:false is contradictory (set a price, then disable the override
+    // that would keep it); reject it rather than persisting a price recompute would overwrite.
+    if (dto.override === false && dto.unit_price_minor !== undefined) {
+      throw new CustomHttpException(SYS_MSG.REMAP_OVERRIDE_CONFLICT, HttpStatus.BAD_REQUEST);
+    }
+
     const totals = await this.dataSource.transaction(async (em) => {
       await em.update(LineItem, { id: lineId }, this.buildUpdate(line, dto));
       const result = await this.recompute.recompute(request.id, request.org_id, em);
