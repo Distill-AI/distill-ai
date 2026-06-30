@@ -1,7 +1,7 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { toToolName } from '@modules/pipeline/types';
-import type { FindOptionsWhere } from 'typeorm';
 import type { DeepPartial } from 'typeorm';
+import type { FindOptionsWhere } from 'typeorm';
 import * as SYS_MSG from '@constants/system-messages';
 import { ToolRegistry } from '@modules/tools/registry';
 import { ClarificationActions } from './actions/clarification.actions';
@@ -19,9 +19,20 @@ export class ClarificationService {
     private readonly draftToolFactory: DraftClarificationToolFactory,
   ) {}
 
-  async generateDraft(requestId: string, gaps: string[]): Promise<Clarification> {
+  async generateDraft(
+    requestId: string,
+    gaps: string[],
+    callerOrgId?: string,
+  ): Promise<Clarification> {
     if (!gaps || gaps.length === 0 || gaps.some((gap) => gap.trim().length === 0)) {
       throw new CustomHttpException(SYS_MSG.CLARIFICATION_NO_GAPS, HttpStatus.BAD_REQUEST);
+    }
+
+    if (callerOrgId !== undefined) {
+      const requestOrgId = await this.actions.findRequestOrgId(requestId);
+      if (!requestOrgId || requestOrgId !== callerOrgId) {
+        throw new CustomHttpException(SYS_MSG.CLARIFICATION_NOT_FOUND, HttpStatus.NOT_FOUND);
+      }
     }
 
     const toolName = toToolName('draft_clarification');
@@ -87,18 +98,16 @@ export class ClarificationService {
     return created;
   }
 
-  async getByRequestId(requestId: string): Promise<Clarification> {
-    const clarification = await this.actions.findByRequestId(requestId);
+  async getByRequestId(requestId: string, callerOrgId?: string): Promise<Clarification> {
+    const clarification = await this.actions.findByRequestId(requestId, callerOrgId);
     if (!clarification) {
       throw new CustomHttpException(SYS_MSG.CLARIFICATION_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
     return clarification;
   }
 
-  async getById(id: string): Promise<Clarification> {
-    const clarification = await this.actions.get({
-      identifierOptions: { id } as FindOptionsWhere<Clarification>,
-    });
+  async getById(id: string, callerOrgId?: string): Promise<Clarification> {
+    const clarification = await this.actions.findByIdWithOrg(id, callerOrgId);
     if (!clarification) {
       throw new CustomHttpException(SYS_MSG.CLARIFICATION_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
@@ -109,8 +118,9 @@ export class ClarificationService {
     id: string,
     draft_subject?: string,
     draft_body?: string,
+    callerOrgId?: string,
   ): Promise<Clarification> {
-    const existing = await this.getById(id);
+    const existing = await this.getById(id, callerOrgId);
 
     if (existing.sent_at) {
       throw new CustomHttpException(SYS_MSG.CLARIFICATION_ALREADY_SENT, HttpStatus.CONFLICT);
@@ -129,15 +139,15 @@ export class ClarificationService {
     return updated;
   }
 
-  async send(id: string, sentBy: string): Promise<Clarification> {
-    if (!sentBy) {
+  async send(id: string, sentBy?: string, callerOrgId?: string): Promise<Clarification> {
+    if (callerOrgId !== undefined && !sentBy) {
       throw new CustomHttpException(
         SYS_MSG.CLARIFICATION_SEND_ACTOR_REQUIRED,
         HttpStatus.BAD_REQUEST,
       );
     }
 
-    const clarification = await this.getById(id);
+    const clarification = await this.getById(id, callerOrgId);
 
     if (clarification.sent_at) {
       return clarification;

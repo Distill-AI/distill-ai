@@ -173,14 +173,14 @@ export const POLICY_LINE_ITEMS_EXCEEDS_MAX = (current: number, limit: number) =>
 export const POLICY_CATEGORY_RESTRICTED = (category: string) =>
   `Category "${category}" is restricted`;
 
-// Pricing node (US-E4-1)
+// Pricing node
 export const PRICE_QUOTE_PRICED = (totalMinor: number) =>
   `Quote priced; total ${totalMinor} (minor units)`;
 export const PRICE_NO_MATCHED_LINES = 'No matched line items to price';
 export const PRICE_RULES_MISSING =
   'No pricing rules configured for this organization; quote blocked for review';
 
-// Policy node (US-E4-2)
+// Policy node
 export const POLICY_OK = 'No policy breaches';
 export const POLICY_BREACH_FLAGGED = (count: number) =>
   `${count} policy breach(es) flagged; routing to review`;
@@ -216,6 +216,20 @@ export const CLARIFICATION_DRAFT_PARSE_FAILED =
   'Failed to parse clarification draft from LLM response';
 export const CLARIFICATION_DRAFT_EMPTY = 'Cannot send a clarification with empty draft content';
 
+// Catalog search (manual re-map fallback)
+export const SKUS_RETRIEVED = 'SKUs retrieved successfully';
+
 // Decline
 export const REQUEST_DECLINED = 'Request declined successfully';
 export const DECLINE_REASON_REQUIRED = 'Decline reason is required and must not be empty';
+
+// Re-map line item (US-E6-2-BE). Not-found messages are fixed strings (no id echo) so a 404 cannot
+// be used to probe whether an id exists in another org (SEC-01, no enumeration).
+export const LINE_ITEM_REMAPPED = 'Line item re-mapped and quote recomputed';
+export const REMAP_NOTHING_TO_UPDATE =
+  'Provide at least one of sku_id, quantity, unit_price_minor, or override';
+export const REMAP_SKU_NOT_FOUND = 'SKU not found';
+export const REMAP_LINE_NOT_FOUND = 'Line item not found for this request';
+export const REMAP_OVERRIDE_PRICE_REQUIRED =
+  'override requires unit_price_minor (or a line that already has a manual price)';
+export const REMAP_OVERRIDE_CONFLICT = 'unit_price_minor cannot be combined with override:false';

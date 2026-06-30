@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { RoleProvider } from '../context/RoleContext';
+import { PageHeaderProvider, usePageHeader } from '../context/PageHeaderContext';
 import { Inbox } from './Inbox';
 
 import type { RequestSummary } from '../api/requests';
@@ -41,13 +42,26 @@ function makeRequest(overrides: Partial<RequestSummary> = {}): RequestSummary {
   };
 }
 
+function PageHeaderSlots() {
+  const { title, actions } = usePageHeader();
+  return (
+    <>
+      <div data-testid="topbar-title">{title}</div>
+      <div data-testid="topbar-actions">{actions}</div>
+    </>
+  );
+}
+
 function renderInbox() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
         <RoleProvider>
-          <Inbox />
+          <PageHeaderProvider>
+            <PageHeaderSlots />
+            <Inbox />
+          </PageHeaderProvider>
         </RoleProvider>
       </MemoryRouter>
     </QueryClientProvider>,

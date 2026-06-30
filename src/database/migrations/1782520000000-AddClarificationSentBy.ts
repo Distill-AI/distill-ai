@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddClarificationSentBy1782500000000 implements MigrationInterface {
-  name = 'AddClarificationSentBy1782500000000';
+export class AddClarificationSentBy1782520000000 implements MigrationInterface {
+  name = 'AddClarificationSentBy1782520000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`ALTER TABLE "clarifications" ADD COLUMN IF NOT EXISTS "sent_by" uuid`);
