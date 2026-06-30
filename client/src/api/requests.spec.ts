@@ -1,4 +1,10 @@
-import { requestKeys, postRequest, fetchRequests, buildOptimisticSummary } from './requests';
+import {
+  requestKeys,
+  postRequest,
+  fetchRequests,
+  buildOptimisticSummary,
+  declineRequest,
+} from './requests';
 
 const { mockPost, mockGet } = vi.hoisted(() => ({
   mockPost: vi.fn(),
@@ -82,6 +88,34 @@ describe('fetchRequests', () => {
 
     expect(mockGet).toHaveBeenCalledWith('/requests');
     expect(result).toBe(rows);
+  });
+});
+
+describe('declineRequest', () => {
+  beforeEach(() => {
+    mockPost.mockReset();
+  });
+
+  it('POSTs the reason to /requests/:id/decline and returns the result (AC-01)', async () => {
+    const declineResult = {
+      request_id: 'req-1',
+      status: 'declined',
+      reason: 'Not a relevant request',
+    };
+    mockPost.mockResolvedValue({ data: { data: declineResult } });
+
+    const result = await declineRequest('req-1', { reason: 'Not a relevant request' });
+
+    expect(mockPost).toHaveBeenCalledWith('/requests/req-1/decline', {
+      reason: 'Not a relevant request',
+    });
+    expect(result).toEqual(declineResult);
+  });
+
+  it('rejects when the reason is empty (EC-02)', async () => {
+    mockPost.mockRejectedValue(new Error('Request failed with status code 400'));
+
+    await expect(declineRequest('req-1', { reason: '' })).rejects.toThrow();
   });
 });
 

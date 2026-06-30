@@ -266,26 +266,21 @@ describe('ClarificationService', () => {
     });
 
     it('draft survives with sent_at null when LLM tool fails (crash between draft and send)', async () => {
-      vi.mocked(mockActions.findByRequestId).mockResolvedValue(null);
+      const existing = makeClarification({ sent_at: null });
+      vi.mocked(mockActions.findByRequestId).mockResolvedValue(existing);
       vi.mocked(mockToolRegistry.invoke).mockResolvedValue({
         status: ToolStatus.ERROR,
         latency: 50,
         error: 'LLM unavailable',
       });
-      vi.mocked(mockActions.create).mockResolvedValue(
-        makeClarification({
-          gaps: ['Missing field'],
-          draft_subject: null,
-          draft_body: null,
-          sent_at: null,
-        }),
-      );
 
       const result = await service.generateDraft('req-0001', ['Missing field']);
 
+      expect(result).toBe(existing);
       expect(result.sent_at).toBeNull();
-      expect(result.draft_subject).toBeNull();
-      expect(result.draft_body).toBeNull();
+      expect(result.draft_subject).not.toBeNull();
+      expect(mockActions.create).not.toHaveBeenCalled();
+      expect(mockActions.updateDraft).not.toHaveBeenCalled();
     });
   });
 
@@ -344,7 +339,7 @@ describe('ClarificationService', () => {
       await service.generateDraft('req-0001', ['Missing field']);
 
       expect(mockToolRegistry.invoke).toHaveBeenCalledWith(
-        expect.any(String),
+        'draft_clarification',
         expect.objectContaining({
           gaps: ['Missing field'],
           requestId: 'req-0001',
@@ -353,27 +348,21 @@ describe('ClarificationService', () => {
       );
     });
 
-    it('gracefully handles tool invocation failure (non-deterministic step)', async () => {
+    it('throws when tool invocation fails and no existing record exists', async () => {
       vi.mocked(mockActions.findByRequestId).mockResolvedValue(null);
       vi.mocked(mockToolRegistry.invoke).mockResolvedValue({
         status: ToolStatus.ERROR,
         latency: 50,
         error: 'Execution failed',
       });
-      vi.mocked(mockActions.create).mockResolvedValue(
-        makeClarification({
-          gaps: ['Missing field'],
-          draft_subject: null,
-          draft_body: null,
-          sent_at: null,
-        }),
+
+      await expect(service.generateDraft('req-0001', ['Missing field'])).rejects.toThrow(
+        CustomHttpException,
       );
-
-      const result = await service.generateDraft('req-0001', ['Missing field']);
-
-      expect(result.draft_subject).toBeNull();
-      expect(result.draft_body).toBeNull();
-      expect(result.sent_at).toBeNull();
+      await expect(service.generateDraft('req-0001', ['Missing field'])).rejects.toThrow(
+        SYS_MSG.CLARIFICATION_DRAFT_PARSE_FAILED,
+      );
+      expect(mockActions.create).not.toHaveBeenCalled();
     });
   });
 });
@@ -399,22 +388,26 @@ describe('ClarificationActions – sent_at boundary', () => {
   it('markSent updates sent_at and sent_by together', async () => {
     const now = new Date();
     vi.useFakeTimers();
-    vi.setSystemTime(now);
+    try {
+      vi.setSystemTime(now);
 
-    mockRepo.findOne.mockResolvedValue({
-      id: 'clar-0001',
-      sent_at: now,
-      sent_by: 'user-001',
-    });
+      mockRepo.findOne.mockResolvedValue({
+        id: 'clar-0001',
+        sent_at: now,
+        sent_by: 'user-001',
+      });
 
-    await actions.markSent('clar-0001', 'user-001');
+      mockRepo.update.mockResolvedValue({ affected: 1, raw: [] } as never);
 
-    expect(mockRepo.update).toHaveBeenCalledWith(
-      { id: 'clar-0001', sent_at: IsNull() },
-      { sent_at: now, sent_by: 'user-001' },
-    );
+      await actions.markSent('clar-0001', 'user-001');
 
-    vi.useRealTimers();
+      expect(mockRepo.update).toHaveBeenCalledWith(
+        { id: 'clar-0001', sent_at: IsNull() },
+        { sent_at: now, sent_by: 'user-001' },
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('updateDraft never touches sent_at or sent_by', async () => {
