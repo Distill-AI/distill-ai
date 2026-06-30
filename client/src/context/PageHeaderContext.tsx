@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 
 interface PageHeaderValue {
   title: ReactNode;
@@ -20,6 +21,13 @@ export function usePageHeader() {
 export function PageHeaderProvider({ children }: { children: ReactNode }) {
   const [title, setTitle] = useState<ReactNode>(null);
   const [actions, setActions] = useState<ReactNode | null>(null);
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    setTitle(null);
+    setActions(null);
+  }, [pathname]);
+
   return (
     <PageHeaderContext.Provider value={{ title, actions, setTitle, setActions }}>
       {children}

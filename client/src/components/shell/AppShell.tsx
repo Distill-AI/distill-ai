@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
-import { useLocation } from 'react-router-dom';
 import { PageHeaderProvider } from '../../context/PageHeaderContext';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
@@ -12,7 +11,6 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const location = useLocation();
 
   function closeSidebar() {
     setSidebarOpen(false);
@@ -29,7 +27,7 @@ export function AppShell({ children }: AppShellProps) {
   }, [sidebarOpen]);
 
   return (
-    <PageHeaderProvider key={location.pathname}>
+    <PageHeaderProvider>
       <div className="flex h-screen overflow-hidden">
         {sidebarOpen && (
           <div
