@@ -148,7 +148,11 @@ export function DeclineModal({ requestId, open, onClose, triggerRef }: DeclineMo
               className="rounded-lg border border-border bg-white px-3 py-2 text-sm"
             />
           )}
-          {error && <p className="text-sm text-rose-600">{error}</p>}
+          {error && (
+            <p role="alert" className="text-sm text-rose-600">
+              {error}
+            </p>
+          )}
         </div>
         <div className="mt-4 flex justify-end gap-3">
           <button
