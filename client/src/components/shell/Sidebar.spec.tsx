@@ -27,6 +27,11 @@ describe('Sidebar active state', () => {
     expect(inboxLink().className).toContain('shadow-[inset_3px_0_0_#6366F1]');
   });
 
+  it('highlights Inbox at /requests', () => {
+    renderSidebar('/requests');
+    expect(inboxLink().className).toContain('shadow-[inset_3px_0_0_#6366F1]');
+  });
+
   it('highlights Inbox at /requests/some-id', () => {
     renderSidebar('/requests/some-id');
     expect(inboxLink().className).toContain('shadow-[inset_3px_0_0_#6366F1]');
