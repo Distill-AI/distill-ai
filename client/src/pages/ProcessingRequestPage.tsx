@@ -2,20 +2,7 @@ import { useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ProcessingTrace } from '../components/ProcessingTrace';
 import { usePageHeader } from '../context/PageHeaderContext';
-
-function ChevronLeftIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M15 19l-7-7 7-7"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
+import { ChevronLeftIcon } from '../components/ui/ChevronLeftIcon';
 
 export function ProcessingRequestPage() {
   const { id } = useParams<{ id?: string }>();

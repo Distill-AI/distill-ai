@@ -26,6 +26,7 @@ export function DeclineModal({ requestId, open, onClose, triggerRef }: DeclineMo
   const selectRef = useRef<HTMLSelectElement>(null);
   const tokenRef = useRef(0);
   const mutation = useDeclineRequest();
+  const handleCloseRef = useRef<() => void>(() => {});
 
   const handleClose = useCallback(() => {
     tokenRef.current += 1;
@@ -63,12 +64,20 @@ export function DeclineModal({ requestId, open, onClose, triggerRef }: DeclineMo
   }
 
   useEffect(() => {
+    handleCloseRef.current = handleClose;
+  }, [handleClose]);
+
+  useEffect(() => {
     if (!open) return;
     selectRef.current?.focus();
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
 
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        handleClose();
+        handleCloseRef.current();
         return;
       }
       if (e.key !== 'Tab') return;
@@ -91,7 +100,7 @@ export function DeclineModal({ requestId, open, onClose, triggerRef }: DeclineMo
 
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [open, handleClose]);
+  }, [open]);
 
   if (!open) return null;
 
