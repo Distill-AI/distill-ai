@@ -9,16 +9,20 @@ import { EmbeddingsClientService } from './embeddings-client.service';
 import { CandidateMatchModelAction } from './candidate-match.model-action';
 import { SearchCatalogToolFactory } from './tools/search-catalog.tool';
 import { SkuSearchActions } from './actions/sku-search.actions';
+import { CatalogService } from './catalog.service';
+import { CatalogController } from './catalog.controller';
 
 // LineItem is included so the LineItem -> Sku relation resolves under autoLoadEntities.
 // Sku relates to Organization, registered in RequestsDataModule (in the import graph alongside this).
 @Module({
   imports: [ToolsModule, TypeOrmModule.forFeature([LineItem, Sku, CandidateMatch])],
+  controllers: [CatalogController],
   providers: [
     EmbeddingsClientService,
     SkuSearchActions,
     SearchCatalogToolFactory,
     CandidateMatchModelAction,
+    CatalogService,
   ],
   exports: [
     TypeOrmModule,
@@ -26,6 +30,7 @@ import { SkuSearchActions } from './actions/sku-search.actions';
     SkuSearchActions,
     SearchCatalogToolFactory,
     CandidateMatchModelAction,
+    CatalogService,
   ],
 })
 export class CatalogModule implements OnModuleInit {

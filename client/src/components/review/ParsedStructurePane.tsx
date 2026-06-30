@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import type { LineItemDetail } from '../../api/requests';
 import { ConfidenceChip } from '../ConfidenceChip';
+import { RemapDrawer } from './RemapDrawer';
 
 interface ParsedStructurePaneProps {
+  requestId: string;
   lines: LineItemDetail[];
 }
 
@@ -24,7 +27,9 @@ function FlagMarker({ flag }: { flag: string }) {
  * per-line confidence chip, and visible flag markers. All request-derived text (raw_text, SKU
  * name) is rendered as React children, so it is escaped before display (SEC-01).
  */
-export function ParsedStructurePane({ lines }: ParsedStructurePaneProps) {
+export function ParsedStructurePane({ requestId, lines }: ParsedStructurePaneProps) {
+  const [remapLine, setRemapLine] = useState<LineItemDetail | null>(null);
+
   return (
     <section aria-labelledby="parsed-structure-heading" className="flex flex-1 flex-col gap-3">
       <h2
@@ -79,10 +84,26 @@ export function ParsedStructurePane({ lines }: ParsedStructurePaneProps) {
                     ))}
                   </span>
                 )}
+                <button
+                  type="button"
+                  onClick={() => setRemapLine(line)}
+                  className="ml-auto rounded border border-border px-2 py-0.5 text-xs font-medium text-accent hover:bg-surface"
+                >
+                  Re-map
+                </button>
               </div>
             </li>
           ))}
         </ul>
+      )}
+
+      {remapLine && (
+        <RemapDrawer
+          requestId={requestId}
+          lineId={remapLine.id}
+          lineLabel={remapLine.raw_text}
+          onClose={() => setRemapLine(null)}
+        />
       )}
     </section>
   );
