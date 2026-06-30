@@ -26,8 +26,6 @@ describe('boundary', () => {
     // intentionally empty: reserves this suite in CI
   });
 
-  it.todo('price node produces zero tool_call rows');
-  it.todo('policy node produces zero tool_call rows');
   it.todo('full parse->score run: tool_calls contains only extract_request and search_catalog');
 });
 
