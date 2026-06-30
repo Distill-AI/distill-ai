@@ -21,6 +21,10 @@ export function RoutingReasonsBanner({ routing, routing_reasons }: RoutingReason
     );
   }
 
+  if (routing === null && routing_reasons.length === 0) {
+    return null;
+  }
+
   return (
     <div className="border-t border-border pt-2">
       <button
@@ -28,25 +32,23 @@ export function RoutingReasonsBanner({ routing, routing_reasons }: RoutingReason
         aria-expanded={open}
         aria-controls={bodyId}
         onClick={() => setOpen((prev) => !prev)}
-        className="flex w-full items-center justify-between"
+        className="flex items-center gap-1.5"
       >
         <span className="text-sm font-medium text-slate-600">Why this needs review</span>
-        <div className="flex items-center gap-2">
-          <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-[11px] font-semibold text-indigo-700">
-            AI explanation
-          </span>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            className={`h-3 w-3 text-muted transition-transform ${open ? '' : 'rotate-180'}`}
-            aria-hidden="true"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M2 4l4 4 4-4" />
-          </svg>
-        </div>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 12 12"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          className={`h-3 w-3 text-muted transition-transform ${open ? '' : 'rotate-180'}`}
+          aria-hidden="true"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M2 4l4 4 4-4" />
+        </svg>
+        <span className="ml-1 rounded bg-indigo-50 px-1.5 py-0.5 text-[11px] font-semibold text-indigo-700">
+          AI explanation
+        </span>
       </button>
 
       <div
