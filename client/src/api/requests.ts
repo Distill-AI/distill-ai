@@ -5,6 +5,8 @@ import client from './client';
 import { resolveServerError } from '../lib/errorMessages';
 import type { RequestStatus, RequestType } from './interface/request-status';
 import { isRequestStatus } from './interface/request-status';
+import type { RoutingReason } from './interface/routing-reason';
+export type { RoutingReason };
 
 export const requestKeys = {
   all: () => ['requests'] as const,
@@ -75,6 +77,8 @@ export interface RequestDetail {
   current_node: string;
   created_at: string;
   attachments: AttachmentSummary[];
+  routing: 'auto_eligible' | 'needs_review' | null;
+  routing_reasons: RoutingReason[];
   line_items: LineItemDetail[];
   quote: QuoteDetail | null;
 }
