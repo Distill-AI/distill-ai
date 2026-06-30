@@ -1,14 +1,17 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { RoleProvider } from '../../context/RoleContext';
+import { UserProvider } from '../../context/UserContext';
 import { Sidebar } from './Sidebar';
 
 function renderSidebar(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <RoleProvider>
-        <Sidebar isOpen={false} onClose={() => {}} />
-      </RoleProvider>
+      <UserProvider>
+        <RoleProvider>
+          <Sidebar isOpen={false} onClose={() => {}} />
+        </RoleProvider>
+      </UserProvider>
     </MemoryRouter>,
   );
 }

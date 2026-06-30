@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { PageHeaderProvider, usePageHeader } from '../../context/PageHeaderContext';
+import { UserProvider } from '../../context/UserContext';
 import { TopBar } from './TopBar';
 
 const DEFAULT_PROPS = {
@@ -13,9 +14,11 @@ const DEFAULT_PROPS = {
 function renderTopBar(props = DEFAULT_PROPS) {
   return render(
     <MemoryRouter>
-      <PageHeaderProvider>
-        <TopBar {...props} />
-      </PageHeaderProvider>
+      <UserProvider>
+        <PageHeaderProvider>
+          <TopBar {...props} />
+        </PageHeaderProvider>
+      </UserProvider>
     </MemoryRouter>,
   );
 }
@@ -41,11 +44,13 @@ function SetActions({ label }: { label: string }) {
 function renderTopBarWithContext({ title, actions }: { title?: string; actions?: string } = {}) {
   return render(
     <MemoryRouter>
-      <PageHeaderProvider>
-        {title && <SetTitle title={title} />}
-        {actions && <SetActions label={actions} />}
-        <TopBar {...DEFAULT_PROPS} />
-      </PageHeaderProvider>
+      <UserProvider>
+        <PageHeaderProvider>
+          {title && <SetTitle title={title} />}
+          {actions && <SetActions label={actions} />}
+          <TopBar {...DEFAULT_PROPS} />
+        </PageHeaderProvider>
+      </UserProvider>
     </MemoryRouter>,
   );
 }
