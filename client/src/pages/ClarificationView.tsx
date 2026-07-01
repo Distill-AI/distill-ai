@@ -32,38 +32,42 @@ function GapItem({ label }: { label: string }) {
   );
 }
 
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 function BlockerDialog({
   open,
   onConfirm,
   onCancel,
+  triggerRef,
 }: {
   open: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  triggerRef: React.RefObject<HTMLElement | null>;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
+    dialogRef.current?.focus();
+  }, [open]);
 
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    dialog.focus();
-
-    const focusable = dialog.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-    );
-
-    function trapTab(e: KeyboardEvent) {
+  useEffect(() => {
+    if (!open) return;
+    function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         onCancel();
+        triggerRef.current?.focus();
         return;
       }
-      if (e.key !== 'Tab' || focusable.length === 0) return;
-
+      if (e.key !== 'Tab') return;
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE));
+      if (focusable.length === 0) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
-
       if (e.shiftKey && document.activeElement === first) {
         e.preventDefault();
         last.focus();
@@ -72,17 +76,19 @@ function BlockerDialog({
         first.focus();
       }
     }
-
-    document.addEventListener('keydown', trapTab);
-    return () => document.removeEventListener('keydown', trapTab);
-  }, [open, onCancel]);
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [open, onCancel, triggerRef]);
 
   if (!open) return null;
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-      onClick={onCancel}
+      onClick={() => {
+        onCancel();
+        triggerRef.current?.focus();
+      }}
     >
       <div
         ref={dialogRef}
@@ -102,7 +108,10 @@ function BlockerDialog({
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
-            onClick={onCancel}
+            onClick={() => {
+              onCancel();
+              triggerRef.current?.focus();
+            }}
             className="h-9 rounded-lg border border-border bg-surface px-4 text-sm font-medium text-slate-900 hover:bg-canvas"
           >
             Stay
@@ -134,8 +143,6 @@ export function ClarificationView() {
   const [body, setBody] = useState(clarification?.draft_body ?? '');
   const [dirty, setDirty] = useState(false);
   const [sending, setSending] = useState(false);
-  const [showBlocker, setShowBlocker] = useState(false);
-  const pendingNavigation = useRef<string | null>(null);
 
   const prevClarificationId = useRef(clarification?.id);
 
@@ -152,34 +159,18 @@ export function ClarificationView() {
   const bodyTrimmed = body.trim();
   const canSend = subjectTrimmed.length > 0 && bodyTrimmed.length > 0 && !sending;
 
-  useUnsavedChanges(dirty);
+  const blocker = useUnsavedChanges(dirty);
 
-  const confirmNav = useCallback(
+  const lastActiveRef = useRef<HTMLElement | null>(null);
+
+  const handleNav = useCallback(
     (to: string) => {
       if (sending) return;
-      if (dirty) {
-        pendingNavigation.current = to;
-        setShowBlocker(true);
-      } else {
-        navigate(to);
-      }
+      lastActiveRef.current = document.activeElement as HTMLElement;
+      navigate(to);
     },
-    [dirty, navigate, sending],
+    [navigate, sending],
   );
-
-  const handleDiscard = useCallback(() => {
-    setShowBlocker(false);
-    setDirty(false);
-    if (pendingNavigation.current) {
-      navigate(pendingNavigation.current);
-      pendingNavigation.current = null;
-    }
-  }, [navigate]);
-
-  const handleStay = useCallback(() => {
-    setShowBlocker(false);
-    pendingNavigation.current = null;
-  }, []);
 
   useEffect(() => {
     const heading = request?.sender_company ?? request?.sender_contact ?? 'Request';
@@ -187,7 +178,7 @@ export function ClarificationView() {
       <div className="flex min-w-0 items-center gap-3">
         <button
           type="button"
-          onClick={() => confirmNav('/')}
+          onClick={() => handleNav('/')}
           className="flex h-8 w-8 flex-none items-center justify-center rounded text-body-text hover:bg-canvas"
           aria-label="Back to inbox"
         >
@@ -197,7 +188,7 @@ export function ClarificationView() {
       </div>,
     );
     return () => setTitle(null);
-  }, [request, setTitle, confirmNav, sending]);
+  }, [request, setTitle, handleNav, sending]);
 
   useEffect(() => {
     setActions(
@@ -271,7 +262,16 @@ export function ClarificationView() {
 
   return (
     <div className="px-6 py-6">
-      <BlockerDialog open={showBlocker} onConfirm={handleDiscard} onCancel={handleStay} />
+      <BlockerDialog
+        open={blocker.state === 'blocked'}
+        onConfirm={blocker.proceed}
+        onCancel={() => {
+          blocker.reset();
+          lastActiveRef.current?.focus();
+          lastActiveRef.current = null;
+        }}
+        triggerRef={lastActiveRef}
+      />
 
       {sendError && (
         <div className="mb-4">
@@ -313,6 +313,7 @@ export function ClarificationView() {
                 onChange={(e) => {
                   setSubject(e.target.value);
                   setDirty(true);
+                  setSendError('');
                 }}
                 disabled={isSent}
                 placeholder="Clarification subject"
@@ -329,6 +330,7 @@ export function ClarificationView() {
                 onChange={(e) => {
                   setBody(e.target.value);
                   setDirty(true);
+                  setSendError('');
                 }}
                 disabled={isSent}
                 placeholder="Clarification body"
@@ -343,7 +345,7 @@ export function ClarificationView() {
       <div className="mt-6 flex items-center justify-end gap-3 border-t border-border pt-4">
         <button
           type="button"
-          onClick={() => confirmNav(`/requests/${requestId}`)}
+          onClick={() => handleNav(`/requests/${requestId}`)}
           className="h-9 rounded-lg border border-border bg-surface px-4 text-sm font-medium text-slate-900 hover:bg-canvas"
         >
           Cancel

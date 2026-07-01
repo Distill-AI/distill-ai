@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PageHeaderProvider, usePageHeader } from '../context/PageHeaderContext';
 import { ClarificationView } from './ClarificationView';
@@ -59,16 +59,21 @@ function PageHeaderSlots() {
 
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const router = createMemoryRouter(
+    [
+      {
+        path: '/requests/:id/clarification',
+        element: <ClarificationView />,
+      },
+    ],
+    { initialEntries: ['/requests/req-1/clarification'] },
+  );
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/requests/req-1/clarification']}>
-        <PageHeaderProvider>
-          <PageHeaderSlots />
-          <Routes>
-            <Route path="/requests/:id/clarification" element={<ClarificationView />} />
-          </Routes>
-        </PageHeaderProvider>
-      </MemoryRouter>
+      <PageHeaderProvider>
+        <PageHeaderSlots />
+        <RouterProvider router={router} />
+      </PageHeaderProvider>
     </QueryClientProvider>,
   );
 }
