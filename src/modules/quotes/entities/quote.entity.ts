@@ -62,4 +62,10 @@ export class Quote extends BaseEntity {
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'approved_by' })
   approved_by_user: User | null;
+
+  @Column({ type: 'text', nullable: true })
+  pdf_storage_url: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  pdf_generated_at: Date | null;
 }
