@@ -55,6 +55,9 @@ export class PipelineGraphEngine {
         orgId,
         requestId,
         attributes: {
+          // `type` mirrors the other stream events so the SSE client can narrow on it; the browser
+          // dispatches on the `event:` line (the eventName above), which drives the resume banner.
+          type: 'request.resumed',
           resumed_from_node: req.current_node,
           reason: reason ?? ResumeReason.CRASH_RECOVERY,
         },

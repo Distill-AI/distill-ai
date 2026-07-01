@@ -35,7 +35,19 @@ export interface SseCompleteEvent {
   total_duration_ms?: number;
 }
 
-export type SseEvent = SseNodeEvent | SseToolEvent | SseErrorEvent | SseCompleteEvent;
+export interface SseResumedEvent {
+  type: 'request.resumed';
+  request_id: string;
+  resumed_from_node: string;
+  reason?: string;
+}
+
+export type SseEvent =
+  | SseNodeEvent
+  | SseToolEvent
+  | SseErrorEvent
+  | SseCompleteEvent
+  | SseResumedEvent;
 
 export interface NodeState {
   id: string;
@@ -51,6 +63,8 @@ export interface NodeState {
 export interface SseConnectionState {
   status: 'connecting' | 'connected' | 'disconnected' | 'error';
   error?: string;
+  /** Set when the backend emits `request.resumed`, i.e. the pipeline continued from a checkpoint. */
+  resumed?: { from: string };
 }
 
 const NODE_ORDER = ['parse', 'extract', 'classify', 'match', 'price', 'policy', 'score'];
@@ -172,6 +186,17 @@ export function useSSEEvents(requestId: string | null): {
             n.name === data.stage ? { ...n, status: 'failed', error: data.reason } : n,
           ),
         );
+      } catch {
+        // Ignore malformed events; connection remains active
+      }
+    });
+
+    es.addEventListener('request.resumed', (e: MessageEvent) => {
+      resetInactivity();
+      try {
+        const data = JSON.parse(e.data) as SseResumedEvent;
+        // Merge, don't replace: a node.entered can arrive right after and must not clear `resumed`.
+        setConnection((prev) => ({ ...prev, resumed: { from: data.resumed_from_node } }));
       } catch {
         // Ignore malformed events; connection remains active
       }
