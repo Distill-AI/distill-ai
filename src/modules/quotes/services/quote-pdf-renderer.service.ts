@@ -36,7 +36,6 @@ const COLOR = {
 
 const PAGE_MARGIN = 50;
 const TOTALS_BLOCK_HEIGHT = 80;
-const FOOTER_BLOCK_HEIGHT = 40;
 
 /** Formats a minor-unit amount for display. Money is stored and compared in minor units everywhere
  * else in this codebase; this is the one place it is converted to a decimal string. */
@@ -112,7 +111,6 @@ export class QuotePdfRenderer {
     y = this.renderLineItems(doc, columns, input.lines, input.currency, y);
     y = this.ensureRoom(doc, columns, y, TOTALS_BLOCK_HEIGHT);
     y = this.renderTotals(doc, columns, input, y);
-    y = this.ensureRoom(doc, columns, y, FOOTER_BLOCK_HEIGHT);
     this.renderFooter(doc, columns, input, y);
 
     doc.end();
@@ -310,15 +308,16 @@ export class QuotePdfRenderer {
       return;
     }
 
-    doc
-      .moveTo(columns.desc.x, startY)
-      .lineTo(columns.rightEdge, startY)
-      .strokeColor(COLOR.border)
-      .stroke();
+    const text = parts.join('. ');
+    doc.fontSize(9);
+    const textHeight = doc.heightOfString(text, { width: columns.contentWidth });
+    const y = this.ensureRoom(doc, columns, startY, 12 + textHeight);
+
+    doc.moveTo(columns.desc.x, y).lineTo(columns.rightEdge, y).strokeColor(COLOR.border).stroke();
     doc
       .fillColor(COLOR.muted)
       .fontSize(9)
-      .text(parts.join('. '), columns.desc.x, startY + 12, {
+      .text(text, columns.desc.x, y + 12, {
         width: columns.contentWidth,
       });
   }

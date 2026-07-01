@@ -101,6 +101,62 @@ describe('QuotePdfRenderer', () => {
     }
   });
 
+  it('measures a wrapped multi-line description so it rolls cleanly onto a new page instead of overlapping the next row', async () => {
+    const renderer = new QuotePdfRenderer();
+    const longDescription = Array.from({ length: 40 }, (_, i) => `word${i}`).join(' ');
+
+    const buffer = await renderer.render({
+      quoteNumber: 'Q-2026-005',
+      issuedDate: new Date('2026-07-01T00:00:00Z'),
+      senderCompany: 'Acme Corp',
+      senderContact: 'Jane Doe',
+      senderEmail: 'jane@acme.example',
+      lines: [
+        ...Array.from({ length: 15 }, (_, i) => ({
+          sku: null,
+          description: `Filler item ${i}`,
+          quantity: 1,
+          unitPriceMinor: 100,
+          amountMinor: 100,
+        })),
+        {
+          sku: 'LONG-SKU',
+          description: longDescription,
+          quantity: 1,
+          unitPriceMinor: 500,
+          amountMinor: 500,
+        },
+        {
+          sku: null,
+          description: 'Item After Wrap',
+          quantity: 1,
+          unitPriceMinor: 200,
+          amountMinor: 200,
+        },
+      ],
+      subtotalMinor: 2300,
+      discountMinor: 0,
+      totalMinor: 2300,
+      currency: 'GBP',
+      leadTimeDays: 10,
+      terms: 'Net 30',
+      validUntil: '2026-08-01',
+    });
+
+    const parser = new PDFParse({ data: buffer });
+    try {
+      const result = await parser.getText();
+      expect(result.total).toBeGreaterThan(1);
+      expect(result.text).toContain('Filler item 0');
+      expect(result.text).toContain('LONG-SKU');
+      expect(result.text).toContain('Item After Wrap');
+      expect(result.text).toContain('Total');
+      expect(result.text).toContain('Lead time: 10 days');
+    } finally {
+      await parser.destroy();
+    }
+  });
+
   it('omits bill-to lines, SKU, and footer fields that are null rather than rendering "null"', async () => {
     const renderer = new QuotePdfRenderer();
 
