@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useClarification, useUpdateDraft, useSendClarification } from '../api/clarifications';
 import { useRequest } from '../api/requests';
 import { usePageHeader } from '../context/PageHeaderContext';
@@ -46,7 +46,6 @@ function BlockerDialog({
   useEffect(() => {
     if (!open) return;
     dialogRef.current?.focus();
-
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') onCancel();
     }
@@ -111,6 +110,8 @@ export function ClarificationView() {
   const [body, setBody] = useState(clarification?.draft_body ?? '');
   const [dirty, setDirty] = useState(false);
   const [sending, setSending] = useState(false);
+  const [showBlocker, setShowBlocker] = useState(false);
+  const pendingNavigation = useRef<string | null>(null);
 
   const prevClarificationId = useRef(clarification?.id);
 
@@ -127,24 +128,51 @@ export function ClarificationView() {
   const bodyTrimmed = body.trim();
   const canSend = subjectTrimmed.length > 0 && bodyTrimmed.length > 0 && !sending;
 
-  const blocker = useUnsavedChanges(dirty);
+  useUnsavedChanges(dirty);
+
+  const confirmNav = useCallback(
+    (to: string) => {
+      if (dirty) {
+        pendingNavigation.current = to;
+        setShowBlocker(true);
+      } else {
+        navigate(to);
+      }
+    },
+    [dirty, navigate],
+  );
+
+  const handleDiscard = useCallback(() => {
+    setShowBlocker(false);
+    setDirty(false);
+    if (pendingNavigation.current) {
+      navigate(pendingNavigation.current);
+      pendingNavigation.current = null;
+    }
+  }, [navigate]);
+
+  const handleStay = useCallback(() => {
+    setShowBlocker(false);
+    pendingNavigation.current = null;
+  }, []);
 
   useEffect(() => {
     const heading = request?.sender_company ?? request?.sender_contact ?? 'Request';
     setTitle(
       <div className="flex min-w-0 items-center gap-3">
-        <Link
-          to="/"
+        <button
+          type="button"
+          onClick={() => confirmNav('/')}
           className="flex h-8 w-8 flex-none items-center justify-center rounded text-body-text hover:bg-canvas"
           aria-label="Back to inbox"
         >
           <ChevronLeftIcon />
-        </Link>
+        </button>
         <h1 className="truncate text-lg font-semibold text-slate-900">Clarification · {heading}</h1>
       </div>,
     );
     return () => setTitle(null);
-  }, [request, setTitle]);
+  }, [request, setTitle, confirmNav]);
 
   useEffect(() => {
     setActions(
@@ -216,11 +244,7 @@ export function ClarificationView() {
 
   return (
     <div className="px-6 py-6">
-      <BlockerDialog
-        open={blocker.state === 'blocked'}
-        onConfirm={() => blocker.proceed?.()}
-        onCancel={() => blocker.reset?.()}
-      />
+      <BlockerDialog open={showBlocker} onConfirm={handleDiscard} onCancel={handleStay} />
 
       {sendError && (
         <div className="mb-4">
@@ -290,12 +314,13 @@ export function ClarificationView() {
       </div>
 
       <div className="mt-6 flex items-center justify-end gap-3 border-t border-border pt-4">
-        <Link
-          to={`/requests/${requestId}`}
+        <button
+          type="button"
+          onClick={() => confirmNav(`/requests/${requestId}`)}
           className="h-9 rounded-lg border border-border bg-surface px-4 text-sm font-medium text-slate-900 hover:bg-canvas"
         >
           Cancel
-        </Link>
+        </button>
         <button
           type="button"
           onClick={handleSend}

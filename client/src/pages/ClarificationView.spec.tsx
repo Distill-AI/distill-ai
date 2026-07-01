@@ -14,10 +14,6 @@ const { mockUseClarification, mockUseRequest, mockUseUpdateDraft, mockUseSendCla
     mockUseSendClarification: vi.fn(),
   }));
 
-const { mockUseBlocker } = vi.hoisted(() => ({
-  mockUseBlocker: vi.fn(() => ({ state: 'unblocked', proceed: vi.fn(), reset: vi.fn() })),
-}));
-
 vi.mock('../api/clarifications', () => ({
   useClarification: (...args: unknown[]) => mockUseClarification(...args),
   useUpdateDraft: (...args: unknown[]) => mockUseUpdateDraft(...args),
@@ -27,14 +23,6 @@ vi.mock('../api/clarifications', () => ({
 vi.mock('../api/requests', () => ({
   useRequest: (...args: unknown[]) => mockUseRequest(...args),
 }));
-
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
-  return {
-    ...actual,
-    useBlocker: (...args: unknown[]) => mockUseBlocker(...args),
-  };
-});
 
 const mockClarification: Clarification = {
   id: 'clar-1',
@@ -97,7 +85,6 @@ describe('ClarificationView', () => {
     mockUseRequest.mockReturnValue({ data: mockRequest });
     mockUseUpdateDraft.mockReturnValue(mockUpdateDraft);
     mockUseSendClarification.mockReturnValue(mockSend);
-    mockUseBlocker.mockReturnValue({ state: 'unblocked', proceed: vi.fn(), reset: vi.fn() });
   });
 
   it('renders the loading state while clarification loads', () => {
@@ -240,15 +227,64 @@ describe('ClarificationView', () => {
     expect(await screen.findByText('Failed to send clarification.')).toBeInTheDocument();
   });
 
-  it('shows an unsaved changes blocker dialog when navigating away with dirty edits (EC-01)', async () => {
-    mockUseBlocker.mockReturnValue({ state: 'blocked', proceed: vi.fn(), reset: vi.fn() });
+  it('shows the unsaved changes blocker dialog when clicking Cancel with dirty edits (EC-01)', async () => {
     const user = userEvent.setup();
     renderPage();
 
     const subjectInput = screen.getByLabelText('Subject');
     await user.type(subjectInput, ' changed');
 
-    expect(screen.getByText(/unsaved changes/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /cancel/i }));
+
+    expect(screen.getByRole('dialog', { name: /unsaved changes/i })).toBeInTheDocument();
+  });
+
+  it('shows the unsaved changes blocker dialog when clicking back button with dirty edits (EC-01)', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const subjectInput = screen.getByLabelText('Subject');
+    await user.type(subjectInput, ' changed');
+
+    await user.click(screen.getByRole('button', { name: /back to inbox/i }));
+
+    expect(screen.getByRole('dialog', { name: /unsaved changes/i })).toBeInTheDocument();
+  });
+
+  it('does not show the blocker dialog when navigating without dirty edits', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole('button', { name: /back to inbox/i }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('navigates away after confirming discard in the blocker dialog', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const subjectInput = screen.getByLabelText('Subject');
+    await user.type(subjectInput, ' changed');
+
+    await user.click(screen.getByRole('button', { name: /cancel/i }));
+    await user.click(screen.getByRole('button', { name: /discard/i }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('stays on the page after clicking Stay in the blocker dialog', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const subjectInput = screen.getByLabelText('Subject');
+    await user.type(subjectInput, ' changed');
+
+    await user.click(screen.getByRole('button', { name: /cancel/i }));
+    await user.click(screen.getByRole('button', { name: /stay/i }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Subject')).toHaveValue('Request for additional details changed');
   });
 
   it('shows a sent banner when the clarification has already been sent', () => {
@@ -290,11 +326,5 @@ describe('ClarificationView', () => {
     await user.type(subjectInput, ' x');
 
     expect(screen.getByText(/edited · unsaved/i)).toBeInTheDocument();
-  });
-
-  it('shows a Cancel link back to the request detail', () => {
-    renderPage();
-    const cancelLink = screen.getByRole('link', { name: /cancel/i });
-    expect(cancelLink).toHaveAttribute('href', '/requests/req-1');
   });
 });
