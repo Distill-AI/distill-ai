@@ -192,11 +192,15 @@ export class QuoteModelAction extends AbstractModelAction<Quote> {
     });
   }
 
-  /** Persists a best-effort follow-up email draft generated after the quote's PDF is ready. */
-  async saveEmailDraft(quoteId: string, subject: string, body: string): Promise<void> {
-    await this.repository.update(
+  /**
+   * Persists a best-effort follow-up email draft generated after the quote's PDF is ready. Returns
+   * whether the update actually affected a row, so callers can detect a stale or removed quote id.
+   */
+  async saveEmailDraft(quoteId: string, subject: string, body: string): Promise<boolean> {
+    const result = await this.repository.update(
       { id: quoteId },
       { email_draft_subject: subject, email_draft_body: body },
     );
+    return (result.affected ?? 0) > 0;
   }
 }

@@ -101,15 +101,25 @@ describe('QuoteModelAction.revertToDraft', () => {
 });
 
 describe('QuoteModelAction.saveEmailDraft', () => {
-  it('persists the subject and body', async () => {
+  it('persists the subject and body, and returns true when a row was affected', async () => {
     const { action, repository } = setup();
 
-    await action.saveEmailDraft('quote-1', 'Your quote is ready', 'Hi there...');
+    const result = await action.saveEmailDraft('quote-1', 'Your quote is ready', 'Hi there...');
 
     expect(repository.update).toHaveBeenCalledWith(
       { id: 'quote-1' },
       { email_draft_subject: 'Your quote is ready', email_draft_body: 'Hi there...' },
     );
+    expect(result).toBe(true);
+  });
+
+  it('returns false when the quote id no longer matches a row', async () => {
+    const { action, repository } = setup();
+    repository.update.mockResolvedValue({ affected: 0 });
+
+    const result = await action.saveEmailDraft('quote-1', 'Your quote is ready', 'Hi there...');
+
+    expect(result).toBe(false);
   });
 });
 

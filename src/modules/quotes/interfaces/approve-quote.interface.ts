@@ -1,4 +1,4 @@
-import type { QuoteDetail } from '@modules/requests/interfaces/request-response.interface';
+import type { QuoteDetail } from './quote-detail.interface';
 
 /**
  * Response payload for `POST /requests/:id/quote`. One key, `quote`, reusing the same `QuoteDetail`
