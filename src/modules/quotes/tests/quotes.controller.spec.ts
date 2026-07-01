@@ -65,7 +65,11 @@ describe('QuotesController.approveAndGenerate', () => {
 
     const result = await controller.approveAndGenerate('req-1', { user: mockUser });
 
-    expect(approvalActions.approveAndGenerate).toHaveBeenCalledWith('req-1', 'org-1', 'user-1');
+    expect(approvalActions.approveAndGenerate).toHaveBeenCalledWith(
+      { id: 'req-1', org_id: 'org-1' },
+      'org-1',
+      'user-1',
+    );
     expect(result.statusCode).toBe(200);
     expect(result.data.quote.quote_number).toBe('Q-001');
   });

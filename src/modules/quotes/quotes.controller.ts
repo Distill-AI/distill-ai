@@ -20,6 +20,7 @@ import { Roles } from '@modules/auth/decorators/roles.decorator';
 import { Role } from '@modules/auth/enums/role.enum';
 import type { AuthUser } from '@modules/auth/interfaces/auth-user.interface';
 import { RequestModelAction } from '@modules/requests/requests.model-action';
+import type { Request } from '@modules/requests/entities/request.entity';
 import * as SYS_MSG from '@constants/system-messages';
 import { QuoteApprovalActions } from './actions/quote-approval.actions';
 import { QuoteModelAction } from './quote.model-action';
@@ -45,10 +46,10 @@ export class QuotesController {
     @Param('requestId', ParseUUIDPipe) requestId: string,
     @Req() req: { user?: AuthUser },
   ): Promise<{ statusCode: number; message: string; data: ApproveQuoteResponsePayload }> {
-    await this.assertRequestInOrg(requestId, req.user);
+    const request = await this.loadRequestInOrg(requestId, req.user);
 
     const data = await this.approvalActions.approveAndGenerate(
-      requestId,
+      request,
       req.user?.orgId,
       req.user?.userId,
     );
@@ -65,7 +66,7 @@ export class QuotesController {
     @Req() req: { user?: AuthUser },
     @Res() res: Response,
   ): Promise<void> {
-    await this.assertRequestInOrg(requestId, req.user);
+    await this.loadRequestInOrg(requestId, req.user);
 
     const found = await this.quotes.getForRequest(requestId);
     if (!found || !found.quote.pdf_storage_url) {
@@ -82,8 +83,12 @@ export class QuotesController {
     res.send(bytes);
   }
 
-  /** Loads the request's org_id and, when auth is enabled, 404s (never 403) on any org mismatch, so cross-org existence is not leaked. */
-  private async assertRequestInOrg(requestId: string, user?: AuthUser): Promise<void> {
+  /**
+   * Loads the request and, when auth is enabled, 404s (never 403) on any org mismatch, so cross-org
+   * existence is not leaked. Returns the loaded request so callers needing it (e.g. approval) don't
+   * have to fetch it a second time.
+   */
+  private async loadRequestInOrg(requestId: string, user?: AuthUser): Promise<Request> {
     const request = await this.requests.get({ identifierOptions: { id: requestId } });
     if (!request) {
       throw new NotFoundException(SYS_MSG.REQUEST_NOT_FOUND(requestId));
@@ -93,5 +98,6 @@ export class QuotesController {
         throw new NotFoundException(SYS_MSG.REQUEST_NOT_FOUND(requestId));
       }
     }
+    return request;
   }
 }
