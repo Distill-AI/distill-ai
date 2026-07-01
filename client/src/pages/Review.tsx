@@ -12,6 +12,7 @@ import { usePageHeader } from '../context/PageHeaderContext';
 import { QuestionMarkCircleIcon } from '../components/ui/QuestionMarkCircleIcon';
 import { ChevronLeftIcon } from '../components/ui/ChevronLeftIcon';
 import { reasonsSummary } from '../lib/routing-reason';
+import { PRIMARY_ACTION_LABELS } from '../lib/actionLabels';
 
 const REQUEST_TYPE_LABELS: Record<string, string> = {
   catalog_rfq: 'Catalog RFQ',
@@ -141,7 +142,7 @@ export function Review() {
           className="flex h-9 items-center gap-2 rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
         >
           <CheckIcon />
-          Approve &amp; generate
+          {PRIMARY_ACTION_LABELS.reviewApprove}
         </button>
       </div>,
     );
