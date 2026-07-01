@@ -1,8 +1,12 @@
-import { useEffect } from 'react';
-import { useBlocker } from 'react-router-dom';
+import { useCallback, useEffect, useRef } from 'react';
 
 export function useUnsavedChanges(hasUnsaved: boolean) {
-  const blocker = useBlocker(hasUnsaved);
+  const prev = useRef(hasUnsaved);
+
+  useEffect(() => {
+    if (hasUnsaved === prev.current) return;
+    prev.current = hasUnsaved;
+  }, [hasUnsaved]);
 
   useEffect(() => {
     if (!hasUnsaved) return;
@@ -15,5 +19,13 @@ export function useUnsavedChanges(hasUnsaved: boolean) {
     return () => removeEventListener('beforeunload', onBeforeUnload);
   }, [hasUnsaved]);
 
-  return blocker;
+  const confirmNavigation = useCallback(
+    (message: string) => {
+      if (!hasUnsaved) return true;
+      return window.confirm(message);
+    },
+    [hasUnsaved],
+  );
+
+  return { confirmNavigation };
 }
