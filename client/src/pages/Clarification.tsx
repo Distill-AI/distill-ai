@@ -33,6 +33,7 @@ export function Clarification() {
     isLoading: isClarificationLoading,
     isError: isClarificationError,
     error: clarificationError,
+    refetch: refetchClarification,
   } = useClarification(id);
   const generateDraft = useGenerateClarificationDraft();
   const { mutate: updateDraftMutate, isPending: isSavingDraft } = useUpdateClarificationDraft();
@@ -44,6 +45,7 @@ export function Clarification() {
   const [localBody, setLocalBody] = useState('');
   const localSubjectRef = useRef('');
   const localBodyRef = useRef('');
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Reset per-request edit state when navigating between requests (adjust-state-on-prop-change,
   // not an effect, so there is no extra render pass — mirrors Review.tsx).
@@ -51,6 +53,7 @@ export function Clarification() {
   if (id !== prevId) {
     setPrevId(id);
     setIsEditing(false);
+    setActionError(null);
   }
 
   const generateAttemptedRef = useRef(false);
@@ -108,7 +111,13 @@ export function Clarification() {
           draft_subject: localSubjectRef.current,
           draft_body: localBodyRef.current,
         },
-        { onSuccess: () => setIsEditing(false) },
+        {
+          onSuccess: () => {
+            setIsEditing(false);
+            setActionError(null);
+          },
+          onError: () => setActionError('Could not save the draft. Please try again.'),
+        },
       );
       return;
     }
@@ -119,6 +128,7 @@ export function Clarification() {
     setLocalSubject(subject);
     setLocalBody(body);
     setIsEditing(true);
+    setActionError(null);
   }, [clarification, isEditing, updateDraftMutate]);
 
   useEffect(() => {
@@ -146,7 +156,13 @@ export function Clarification() {
         </button>
         <button
           type="button"
-          onClick={() => sendClarificationMutate(clarification.id)}
+          onClick={() =>
+            sendClarificationMutate(clarification.id, {
+              onSuccess: () => setActionError(null),
+              onError: () =>
+                setActionError('Could not mark this clarification as sent. Please try again.'),
+            })
+          }
           disabled={isSending}
           className="h-9 rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
         >
@@ -189,9 +205,13 @@ export function Clarification() {
           }}
         />
       ) : !clarification ? (
-        <ErrorBanner message="Could not load the clarification." onRetry={() => void refetch()} />
+        <ErrorBanner
+          message="Could not load the clarification."
+          onRetry={() => void refetchClarification()}
+        />
       ) : (
         <>
+          {actionError && <ErrorBanner message={actionError} />}
           <BlockingItemsCard gaps={clarification.gaps} />
           <EmailDraftPanel
             subject={isEditing ? localSubject : (clarification.draft_subject ?? '')}
