@@ -13,6 +13,7 @@ import { QuotePdfRenderer } from './services/quote-pdf-renderer.service';
 import { RenderQuotePdfToolFactory } from './tools/render-quote-pdf.tool';
 import { DraftQuoteEmailToolFactory } from './tools/draft-quote-email.tool';
 import { QuoteApprovalActions } from './actions/quote-approval.actions';
+import { QuotesController } from './quotes.controller';
 
 /** Persistence for priced quotes. Exports QuoteModelAction for the price node (US-E4-1). */
 @Module({
@@ -24,6 +25,7 @@ import { QuoteApprovalActions } from './actions/quote-approval.actions';
     ToolsModule,
     RequestsDataModule,
   ],
+  controllers: [QuotesController],
   providers: [
     QuoteModelAction,
     QuotePdfRenderer,

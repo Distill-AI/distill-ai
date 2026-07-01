@@ -190,6 +190,9 @@ export const QUOTE_NOT_PRICED = (requestId: string) =>
 export const QUOTE_INVALID_TRANSITION = (status: string) =>
   `Quote with status "${status}" cannot be approved`;
 export const QUOTE_PDF_GENERATION_FAILED = 'Failed to generate the quote PDF';
+export const QUOTE_APPROVED_SUCCESS = 'Quote approved successfully';
+export const QUOTE_PDF_NOT_READY = (requestId: string) =>
+  `Quote for request ${requestId} has no generated PDF yet`;
 
 // Policy node
 export const POLICY_OK = 'No policy breaches';
