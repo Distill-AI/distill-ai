@@ -10,6 +10,7 @@ import { Catalog } from './pages/Catalog';
 import { Analytics } from './pages/Analytics';
 import { Settings } from './pages/Settings';
 import { ProcessingRequestPage } from './pages/ProcessingRequestPage';
+import { ClarificationView } from './pages/ClarificationView';
 import { PasteFallbackDemo } from './pages/PasteFallbackDemo';
 
 export default function App() {
@@ -21,6 +22,7 @@ export default function App() {
             <Route path="/" element={<Inbox />} />
             <Route path="/requests/:id" element={<ProcessingRequestPage />} />
             <Route path="/requests/:id/review" element={<Review />} />
+            <Route path="/requests/:id/clarification" element={<ClarificationView />} />
             <Route path="/quotes" element={<Quotes />} />
             <Route
               path="/catalog"
