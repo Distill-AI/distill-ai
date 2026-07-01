@@ -1,4 +1,4 @@
-import { Check, Loader2 } from 'lucide-react';
+import { Check, Loader2, X } from 'lucide-react';
 
 interface TraceNodeProps {
   name: string;
@@ -17,13 +17,9 @@ function StatusIcon({ status }: { status: TraceNodeProps['status'] }) {
     return <Loader2 className="h-4 w-4 text-blue-400 animate-spin" aria-hidden="true" />;
   }
   if (status === 'failed') {
-    return (
-      <span className="h-4 w-4 text-red-400 text-sm font-bold" aria-hidden="true">
-        ✗
-      </span>
-    );
+    return <X className="h-4 w-4 text-red-400" aria-hidden="true" />;
   }
-  return <span className="h-1.5 w-1.5 rounded-full bg-body-text" aria-hidden="true" />;
+  return <span className="inline-block h-1.5 w-1.5 rounded-full bg-body-text" aria-hidden="true" />;
 }
 
 export function TraceNode({
