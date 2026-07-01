@@ -80,6 +80,7 @@ export class RenderQuotePdfToolFactory {
     // the quote id keeps two different quotes from colliding if a caller ever reuses a key.
     const key = `quotes/${found.quote.org_id}/${found.quote.id}/${input.idempotencyKey}.pdf`;
     const storageUrl = await this.objectStore.put(key, bytes);
+    await this.quotes.markReady(found.quote.id, storageUrl);
     return { storageUrl, bytesWritten: bytes.length };
   }
 }
