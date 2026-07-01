@@ -94,12 +94,38 @@ export function DownloadQuotePdfDocs() {
     }),
     ApiResponse({
       status: HttpStatus.NOT_FOUND,
-      description: SYS_MSG.QUOTE_PDF_NOT_READY('{requestId}'),
-      schema: errorSchema(
-        HttpStatus.NOT_FOUND,
-        'Not Found',
-        SYS_MSG.QUOTE_PDF_NOT_READY('{requestId}'),
-      ),
+      description:
+        'Returned when the request does not exist, belongs to another organization, or has no ' +
+        'generated PDF yet.',
+      content: {
+        'application/json': {
+          schema: { type: 'object' },
+          examples: {
+            requestNotFound: {
+              summary: 'Request missing or in another organization',
+              value: {
+                success: false,
+                statusCode: HttpStatus.NOT_FOUND,
+                error: 'Not Found',
+                message: SYS_MSG.REQUEST_NOT_FOUND('{requestId}'),
+                path: '/api/v1/requests/{requestId}/quote/pdf',
+                timestamp: '2026-06-29T00:00:00.000Z',
+              },
+            },
+            quotePdfNotReady: {
+              summary: 'Quote has no generated PDF yet',
+              value: {
+                success: false,
+                statusCode: HttpStatus.NOT_FOUND,
+                error: 'Not Found',
+                message: SYS_MSG.QUOTE_PDF_NOT_READY('{requestId}'),
+                path: '/api/v1/requests/{requestId}/quote/pdf',
+                timestamp: '2026-06-29T00:00:00.000Z',
+              },
+            },
+          },
+        },
+      },
     }),
   );
 }

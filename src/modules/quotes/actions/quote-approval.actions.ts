@@ -5,7 +5,6 @@ import { EventsService } from '@modules/events/events.service';
 import { ToolRegistry } from '@modules/tools/registry';
 import { ToolStatus } from '@modules/tools/enums/tools.enums';
 import { toToolName } from '@modules/pipeline/types';
-import { RequestModelAction } from '@modules/requests/requests.model-action';
 import { QUOTE_APPROVABLE_STATUSES } from '@modules/requests/constants/quote-approval.constants';
 import type { Request } from '@modules/requests/entities/request.entity';
 import { QuoteModelAction } from '../quote.model-action';
@@ -21,7 +20,6 @@ export class QuoteApprovalActions {
 
   constructor(
     private readonly quotes: QuoteModelAction,
-    private readonly requests: RequestModelAction,
     private readonly toolRegistry: ToolRegistry,
     private readonly events: EventsService,
   ) {}
@@ -30,16 +28,14 @@ export class QuoteApprovalActions {
    * Approves a priced quote for a request: claims it atomically, renders its PDF via
    * render_quote_pdf, best-effort drafts a follow-up email, and emits `quote.approved`/`quote.ready`.
    * Idempotent: an already-`READY` quote returns its existing payload without re-invoking the tool.
+   * Takes the already-loaded `request` so the caller's org check and this approval share one fetch.
    */
   async approveAndGenerate(
-    requestId: string,
+    request: Request,
     orgId: string | undefined,
     userId: string | undefined,
   ): Promise<ApproveQuoteResponsePayload> {
-    const request = await this.requests.get({ identifierOptions: { id: requestId } });
-    if (!request) {
-      throw new CustomHttpException(SYS_MSG.REQUEST_NOT_FOUND(requestId), HttpStatus.NOT_FOUND);
-    }
+    const requestId = request.id;
     if (!QUOTE_APPROVABLE_STATUSES.includes(request.status)) {
       throw new CustomHttpException(
         SYS_MSG.QUOTE_REQUEST_NOT_APPROVABLE(request.status),
@@ -116,7 +112,15 @@ export class QuoteApprovalActions {
       );
     }
     const output = result.result as { storageUrl: string };
-    await this.quotes.markReady(quote.id, output.storageUrl);
+    const transitioned = await this.quotes.markReady(quote.id, output.storageUrl);
+    if (!transitioned) {
+      this.logger.warn({
+        event: 'quote_mark_ready_no_op',
+        quoteId: quote.id,
+        message:
+          'markReady found the quote no longer APPROVED; it may have been reverted concurrently',
+      });
+    }
     await this.events.emit({
       eventName: 'quote.ready',
       orgId,

@@ -1,4 +1,4 @@
-import { HttpStatus } from '@nestjs/common';
+import { HttpStatus, Logger } from '@nestjs/common';
 import { CustomHttpException } from '@common/exceptions/custom-http.exception';
 import { RequestStatus } from '@modules/requests/enums/request-status.enum';
 import { ToolStatus } from '@modules/tools/enums/tools.enums';
@@ -48,16 +48,13 @@ const LINES = [
 ];
 
 function setup() {
-  const requests = {
-    get: vi.fn().mockResolvedValue(buildRequest(RequestStatus.PRICED)),
-  };
   const quotes = {
     getForRequest: vi
       .fn()
       .mockResolvedValue({ quote: buildQuote(QuoteStatus.DRAFT), lines: LINES }),
     getByIdWithLines: vi.fn(),
     tryClaimForApproval: vi.fn().mockResolvedValue(true),
-    markReady: vi.fn().mockResolvedValue(undefined),
+    markReady: vi.fn().mockResolvedValue(true),
     revertToDraft: vi.fn().mockResolvedValue(undefined),
     saveEmailDraft: vi.fn().mockResolvedValue(undefined),
   };
@@ -81,14 +78,9 @@ function setup() {
     emit: vi.fn().mockResolvedValue(undefined),
   };
 
-  const actions = new QuoteApprovalActions(
-    quotes as never,
-    requests as never,
-    toolRegistry as never,
-    events as never,
-  );
+  const actions = new QuoteApprovalActions(quotes as never, toolRegistry as never, events as never);
 
-  return { actions, requests, quotes, toolRegistry, events };
+  return { actions, quotes, toolRegistry, events };
 }
 
 describe('QuoteApprovalActions.approveAndGenerate', () => {
@@ -99,7 +91,11 @@ describe('QuoteApprovalActions.approveAndGenerate', () => {
       lines: LINES,
     });
 
-    const result = await actions.approveAndGenerate('req-1', 'org-1', 'user-1');
+    const result = await actions.approveAndGenerate(
+      buildRequest(RequestStatus.PRICED) as never,
+      'org-1',
+      'user-1',
+    );
 
     expect(quotes.tryClaimForApproval).toHaveBeenCalledWith('quote-1', 'user-1');
     expect(events.emit).toHaveBeenCalledWith(
@@ -123,6 +119,27 @@ describe('QuoteApprovalActions.approveAndGenerate', () => {
     expect(result.quote.status).toBe(QuoteStatus.READY);
   });
 
+  it('logs a warning when markReady finds the quote no longer APPROVED', async () => {
+    const { actions, quotes } = setup();
+    quotes.markReady.mockResolvedValue(false);
+    quotes.getByIdWithLines.mockResolvedValue({
+      quote: buildQuote(QuoteStatus.APPROVED),
+      lines: LINES,
+    });
+    const warnSpy = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+    await actions.approveAndGenerate(
+      buildRequest(RequestStatus.PRICED) as never,
+      'org-1',
+      'user-1',
+    );
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'quote_mark_ready_no_op', quoteId: 'quote-1' }),
+    );
+    warnSpy.mockRestore();
+  });
+
   it('drafts a follow-up email via draft_quote_email and saves it', async () => {
     const { actions, quotes, toolRegistry } = setup();
     quotes.getByIdWithLines.mockResolvedValue({
@@ -130,7 +147,11 @@ describe('QuoteApprovalActions.approveAndGenerate', () => {
       lines: LINES,
     });
 
-    await actions.approveAndGenerate('req-1', 'org-1', 'user-1');
+    await actions.approveAndGenerate(
+      buildRequest(RequestStatus.PRICED) as never,
+      'org-1',
+      'user-1',
+    );
 
     expect(toolRegistry.invoke).toHaveBeenCalledWith(
       'draft_quote_email',
@@ -155,9 +176,9 @@ describe('QuoteApprovalActions.approveAndGenerate', () => {
       return Promise.resolve({ status: ToolStatus.OK, latency: 10, result: {} });
     });
 
-    await expect(actions.approveAndGenerate('req-1', 'org-1', 'user-1')).rejects.toThrow(
-      CustomHttpException,
-    );
+    await expect(
+      actions.approveAndGenerate(buildRequest(RequestStatus.PRICED) as never, 'org-1', 'user-1'),
+    ).rejects.toThrow(CustomHttpException);
 
     expect(quotes.revertToDraft).toHaveBeenCalledWith('quote-1');
     expect(quotes.markReady).not.toHaveBeenCalled();
@@ -170,7 +191,11 @@ describe('QuoteApprovalActions.approveAndGenerate', () => {
     const { actions, quotes, toolRegistry } = setup();
     quotes.getForRequest.mockResolvedValue({ quote: buildQuote(QuoteStatus.READY), lines: LINES });
 
-    const result = await actions.approveAndGenerate('req-1', 'org-1', 'user-1');
+    const result = await actions.approveAndGenerate(
+      buildRequest(RequestStatus.PRICED) as never,
+      'org-1',
+      'user-1',
+    );
 
     expect(quotes.tryClaimForApproval).not.toHaveBeenCalled();
     expect(toolRegistry.invoke).not.toHaveBeenCalled();
@@ -184,7 +209,11 @@ describe('QuoteApprovalActions.approveAndGenerate', () => {
       lines: LINES,
     });
 
-    const result = await actions.approveAndGenerate('req-1', 'org-1', 'user-1');
+    const result = await actions.approveAndGenerate(
+      buildRequest(RequestStatus.PRICED) as never,
+      'org-1',
+      'user-1',
+    );
 
     expect(quotes.tryClaimForApproval).not.toHaveBeenCalled();
     expect(toolRegistry.invoke).not.toHaveBeenCalled();
@@ -195,7 +224,9 @@ describe('QuoteApprovalActions.approveAndGenerate', () => {
     const { actions, quotes } = setup();
     quotes.getForRequest.mockResolvedValue({ quote: buildQuote(QuoteStatus.SENT), lines: LINES });
 
-    await expect(actions.approveAndGenerate('req-1', 'org-1', 'user-1')).rejects.toEqual(
+    await expect(
+      actions.approveAndGenerate(buildRequest(RequestStatus.PRICED) as never, 'org-1', 'user-1'),
+    ).rejects.toEqual(
       new CustomHttpException('Quote with status "sent" cannot be approved', HttpStatus.CONFLICT),
     );
   });
@@ -204,16 +235,19 @@ describe('QuoteApprovalActions.approveAndGenerate', () => {
     const { actions, quotes } = setup();
     quotes.getForRequest.mockResolvedValue(null);
 
-    await expect(actions.approveAndGenerate('req-1', 'org-1', 'user-1')).rejects.toEqual(
+    await expect(
+      actions.approveAndGenerate(buildRequest(RequestStatus.PRICED) as never, 'org-1', 'user-1'),
+    ).rejects.toEqual(
       new CustomHttpException('Request req-1 has no priced quote to approve', HttpStatus.CONFLICT),
     );
   });
 
   it('returns 409 QUOTE_REQUEST_NOT_APPROVABLE when Request.status is FAILED, even with a stray DRAFT quote', async () => {
-    const { actions, requests, quotes, toolRegistry } = setup();
-    requests.get.mockResolvedValue(buildRequest(RequestStatus.FAILED));
+    const { actions, quotes, toolRegistry } = setup();
 
-    await expect(actions.approveAndGenerate('req-1', 'org-1', 'user-1')).rejects.toEqual(
+    await expect(
+      actions.approveAndGenerate(buildRequest(RequestStatus.FAILED) as never, 'org-1', 'user-1'),
+    ).rejects.toEqual(
       new CustomHttpException(
         'Request with status "failed" is not approvable for a quote',
         HttpStatus.CONFLICT,
@@ -224,23 +258,19 @@ describe('QuoteApprovalActions.approveAndGenerate', () => {
   });
 
   it('returns 409 QUOTE_REQUEST_NOT_APPROVABLE when Request.status is NEEDS_CLARIFICATION', async () => {
-    const { actions, requests } = setup();
-    requests.get.mockResolvedValue(buildRequest(RequestStatus.NEEDS_CLARIFICATION));
+    const { actions } = setup();
 
-    await expect(actions.approveAndGenerate('req-1', 'org-1', 'user-1')).rejects.toEqual(
+    await expect(
+      actions.approveAndGenerate(
+        buildRequest(RequestStatus.NEEDS_CLARIFICATION) as never,
+        'org-1',
+        'user-1',
+      ),
+    ).rejects.toEqual(
       new CustomHttpException(
         'Request with status "needs_clarification" is not approvable for a quote',
         HttpStatus.CONFLICT,
       ),
-    );
-  });
-
-  it('returns 404 when the request does not exist', async () => {
-    const { actions, requests } = setup();
-    requests.get.mockResolvedValue(null);
-
-    await expect(actions.approveAndGenerate('req-1', 'org-1', 'user-1')).rejects.toEqual(
-      new CustomHttpException('Request req-1 not found', HttpStatus.NOT_FOUND),
     );
   });
 
@@ -261,7 +291,11 @@ describe('QuoteApprovalActions.approveAndGenerate', () => {
       return Promise.resolve({ status: ToolStatus.ERROR, latency: 10, error: 'llm down' });
     });
 
-    const result = await actions.approveAndGenerate('req-1', 'org-1', 'user-1');
+    const result = await actions.approveAndGenerate(
+      buildRequest(RequestStatus.PRICED) as never,
+      'org-1',
+      'user-1',
+    );
 
     expect(quotes.saveEmailDraft).not.toHaveBeenCalled();
     expect(result.quote.status).toBe(QuoteStatus.READY);
