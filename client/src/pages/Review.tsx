@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useRequest } from '../api/requests';
 import type { RequestStatus } from '../api/interface/request-status';
 import { OriginalRequestPane } from '../components/review/OriginalRequestPane';
@@ -72,6 +72,7 @@ function Pane({ children }: { children: React.ReactNode }) {
 
 export function Review() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { data: request, isLoading, isError, refetch } = useRequest(id);
   const [downloadError, setDownloadError] = useState('');
   const [declineOpen, setDeclineOpen] = useState(false);
@@ -120,7 +121,8 @@ export function Review() {
       <div className="flex items-center gap-2">
         <button
           type="button"
-          disabled
+          onClick={() => navigate(`/requests/${request.id}/clarification`)}
+          disabled={request.status !== 'needs_clarification'}
           className="flex h-9 items-center gap-2 px-3 text-sm text-body-text disabled:cursor-not-allowed disabled:opacity-50"
         >
           <QuestionMarkCircleIcon />
@@ -147,7 +149,7 @@ export function Review() {
       </div>,
     );
     return () => setActions(null);
-  }, [request, setActions]);
+  }, [request, setActions, navigate]);
 
   return (
     <div className="flex h-full flex-col px-6 py-6">

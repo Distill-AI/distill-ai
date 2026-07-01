@@ -5,9 +5,10 @@ import { Review } from './Review';
 import { PageHeaderProvider, usePageHeader } from '../context/PageHeaderContext';
 import type { RequestDetail } from '../api/requests';
 
-const { mockUseRequest, mockDownload } = vi.hoisted(() => ({
+const { mockUseRequest, mockDownload, mockNavigate } = vi.hoisted(() => ({
   mockUseRequest: vi.fn(),
   mockDownload: vi.fn(),
+  mockNavigate: vi.fn(),
 }));
 
 vi.mock('../api/requests', () => ({
@@ -16,6 +17,10 @@ vi.mock('../api/requests', () => ({
 vi.mock('../api/attachments', () => ({
   downloadAttachment: mockDownload,
 }));
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router-dom')>();
+  return { ...actual, useNavigate: () => mockNavigate };
+});
 vi.mock('../components/review/DeclineModal', () => ({
   DeclineModal: ({ open }: { open: boolean }) =>
     open ? <div role="dialog">Decline modal</div> : null,
@@ -110,6 +115,7 @@ describe('Review', () => {
   beforeEach(() => {
     mockUseRequest.mockReset();
     mockDownload.mockReset();
+    mockNavigate.mockReset();
   });
 
   it('shows a loading state while the request loads', () => {
@@ -222,5 +228,33 @@ describe('Review', () => {
 
     expect(screen.getByText(/all clear/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /review flags/i })).not.toBeInTheDocument();
+  });
+
+  it('disables Request clarification unless status is needs_clarification', () => {
+    mockUseRequest.mockReturnValue({
+      data: { ...detail, status: 'needs_review' },
+      isLoading: false,
+      isError: false,
+    });
+    renderReview();
+
+    expect(screen.getByRole('button', { name: /request clarification/i })).toBeDisabled();
+  });
+
+  it('navigates to the Clarification screen when Request clarification is clicked', async () => {
+    const user = userEvent.setup();
+    mockUseRequest.mockReturnValue({
+      data: { ...detail, status: 'needs_clarification' },
+      isLoading: false,
+      isError: false,
+    });
+    renderReview();
+
+    const button = screen.getByRole('button', { name: /request clarification/i });
+    expect(button).toBeEnabled();
+
+    await user.click(button);
+
+    expect(mockNavigate).toHaveBeenCalledWith('/requests/req-1/clarification');
   });
 });
