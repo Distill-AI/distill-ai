@@ -68,4 +68,10 @@ export class Quote extends BaseEntity {
 
   @Column({ type: 'timestamptz', nullable: true })
   pdf_generated_at: Date | null;
+
+  @Column({ type: 'text', nullable: true })
+  email_draft_subject: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  email_draft_body: string | null;
 }
