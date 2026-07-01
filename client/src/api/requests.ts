@@ -6,6 +6,7 @@ import { resolveServerError } from '../lib/errorMessages';
 import type { RequestStatus, RequestType } from './interface/request-status';
 import { isRequestStatus } from './interface/request-status';
 import type { RoutingReason } from './interface/routing-reason';
+import type { ParseStatus, ParseErrorReason } from '../lib/parseErrorReasons';
 export type { RoutingReason };
 
 export const requestKeys = {
@@ -21,6 +22,8 @@ export interface AttachmentSummary {
   filename: string;
   mime_type: string;
   size_bytes: number;
+  parse_status: ParseStatus;
+  parse_error_reason: ParseErrorReason | null;
   created_at: string;
 }
 

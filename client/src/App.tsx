@@ -5,6 +5,7 @@ import { AppShell } from './components/shell/AppShell';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Inbox } from './pages/Inbox';
 import { Review } from './pages/Review';
+import { Clarification } from './pages/Clarification';
 import { Quotes } from './pages/Quotes';
 import { Catalog } from './pages/Catalog';
 import { Analytics } from './pages/Analytics';
@@ -21,6 +22,7 @@ export default function App() {
             <Route path="/" element={<Inbox />} />
             <Route path="/requests/:id" element={<ProcessingRequestPage />} />
             <Route path="/requests/:id/review" element={<Review />} />
+            <Route path="/requests/:id/clarification" element={<Clarification />} />
             <Route path="/quotes" element={<Quotes />} />
             <Route
               path="/catalog"
