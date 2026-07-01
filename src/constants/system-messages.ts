@@ -173,14 +173,14 @@ export const POLICY_LINE_ITEMS_EXCEEDS_MAX = (current: number, limit: number) =>
 export const POLICY_CATEGORY_RESTRICTED = (category: string) =>
   `Category "${category}" is restricted`;
 
-// Pricing node (US-E4-1)
+// Pricing node
 export const PRICE_QUOTE_PRICED = (totalMinor: number) =>
   `Quote priced; total ${totalMinor} (minor units)`;
 export const PRICE_NO_MATCHED_LINES = 'No matched line items to price';
 export const PRICE_RULES_MISSING =
   'No pricing rules configured for this organization; quote blocked for review';
 
-// Policy node (US-E4-2)
+// Policy node
 export const POLICY_OK = 'No policy breaches';
 export const POLICY_BREACH_FLAGGED = (count: number) =>
   `${count} policy breach(es) flagged; routing to review`;
@@ -201,7 +201,22 @@ export const MATCH_CLOSE_TIE_REASON = (top1: number, top2: number) =>
 export const LINE_ITEM_NOT_FOUND = (id: string) => `Line item ${id} not found`;
 export const CANDIDATES_RETRIEVED = 'Candidates retrieved successfully';
 
-// Catalog search (US-E6-2 manual re-map fallback)
+// Clarification
+export const CLARIFICATION_DRAFT_GENERATED = 'Clarification draft generated successfully';
+export const CLARIFICATION_DRAFT_UPDATED = 'Clarification draft updated successfully';
+export const CLARIFICATION_SENT = 'Clarification sent successfully';
+export const CLARIFICATION_RETRIEVED = 'Clarification retrieved successfully';
+export const CLARIFICATION_NOT_FOUND = 'Clarification not found';
+export const CLARIFICATION_NO_GAPS =
+  'At least one gap is required to generate a clarification draft';
+export const CLARIFICATION_ALREADY_SENT = 'Clarification has already been sent';
+export const CLARIFICATION_SEND_ACTOR_REQUIRED =
+  'A valid actor ID is required to send a clarification';
+export const CLARIFICATION_DRAFT_PARSE_FAILED =
+  'Failed to parse clarification draft from LLM response';
+export const CLARIFICATION_DRAFT_EMPTY = 'Cannot send a clarification with empty draft content';
+
+// Catalog search (manual re-map fallback)
 export const SKUS_RETRIEVED = 'SKUs retrieved successfully';
 
 // Decline
