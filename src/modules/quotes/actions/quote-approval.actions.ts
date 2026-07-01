@@ -101,7 +101,7 @@ export class QuoteApprovalActions {
       const toolName = toToolName('render_quote_pdf');
       const result = await this.toolRegistry.invoke(
         toolName,
-        { quoteId: quote.id, idempotencyKey: quote.id },
+        { quoteId: quote.id, orgId: quote.org_id, idempotencyKey: quote.id },
         requestId,
         1,
         orgId ?? null,
