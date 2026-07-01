@@ -182,6 +182,7 @@ export const PRICE_RULES_MISSING =
 
 // Quotes
 export const QUOTE_NOT_FOUND = (id: string) => `Quote ${id} not found`;
+export const QUOTE_EMAIL_DRAFT_PARSE_FAILED = 'Failed to parse quote email draft from LLM response';
 
 // Policy node
 export const POLICY_OK = 'No policy breaches';
