@@ -100,6 +100,19 @@ describe('QuoteModelAction.revertToDraft', () => {
   });
 });
 
+describe('QuoteModelAction.saveEmailDraft', () => {
+  it('persists the subject and body', async () => {
+    const { action, repository } = setup();
+
+    await action.saveEmailDraft('quote-1', 'Your quote is ready', 'Hi there...');
+
+    expect(repository.update).toHaveBeenCalledWith(
+      { id: 'quote-1' },
+      { email_draft_subject: 'Your quote is ready', email_draft_body: 'Hi there...' },
+    );
+  });
+});
+
 describe('QuoteModelAction.getByIdWithLines', () => {
   it('returns null when the quote does not exist', async () => {
     const { action, manager } = setup();
