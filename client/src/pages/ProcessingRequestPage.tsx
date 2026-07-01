@@ -3,10 +3,12 @@ import { useParams, Link } from 'react-router-dom';
 import { ProcessingTrace } from '../components/ProcessingTrace';
 import { usePageHeader } from '../context/PageHeaderContext';
 import { ChevronLeftIcon } from '../components/ui/ChevronLeftIcon';
+import { useSSEEvents } from '../hooks/useSSEEvents';
 
 export function ProcessingRequestPage() {
   const { id } = useParams<{ id?: string }>();
   const { setTitle, setActions } = usePageHeader();
+  const { nodes, connection, finalOutput, reconnect } = useSSEEvents(id ?? null);
 
   useEffect(() => {
     setTitle(
@@ -51,9 +53,30 @@ export function ProcessingRequestPage() {
     );
   }
 
+  const done = nodes.filter((n) => n.status === 'success' || n.status === 'failed').length;
+  const pct = Math.round((done / nodes.length) * 100);
+
   return (
-    <div className="px-6 py-6">
-      <ProcessingTrace requestId={id} />
-    </div>
+    <>
+      <div className="w-full h-[3px] bg-border">
+        <div
+          className="h-full bg-indigo-600 transition-all duration-500"
+          style={{ width: `${pct}%` }}
+          role="progressbar"
+          aria-valuenow={pct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Processing progress"
+        />
+      </div>
+      <div className="px-6 py-6">
+        <ProcessingTrace
+          nodes={nodes}
+          connection={connection}
+          finalOutput={finalOutput}
+          reconnect={reconnect}
+        />
+      </div>
+    </>
   );
 }

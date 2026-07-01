@@ -21,6 +21,9 @@
   --color-body-text:  #475569;
   --color-muted:      #94A3B8;
   --color-border:     #E5E7EB;
+  --color-success-icon: #22C55E;
+  --color-success-text: #15803D;
+  --color-banner-text:  #C7CBD6;
 
   /* confidence system: sacred, never repurpose for decoration */
   --color-hi-bg:  #DCFCE7;
