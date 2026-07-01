@@ -15,7 +15,11 @@ import { ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { authConfig } from '@config/auth.config';
 import { CustomHttpException } from '@common/exceptions/custom-http.exception';
-import { OBJECT_STORE, type ObjectStore } from '@common/object-store/object-store.port';
+import {
+  OBJECT_STORE,
+  ObjectNotFoundError,
+  type ObjectStore,
+} from '@common/object-store/object-store.port';
 import { Roles } from '@modules/auth/decorators/roles.decorator';
 import { Role } from '@modules/auth/enums/role.enum';
 import type { AuthUser } from '@modules/auth/interfaces/auth-user.interface';
@@ -76,8 +80,14 @@ export class QuotesController {
     let bytes: Buffer;
     try {
       bytes = await this.objectStore.get(found.quote.pdf_storage_url);
-    } catch {
-      throw new CustomHttpException(SYS_MSG.QUOTE_PDF_NOT_READY(requestId), HttpStatus.NOT_FOUND);
+    } catch (error) {
+      if (error instanceof ObjectNotFoundError) {
+        throw new CustomHttpException(SYS_MSG.QUOTE_PDF_NOT_READY(requestId), HttpStatus.NOT_FOUND);
+      }
+      throw new CustomHttpException(
+        SYS_MSG.QUOTE_PDF_RETRIEVAL_FAILED(requestId),
+        HttpStatus.BAD_GATEWAY,
+      );
     }
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Length', bytes.length);

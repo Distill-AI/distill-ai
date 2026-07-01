@@ -1,5 +1,6 @@
-import { NotFoundException } from '@nestjs/common';
+import { HttpStatus, NotFoundException } from '@nestjs/common';
 import { CustomHttpException } from '@common/exceptions/custom-http.exception';
+import { ObjectNotFoundError } from '@common/object-store/object-store.port';
 import { QuotesController } from '../quotes.controller';
 import { QuoteApprovalActions } from '../actions/quote-approval.actions';
 import { QuoteModelAction } from '../quote.model-action';
@@ -139,13 +140,25 @@ describe('QuotesController.downloadPdf', () => {
     );
   });
 
-  it('404s when the object store fails to retrieve the PDF', async () => {
+  it('404s when the object store reports the object as not found', async () => {
+    const { controller, objectStore } = setup();
+    (objectStore.get as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new ObjectNotFoundError('quotes/org-1/quote-1.pdf'),
+    );
+    const res = makeRes();
+
+    await expect(controller.downloadPdf('req-1', { user: mockUser }, res)).rejects.toMatchObject({
+      status: HttpStatus.NOT_FOUND,
+    });
+  });
+
+  it('502s when the object store fails to retrieve an object that exists', async () => {
     const { controller, objectStore } = setup();
     (objectStore.get as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('storage outage'));
     const res = makeRes();
 
-    await expect(controller.downloadPdf('req-1', { user: mockUser }, res)).rejects.toThrow(
-      CustomHttpException,
-    );
+    await expect(controller.downloadPdf('req-1', { user: mockUser }, res)).rejects.toMatchObject({
+      status: HttpStatus.BAD_GATEWAY,
+    });
   });
 });

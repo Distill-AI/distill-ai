@@ -133,5 +133,23 @@ export function DownloadQuotePdfDocs() {
         ),
       },
     }),
+    ApiResponse({
+      status: HttpStatus.BAD_GATEWAY,
+      description:
+        'Returned when the generated PDF exists but could not be retrieved from storage.',
+      content: {
+        'application/json': errorSchemaExamples(
+          HttpStatus.BAD_GATEWAY,
+          'Bad Gateway',
+          '/api/v1/requests/{requestId}/quote/pdf',
+          {
+            quotePdfRetrievalFailed: {
+              summary: 'Storage retrieval failure',
+              message: SYS_MSG.QUOTE_PDF_RETRIEVAL_FAILED('{requestId}'),
+            },
+          },
+        ),
+      },
+    }),
   );
 }

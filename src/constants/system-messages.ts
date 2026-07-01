@@ -193,6 +193,8 @@ export const QUOTE_PDF_GENERATION_FAILED = 'Failed to generate the quote PDF';
 export const QUOTE_APPROVED_SUCCESS = 'Quote approved successfully';
 export const QUOTE_PDF_NOT_READY = (requestId: string) =>
   `Quote for request ${requestId} has no generated PDF yet`;
+export const QUOTE_PDF_RETRIEVAL_FAILED = (requestId: string) =>
+  `Failed to retrieve the generated PDF for request ${requestId}`;
 
 // Policy node
 export const POLICY_OK = 'No policy breaches';
