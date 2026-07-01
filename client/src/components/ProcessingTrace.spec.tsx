@@ -54,9 +54,9 @@ describe('ProcessingTrace', () => {
     expect(screen.getByText('Extraction trace')).toBeInTheDocument();
   });
 
-  it('renders Run Summary heading', () => {
+  it('renders STRUCTURED OUTPUT heading', () => {
     render(<ProcessingTrace {...defaultProps} />);
-    expect(screen.getByText('Run Summary')).toBeInTheDocument();
+    expect(screen.getByText('STRUCTURED OUTPUT')).toBeInTheDocument();
   });
 
   it('shows success nodes with checkmarks', () => {
