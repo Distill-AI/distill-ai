@@ -12,7 +12,15 @@ function setup() {
     find: vi.fn().mockResolvedValue([]),
   };
   const dataSource = {
-    transaction: vi.fn(async (work: (em: unknown) => Promise<unknown>) => work(manager)),
+    transaction: vi.fn(
+      async (
+        arg1: string | ((em: unknown) => Promise<unknown>),
+        arg2?: (em: unknown) => Promise<unknown>,
+      ) => {
+        const work = typeof arg1 === 'function' ? arg1 : arg2!;
+        return work(manager);
+      },
+    ),
   };
   const action = new QuoteModelAction(repository as never, dataSource as never);
   return { action, repository, manager, dataSource };
@@ -53,19 +61,29 @@ describe('QuoteModelAction.tryClaimForApproval', () => {
 });
 
 describe('QuoteModelAction.markReady', () => {
-  it('sets status, pdf_storage_url, and pdf_generated_at', async () => {
+  it('sets status, pdf_storage_url, and pdf_generated_at, and returns true when the quote was approved', async () => {
     const { action, repository } = setup();
 
-    await action.markReady('quote-1', 'quotes/org-1/quote-1.pdf');
+    const result = await action.markReady('quote-1', 'quotes/org-1/quote-1.pdf');
 
     expect(repository.update).toHaveBeenCalledWith(
-      { id: 'quote-1' },
+      { id: 'quote-1', status: QuoteStatus.APPROVED },
       expect.objectContaining({
         status: QuoteStatus.READY,
         pdf_storage_url: 'quotes/org-1/quote-1.pdf',
         pdf_generated_at: expect.any(Date),
       }),
     );
+    expect(result).toBe(true);
+  });
+
+  it('returns false when the quote was not in the approved state', async () => {
+    const { action, repository } = setup();
+    repository.update.mockResolvedValue({ affected: 0 });
+
+    const result = await action.markReady('quote-1', 'quotes/org-1/quote-1.pdf');
+
+    expect(result).toBe(false);
   });
 });
 
@@ -93,7 +111,7 @@ describe('QuoteModelAction.getByIdWithLines', () => {
   });
 
   it('returns the quote and its lines ordered by position', async () => {
-    const { action, manager } = setup();
+    const { action, manager, dataSource } = setup();
     const quote = { id: 'quote-1' } as Quote;
     const lines = [{ id: 'line-1', position: 1 } as QuoteLineItem];
     manager.findOne.mockResolvedValue(quote);
@@ -101,6 +119,7 @@ describe('QuoteModelAction.getByIdWithLines', () => {
 
     const result = await action.getByIdWithLines('quote-1');
 
+    expect(dataSource.transaction).toHaveBeenCalledWith('REPEATABLE READ', expect.any(Function));
     expect(manager.findOne).toHaveBeenCalledWith(Quote, { where: { id: 'quote-1' } });
     expect(manager.find).toHaveBeenCalledWith(QuoteLineItem, {
       where: { quote_id: 'quote-1' },
