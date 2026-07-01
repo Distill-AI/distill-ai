@@ -185,6 +185,7 @@ export class QuoteModelAction extends AbstractModelAction<Quote> {
       }
       const lines = await em.find(QuoteLineItem, {
         where: { quote_id: quote.id },
+        relations: { sku: true },
         order: { position: 'ASC' },
       });
       return { quote, lines };

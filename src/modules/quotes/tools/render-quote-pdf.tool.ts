@@ -55,10 +55,12 @@ export class RenderQuotePdfToolFactory {
 
     const bytes = await this.renderer.render({
       quoteNumber: found.quote.quote_number,
+      issuedDate: found.quote.created_at,
       senderCompany: request.sender_company,
       senderContact: request.sender_contact,
       senderEmail: request.sender_email,
       lines: found.lines.map((line) => ({
+        sku: line.sku?.sku_code ?? null,
         description: line.description,
         quantity: line.quantity,
         unitPriceMinor: line.unit_price_minor,
@@ -69,6 +71,8 @@ export class RenderQuotePdfToolFactory {
       totalMinor: found.quote.total_minor,
       currency: found.quote.currency,
       leadTimeDays: found.quote.lead_time_days,
+      terms: found.quote.terms,
+      validUntil: found.quote.valid_until,
     });
 
     // Deterministic key from the quote id and idempotency key (not a random uuid): a retry with the

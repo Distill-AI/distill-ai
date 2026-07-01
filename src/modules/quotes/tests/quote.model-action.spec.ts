@@ -123,6 +123,7 @@ describe('QuoteModelAction.getByIdWithLines', () => {
     expect(manager.findOne).toHaveBeenCalledWith(Quote, { where: { id: 'quote-1' } });
     expect(manager.find).toHaveBeenCalledWith(QuoteLineItem, {
       where: { quote_id: 'quote-1' },
+      relations: { sku: true },
       order: { position: 'ASC' },
     });
     expect(result).toEqual({ quote, lines });

@@ -15,10 +15,14 @@ function setup() {
     total_minor: 1000,
     currency: 'GBP',
     lead_time_days: 5,
+    terms: 'Net 30',
+    valid_until: '2026-08-01',
+    created_at: new Date('2026-07-01T00:00:00Z'),
   };
   const lines = [
     {
       id: 'line-1',
+      sku: { sku_code: 'HX-M10-50-A4' },
       description: 'Widget',
       quantity: 1,
       unit_price_minor: 1000,
@@ -70,10 +74,21 @@ describe('RenderQuotePdfToolFactory', () => {
     expect(renderer.render).toHaveBeenCalledWith(
       expect.objectContaining({
         quoteNumber: 'Q-001',
+        issuedDate: new Date('2026-07-01T00:00:00Z'),
         senderCompany: 'Acme',
         senderContact: 'Jane',
         senderEmail: 'jane@acme.example',
-        lines: [{ description: 'Widget', quantity: 1, unitPriceMinor: 1000, amountMinor: 1000 }],
+        lines: [
+          {
+            sku: 'HX-M10-50-A4',
+            description: 'Widget',
+            quantity: 1,
+            unitPriceMinor: 1000,
+            amountMinor: 1000,
+          },
+        ],
+        terms: 'Net 30',
+        validUntil: '2026-08-01',
       }),
     );
     expect(objectStore.put).toHaveBeenCalledWith(
