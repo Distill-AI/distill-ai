@@ -34,10 +34,10 @@ describe('TraceNode', () => {
   });
 
   it('shows failed cross in red', () => {
-    render(<TraceNode name="extract" status="failed" />);
-    const icon = screen.getByText('\u2717');
+    const { container } = render(<TraceNode name="extract" status="failed" />);
+    const icon = container.querySelector('svg');
     expect(icon).toBeInTheDocument();
-    expect(icon.className).toContain('text-red-400');
+    expect(icon?.getAttribute('class')).toContain('text-red-400');
   });
 
   it('shows tool chip below the step row after success', () => {
