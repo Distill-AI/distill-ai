@@ -45,7 +45,9 @@ export class RenderQuotePdfToolFactory {
     if (!found || found.quote.org_id !== input.orgId) {
       throw new CustomHttpException(SYS_MSG.QUOTE_NOT_FOUND(input.quoteId), HttpStatus.NOT_FOUND);
     }
-    const request = await this.requests.get({ identifierOptions: { id: found.quote.request_id } });
+    const request = await this.requests.get({
+      identifierOptions: { id: found.quote.request_id, org_id: found.quote.org_id },
+    });
     if (!request) {
       throw new CustomHttpException(
         SYS_MSG.REQUEST_NOT_FOUND(found.quote.request_id),
