@@ -143,12 +143,17 @@ export class QuoteModelAction extends AbstractModelAction<Quote> {
     return (result.affected ?? 0) > 0;
   }
 
-  /** Marks a claimed quote as `READY` once its PDF has been written to object storage. */
-  async markReady(quoteId: string, pdfStorageUrl: string): Promise<void> {
-    await this.repository.update(
-      { id: quoteId },
+  /**
+   * Marks a claimed quote as `READY` once its PDF has been written to object storage. Only
+   * transitions from `APPROVED`, so a stale retry can't push a `DRAFT` or already-`READY` quote
+   * to `READY` and overwrite its PDF metadata; returns whether the row actually transitioned.
+   */
+  async markReady(quoteId: string, pdfStorageUrl: string): Promise<boolean> {
+    const result = await this.repository.update(
+      { id: quoteId, status: QuoteStatus.APPROVED },
       { status: QuoteStatus.READY, pdf_storage_url: pdfStorageUrl, pdf_generated_at: new Date() },
     );
+    return (result.affected ?? 0) > 0;
   }
 
   /**
@@ -165,12 +170,15 @@ export class QuoteModelAction extends AbstractModelAction<Quote> {
 
   /**
    * Loads a quote and its line items by quote id, in one consistent transaction. Same shape as
-   * `getForRequest`, keyed by quote id instead of request id.
+   * `getForRequest`, keyed by quote id instead of request id. Uses `REPEATABLE READ` so the two
+   * reads share a single snapshot: under the default `READ COMMITTED`, a concurrent
+   * `replaceForRequest` between the `findOne` and `find` could otherwise return a quote paired
+   * with another quote's line items.
    */
   async getByIdWithLines(
     quoteId: string,
   ): Promise<{ quote: Quote; lines: QuoteLineItem[] } | null> {
-    return this.dataSource.transaction(async (em) => {
+    return this.dataSource.transaction('REPEATABLE READ', async (em) => {
       const quote = await em.findOne(Quote, { where: { id: quoteId } });
       if (!quote) {
         return null;

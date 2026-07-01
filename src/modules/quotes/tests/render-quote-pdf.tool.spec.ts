@@ -43,7 +43,7 @@ function setup() {
     render: vi.fn().mockResolvedValue(bytes),
   };
   const objectStore = {
-    put: vi.fn().mockResolvedValue('quotes/org-1/idem-1.pdf'),
+    put: vi.fn().mockResolvedValue('quotes/org-1/quote-1/idem-1.pdf'),
   };
 
   const factory = new RenderQuotePdfToolFactory(
@@ -61,7 +61,11 @@ describe('RenderQuotePdfToolFactory', () => {
     const { factory, renderer, objectStore } = setup();
     const contract = factory.create();
 
-    const result = await contract.execute({ quoteId: 'quote-1', idempotencyKey: 'idem-1' });
+    const result = await contract.execute({
+      quoteId: 'quote-1',
+      orgId: 'org-1',
+      idempotencyKey: 'idem-1',
+    });
 
     expect(renderer.render).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -72,19 +76,22 @@ describe('RenderQuotePdfToolFactory', () => {
         lines: [{ description: 'Widget', quantity: 1, unitPriceMinor: 1000, amountMinor: 1000 }],
       }),
     );
-    expect(objectStore.put).toHaveBeenCalledWith('quotes/org-1/idem-1.pdf', expect.any(Buffer));
-    expect(result).toEqual({ storageUrl: 'quotes/org-1/idem-1.pdf', bytesWritten: 9 });
+    expect(objectStore.put).toHaveBeenCalledWith(
+      'quotes/org-1/quote-1/idem-1.pdf',
+      expect.any(Buffer),
+    );
+    expect(result).toEqual({ storageUrl: 'quotes/org-1/quote-1/idem-1.pdf', bytesWritten: 9 });
   });
 
   it('produces the same key for repeated calls with the same idempotencyKey', async () => {
     const { factory, objectStore } = setup();
     const contract = factory.create();
 
-    await contract.execute({ quoteId: 'quote-1', idempotencyKey: 'idem-1' });
-    await contract.execute({ quoteId: 'quote-1', idempotencyKey: 'idem-1' });
+    await contract.execute({ quoteId: 'quote-1', orgId: 'org-1', idempotencyKey: 'idem-1' });
+    await contract.execute({ quoteId: 'quote-1', orgId: 'org-1', idempotencyKey: 'idem-1' });
 
     const keys = objectStore.put.mock.calls.map((call: unknown[]) => call[0]);
-    expect(keys).toEqual(['quotes/org-1/idem-1.pdf', 'quotes/org-1/idem-1.pdf']);
+    expect(keys).toEqual(['quotes/org-1/quote-1/idem-1.pdf', 'quotes/org-1/quote-1/idem-1.pdf']);
   });
 
   it('throws before touching object storage when the quote is not found', async () => {
@@ -93,8 +100,18 @@ describe('RenderQuotePdfToolFactory', () => {
     const contract = factory.create();
 
     await expect(
-      contract.execute({ quoteId: 'missing', idempotencyKey: 'idem-1' }),
+      contract.execute({ quoteId: 'missing', orgId: 'org-1', idempotencyKey: 'idem-1' }),
     ).rejects.toEqual(new CustomHttpException('Quote missing not found', HttpStatus.NOT_FOUND));
+    expect(objectStore.put).not.toHaveBeenCalled();
+  });
+
+  it('throws when the quote belongs to a different org', async () => {
+    const { factory, objectStore } = setup();
+    const contract = factory.create();
+
+    await expect(
+      contract.execute({ quoteId: 'quote-1', orgId: 'org-2', idempotencyKey: 'idem-1' }),
+    ).rejects.toEqual(new CustomHttpException('Quote quote-1 not found', HttpStatus.NOT_FOUND));
     expect(objectStore.put).not.toHaveBeenCalled();
   });
 
@@ -104,7 +121,7 @@ describe('RenderQuotePdfToolFactory', () => {
     const contract = factory.create();
 
     await expect(
-      contract.execute({ quoteId: 'quote-1', idempotencyKey: 'idem-1' }),
+      contract.execute({ quoteId: 'quote-1', orgId: 'org-1', idempotencyKey: 'idem-1' }),
     ).rejects.toThrow(CustomHttpException);
     expect(objectStore.put).not.toHaveBeenCalled();
   });

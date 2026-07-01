@@ -10,6 +10,7 @@ import { QuotePdfRenderer } from '../services/quote-pdf-renderer.service';
 
 export const RenderQuotePdfInputSchema = z.object({
   quoteId: z.string().uuid(),
+  orgId: z.string().uuid(),
   idempotencyKey: z.string().min(1),
 });
 export const RenderQuotePdfOutputSchema = z.object({
@@ -41,7 +42,7 @@ export class RenderQuotePdfToolFactory {
 
   private async execute(input: RenderQuotePdfInput): Promise<RenderQuotePdfOutput> {
     const found = await this.quotes.getByIdWithLines(input.quoteId);
-    if (!found) {
+    if (!found || found.quote.org_id !== input.orgId) {
       throw new CustomHttpException(SYS_MSG.QUOTE_NOT_FOUND(input.quoteId), HttpStatus.NOT_FOUND);
     }
     const request = await this.requests.get({ identifierOptions: { id: found.quote.request_id } });
@@ -70,9 +71,10 @@ export class RenderQuotePdfToolFactory {
       leadTimeDays: found.quote.lead_time_days,
     });
 
-    // Deterministic key from the idempotency key (not a random uuid): a retry with the same key
-    // overwrites the same object instead of creating a second artifact (FR-1, EC-01).
-    const key = `quotes/${found.quote.org_id}/${input.idempotencyKey}.pdf`;
+    // Deterministic key from the quote id and idempotency key (not a random uuid): a retry with the
+    // same key overwrites the same object instead of creating a second artifact (FR-1, EC-01), while
+    // the quote id keeps two different quotes from colliding if a caller ever reuses a key.
+    const key = `quotes/${found.quote.org_id}/${found.quote.id}/${input.idempotencyKey}.pdf`;
     const storageUrl = await this.objectStore.put(key, bytes);
     return { storageUrl, bytesWritten: bytes.length };
   }
