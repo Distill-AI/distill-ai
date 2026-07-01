@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useRequest } from '../api/requests';
 import type { RequestStatus } from '../api/interface/request-status';
+import { QUOTE_APPROVABLE_STATUSES } from '../api/interface/request-status';
 import { OriginalRequestPane } from '../components/review/OriginalRequestPane';
 import { ParsedStructurePane } from '../components/review/ParsedStructurePane';
 import { SuggestedQuotePane } from '../components/review/SuggestedQuotePane';
@@ -140,7 +141,11 @@ export function Review() {
         </button>
         <button
           type="button"
-          disabled
+          onClick={() => navigate(`/requests/${request.id}/quote`)}
+          disabled={
+            request.quote === null ||
+            !QUOTE_APPROVABLE_STATUSES.includes(request.status as RequestStatus)
+          }
           className="flex h-9 items-center gap-2 rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
         >
           <CheckIcon />
