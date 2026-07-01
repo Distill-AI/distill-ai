@@ -95,4 +95,19 @@ describe('EmailDraftPanel', () => {
 
     expect(screen.getByRole('button', { name: 'Copy to clipboard' })).toBeInTheDocument();
   });
+
+  it('forwards bodyRef to the body textarea', () => {
+    const bodyRef = { current: null };
+    render(
+      <EmailDraftPanel
+        subject="Subject"
+        body="Body"
+        readOnly
+        bodyRef={bodyRef}
+        trailingActions={<button>Send</button>}
+      />,
+    );
+
+    expect(bodyRef.current).toBe(screen.getByLabelText('Message'));
+  });
 });
