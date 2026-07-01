@@ -180,6 +180,9 @@ export const PRICE_NO_MATCHED_LINES = 'No matched line items to price';
 export const PRICE_RULES_MISSING =
   'No pricing rules configured for this organization; quote blocked for review';
 
+// Quotes
+export const QUOTE_NOT_FOUND = (id: string) => `Quote ${id} not found`;
+
 // Policy node
 export const POLICY_OK = 'No policy breaches';
 export const POLICY_BREACH_FLAGGED = (count: number) =>
