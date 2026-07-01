@@ -25,8 +25,8 @@ export function ProcessingTrace({
 }: ProcessingTraceProps) {
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-6 lg:flex-row">
-        <div className="flex-1 rounded-lg bg-slate-900 overflow-hidden flex flex-col">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="rounded-lg bg-slate-900 overflow-hidden flex flex-col">
           {connection.status === 'error' && connection.error?.startsWith('Resumed') && (
             <div className="bg-slate-800 border-l-[3px] border-accent px-4 py-3 flex items-center gap-3">
               <RotateCw className="h-3.5 w-3.5 text-banner-text" aria-hidden="true" />
@@ -60,10 +60,10 @@ export function ProcessingTrace({
           </div>
         </div>
 
-        <div className="w-full lg:w-96">
-          <h2 className="mb-3 text-sm font-semibold text-body-text uppercase tracking-wide">
-            Run Summary
-          </h2>
+        <div className="bg-surface border border-border rounded-lg p-5 flex flex-col shadow-sm">
+          <span className="block mb-4 text-[11px] font-semibold tracking-[0.5px] text-muted uppercase">
+            STRUCTURED OUTPUT
+          </span>
           <StructuredOutput data={finalOutput} />
         </div>
       </div>
