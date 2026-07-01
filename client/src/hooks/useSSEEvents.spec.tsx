@@ -272,6 +272,64 @@ describe('useSSEEvents', () => {
     }
   });
 
+  it('populates connection.resumed from request.resumed without dropping connected status', () => {
+    const { result } = renderHook(() => useSSEEvents('req-1'));
+    act(() => {
+      onOpen?.();
+    });
+    act(() => {
+      emitSSEEvent('request.resumed', {
+        type: 'request.resumed',
+        request_id: 'req-1',
+        resumed_from_node: 'classify',
+        reason: 'crash_recovery',
+      });
+    });
+    expect(result.current.connection.resumed).toEqual({ from: 'classify' });
+    expect(result.current.connection.status).toBe('connected');
+  });
+
+  it('keeps connection.resumed set when a node event arrives afterwards', () => {
+    const { result } = renderHook(() => useSSEEvents('req-1'));
+    act(() => {
+      onOpen?.();
+    });
+    act(() => {
+      emitSSEEvent('request.resumed', {
+        type: 'request.resumed',
+        request_id: 'req-1',
+        resumed_from_node: 'match',
+        reason: 'crash_recovery',
+      });
+    });
+    act(() => {
+      emitSSEEvent('node.entered', {
+        type: 'node.entered',
+        node: 'match',
+        status: 'processing',
+        timestamp: new Date().toISOString(),
+      });
+    });
+    expect(result.current.connection.resumed).toEqual({ from: 'match' });
+    expect(result.current.nodes.find((n) => n.name === 'match')?.status).toBe('in-progress');
+  });
+
+  it('does not set connection.resumed for an uninterrupted run (AC-04, no false positive)', () => {
+    const { result } = renderHook(() => useSSEEvents('req-1'));
+    act(() => {
+      onOpen?.();
+    });
+    act(() => {
+      emitSSEEvent('node.entered', {
+        type: 'node.entered',
+        node: 'parse',
+        status: 'processing',
+        timestamp: new Date().toISOString(),
+      });
+    });
+    expect(result.current.connection.resumed).toBeUndefined();
+  });
+
   it('does nothing when requestId is null', () => {
     const { result } = renderHook(() => useSSEEvents(null));
     expect(result.current.nodes).toHaveLength(7);
