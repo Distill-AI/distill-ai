@@ -76,6 +76,18 @@ describe('ProcessingTrace', () => {
     expect(screen.getByText('Reconnect')).toBeInTheDocument();
   });
 
+  it('shows resumed notices without the generic reconnect error', () => {
+    render(
+      <ProcessingTrace
+        {...defaultProps}
+        connection={{ status: 'error', error: 'Resumed from checkpoint' }}
+      />,
+    );
+
+    expect(screen.getByText('Resumed from checkpoint')).toBeInTheDocument();
+    expect(screen.queryByText('Reconnect')).not.toBeInTheDocument();
+  });
+
   it('calls reconnect when Reconnect button is clicked', async () => {
     const reconnect = vi.fn();
     render(
