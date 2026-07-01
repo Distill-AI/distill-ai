@@ -117,7 +117,7 @@ export class QuoteModelAction extends AbstractModelAction<Quote> {
    * Lines are ordered by position so the suggested-quote pane is stable across reads.
    */
   async getForRequest(requestId: string): Promise<{ quote: Quote; lines: QuoteLineItem[] } | null> {
-    return this.dataSource.transaction(async (em) => {
+    return this.dataSource.transaction('REPEATABLE READ', async (em) => {
       const quote = await em.findOne(Quote, { where: { request_id: requestId } });
       if (!quote) {
         return null;

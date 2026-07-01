@@ -35,10 +35,6 @@ const COLOR = {
 };
 
 const PAGE_MARGIN = 50;
-// Conservative estimates of each row's rendered height (description/qty/price/amount line, optional
-// SKU line, divider gap), used only to decide whether a row fits before the page bottom margin.
-const ROW_HEIGHT = 37;
-const ROW_HEIGHT_WITH_SKU = 50;
 const TOTALS_BLOCK_HEIGHT = 80;
 const FOOTER_BLOCK_HEIGHT = 40;
 
@@ -48,9 +44,19 @@ function formatMinor(minor: number, currency: string): string {
   return `${currency} ${(minor / 100).toFixed(2)}`;
 }
 
+const DATE_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
+/** Parses date-only strings as UTC midnight so the rendered date can't shift by a day depending on
+ * the host timezone the service happens to run in. */
 function formatDate(value: Date | string): string {
-  const date = typeof value === 'string' ? new Date(value) : value;
-  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  const isDateOnly = typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const date = isDateOnly ? new Date(`${value}T00:00:00Z`) : new Date(value);
+  return DATE_FORMATTER.format(date);
 }
 
 interface Columns {
@@ -200,7 +206,10 @@ export class QuotePdfRenderer {
     let y = this.renderColumnHeaders(doc, columns, startY);
 
     for (const line of lines) {
-      const rowHeight = line.sku ? ROW_HEIGHT_WITH_SKU : ROW_HEIGHT;
+      doc.fontSize(10);
+      const descHeight = doc.heightOfString(line.description, { width: columns.desc.width });
+      const skuHeight = line.sku ? 13 : 0;
+      const rowHeight = descHeight + skuHeight + 22;
       if (y + rowHeight > pageBottom(doc)) {
         doc.addPage();
         y = this.renderColumnHeaders(doc, columns, PAGE_MARGIN);
@@ -227,7 +236,7 @@ export class QuotePdfRenderer {
           width: columns.amount.width,
           align: 'right',
         });
-      y += 15;
+      y += descHeight;
       if (line.sku) {
         doc.fillColor(COLOR.muted).fontSize(8).text(`SKU: ${line.sku}`, columns.desc.x, y, {
           width: columns.desc.width,

@@ -55,6 +55,8 @@ describe('QuotePdfRenderer', () => {
       expect(text).toContain('45.00');
       expect(text).toContain('7');
       expect(text).toContain('Net 30');
+      expect(text).toContain('Date: 1 Jul 2026');
+      expect(text).toContain('Valid until 1 Aug 2026');
     } finally {
       await parser.destroy();
     }
