@@ -8,3 +8,6 @@ export const REASON_LABELS = {
 } as const;
 
 export type ParseErrorReason = keyof typeof REASON_LABELS;
+
+// Mirrors the backend ParseStatus enum (src/modules/requests/enums/parse-status.enum.ts).
+export type ParseStatus = 'parsed' | 'unparsed' | 'manual_paste';

@@ -47,6 +47,8 @@ const detail: RequestDetail = {
       filename: 'rfq_apex.pdf',
       mime_type: 'application/pdf',
       size_bytes: 1258291,
+      parse_status: 'parsed',
+      parse_error_reason: null,
       created_at: '2026-06-24T10:00:00.000Z',
     },
   ],

@@ -1,9 +1,8 @@
 import type { RefObject } from 'react';
 import { REASON_LABELS } from '../../lib/parseErrorReasons';
-import type { ParseErrorReason } from '../../lib/parseErrorReasons';
+import type { ParseErrorReason, ParseStatus } from '../../lib/parseErrorReasons';
 
-export type { ParseErrorReason };
-export type ParseStatus = 'parsed' | 'unparsed' | 'manual_paste';
+export type { ParseErrorReason, ParseStatus };
 
 interface AttachmentPanelProps {
   filename: string;
