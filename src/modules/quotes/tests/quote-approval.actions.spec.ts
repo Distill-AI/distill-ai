@@ -107,7 +107,7 @@ describe('QuoteApprovalActions.approveAndGenerate', () => {
     );
     expect(toolRegistry.invoke).toHaveBeenCalledWith(
       'render_quote_pdf',
-      { quoteId: 'quote-1', idempotencyKey: 'quote-1' },
+      { quoteId: 'quote-1', orgId: 'org-1', idempotencyKey: 'quote-1' },
       'req-1',
       1,
       'org-1',
