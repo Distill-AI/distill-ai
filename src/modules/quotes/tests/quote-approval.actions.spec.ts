@@ -119,8 +119,8 @@ describe('QuoteApprovalActions.approveAndGenerate', () => {
     expect(result.quote.status).toBe(QuoteStatus.READY);
   });
 
-  it('logs a warning when markReady finds the quote no longer APPROVED', async () => {
-    const { actions, quotes } = setup();
+  it('logs a warning and skips quote.ready/email draft when markReady finds the quote no longer APPROVED', async () => {
+    const { actions, quotes, toolRegistry, events } = setup();
     quotes.markReady.mockResolvedValue(false);
     quotes.getByIdWithLines.mockResolvedValue({
       quote: buildQuote(QuoteStatus.APPROVED),
@@ -137,7 +137,46 @@ describe('QuoteApprovalActions.approveAndGenerate', () => {
     expect(warnSpy).toHaveBeenCalledWith(
       expect.objectContaining({ event: 'quote_mark_ready_no_op', quoteId: 'quote-1' }),
     );
+    expect(events.emit).not.toHaveBeenCalledWith(
+      expect.objectContaining({ eventName: 'quote.ready' }),
+    );
+    expect(toolRegistry.invoke).not.toHaveBeenCalledWith(
+      'draft_quote_email',
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+    );
     warnSpy.mockRestore();
+  });
+
+  it('reverts to draft and rethrows when render_quote_pdf rejects instead of returning an error status', async () => {
+    const { actions, quotes, toolRegistry } = setup();
+    toolRegistry.invoke.mockImplementation((toolName: string) => {
+      if (toolName === 'render_quote_pdf') {
+        return Promise.reject(new Error('renderer unreachable'));
+      }
+      return Promise.resolve({ status: ToolStatus.OK, latency: 10, result: {} });
+    });
+
+    await expect(
+      actions.approveAndGenerate(buildRequest(RequestStatus.PRICED) as never, 'org-1', 'user-1'),
+    ).rejects.toThrow('renderer unreachable');
+
+    expect(quotes.revertToDraft).toHaveBeenCalledWith('quote-1');
+    expect(quotes.markReady).not.toHaveBeenCalled();
+  });
+
+  it('reverts to draft and rethrows when quote.approved event emission rejects', async () => {
+    const { actions, quotes, events } = setup();
+    events.emit.mockRejectedValueOnce(new Error('event bus down'));
+
+    await expect(
+      actions.approveAndGenerate(buildRequest(RequestStatus.PRICED) as never, 'org-1', 'user-1'),
+    ).rejects.toThrow('event bus down');
+
+    expect(quotes.revertToDraft).toHaveBeenCalledWith('quote-1');
+    expect(quotes.markReady).not.toHaveBeenCalled();
   });
 
   it('drafts a follow-up email via draft_quote_email and saves it', async () => {

@@ -87,31 +87,36 @@ export class QuoteApprovalActions {
       );
     }
 
-    await this.events.emit({
-      eventName: 'quote.approved',
-      orgId,
-      requestId,
-      quoteId: quote.id,
-      userId,
-      attributes: {},
-    });
+    let output: { storageUrl: string };
+    try {
+      await this.events.emit({
+        eventName: 'quote.approved',
+        orgId,
+        requestId,
+        quoteId: quote.id,
+        userId,
+        attributes: {},
+      });
 
-    const toolName = toToolName('render_quote_pdf');
-    const result = await this.toolRegistry.invoke(
-      toolName,
-      { quoteId: quote.id, idempotencyKey: quote.id },
-      requestId,
-      1,
-      orgId ?? null,
-    );
-    if (result.status !== ToolStatus.OK) {
-      await this.quotes.revertToDraft(quote.id);
-      throw new CustomHttpException(
-        SYS_MSG.QUOTE_PDF_GENERATION_FAILED,
-        HttpStatus.FAILED_DEPENDENCY,
+      const toolName = toToolName('render_quote_pdf');
+      const result = await this.toolRegistry.invoke(
+        toolName,
+        { quoteId: quote.id, idempotencyKey: quote.id },
+        requestId,
+        1,
+        orgId ?? null,
       );
+      if (result.status !== ToolStatus.OK) {
+        throw new CustomHttpException(
+          SYS_MSG.QUOTE_PDF_GENERATION_FAILED,
+          HttpStatus.FAILED_DEPENDENCY,
+        );
+      }
+      output = result.result as { storageUrl: string };
+    } catch (err) {
+      await this.quotes.revertToDraft(quote.id);
+      throw err;
     }
-    const output = result.result as { storageUrl: string };
     const transitioned = await this.quotes.markReady(quote.id, output.storageUrl);
     if (!transitioned) {
       this.logger.warn({
@@ -121,16 +126,19 @@ export class QuoteApprovalActions {
           'markReady found the quote no longer APPROVED; it may have been reverted concurrently',
       });
     }
-    await this.events.emit({
-      eventName: 'quote.ready',
-      orgId,
-      requestId,
-      quoteId: quote.id,
-      attributes: {},
-    });
 
-    if (!quote.email_draft_subject) {
-      await this.tryDraftEmail(quote, request, requestId, orgId);
+    if (transitioned) {
+      await this.events.emit({
+        eventName: 'quote.ready',
+        orgId,
+        requestId,
+        quoteId: quote.id,
+        attributes: {},
+      });
+
+      if (!quote.email_draft_subject) {
+        await this.tryDraftEmail(quote, request, requestId, orgId);
+      }
     }
 
     const final = await this.quotes.getByIdWithLines(quote.id);

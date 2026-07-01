@@ -73,7 +73,12 @@ export class QuotesController {
       throw new CustomHttpException(SYS_MSG.QUOTE_PDF_NOT_READY(requestId), HttpStatus.NOT_FOUND);
     }
 
-    const bytes = await this.objectStore.get(found.quote.pdf_storage_url);
+    let bytes: Buffer;
+    try {
+      bytes = await this.objectStore.get(found.quote.pdf_storage_url);
+    } catch {
+      throw new CustomHttpException(SYS_MSG.QUOTE_PDF_NOT_READY(requestId), HttpStatus.NOT_FOUND);
+    }
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Length', bytes.length);
     res.setHeader(
