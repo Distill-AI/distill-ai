@@ -1,4 +1,4 @@
-import type { QuoteDetail } from '@modules/requests/interfaces/request-response.interface';
+import type { QuoteDetail } from '../interfaces/quote-detail.interface';
 import type { Quote } from '../entities/quote.entity';
 import type { QuoteLineItem } from '../entities/quote-line-item.entity';
 
