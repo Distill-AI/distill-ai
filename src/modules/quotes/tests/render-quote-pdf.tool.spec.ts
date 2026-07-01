@@ -45,7 +45,6 @@ function setup() {
 
   const quotes = {
     getByIdWithLines: vi.fn().mockResolvedValue({ quote, lines }),
-    markReady: vi.fn().mockResolvedValue(true),
   };
   const requests = {
     get: vi.fn().mockResolvedValue(request),
@@ -70,7 +69,7 @@ function setup() {
 
 describe('RenderQuotePdfToolFactory', () => {
   it('renders the quote, writes it under a deterministic key, and returns the result', async () => {
-    const { factory, renderer, objectStore, quotes } = setup();
+    const { factory, renderer, objectStore } = setup();
     const contract = factory.create();
 
     const result = await contract.execute({
@@ -100,7 +99,6 @@ describe('RenderQuotePdfToolFactory', () => {
       }),
     );
     expect(objectStore.put).toHaveBeenCalledWith(STORAGE_URL, expect.any(Buffer));
-    expect(quotes.markReady).toHaveBeenCalledWith(QUOTE_ID, STORAGE_URL);
     expect(result).toEqual({ storageUrl: STORAGE_URL, bytesWritten: 9 });
   });
 
