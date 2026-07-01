@@ -138,4 +138,14 @@ describe('QuotesController.downloadPdf', () => {
       NotFoundException,
     );
   });
+
+  it('404s when the object store fails to retrieve the PDF', async () => {
+    const { controller, objectStore } = setup();
+    (objectStore.get as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('storage outage'));
+    const res = makeRes();
+
+    await expect(controller.downloadPdf('req-1', { user: mockUser }, res)).rejects.toThrow(
+      CustomHttpException,
+    );
+  });
 });
