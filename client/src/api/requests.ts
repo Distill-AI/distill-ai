@@ -57,7 +57,7 @@ export interface QuoteLineDetail {
 }
 
 /** The suggested quote with its running total (US-E6-1 quote pane); also the Quote Output screen's
- * only read model (US-E6-6-FE) — pre- and post-approval state both come from this same shape. */
+ * only read model (US-E6-6-FE): pre- and post-approval state both come from this same shape. */
 export interface QuoteDetail {
   quote_number: string;
   status: 'draft' | 'approved' | 'ready' | 'sent';

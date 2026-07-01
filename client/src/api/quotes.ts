@@ -18,9 +18,9 @@ export type ApproveQuoteError = AxiosError<{ message?: string }>;
 
 /**
  * Maps an approve-quote failure to display copy. Prefers the server's own message for 409/424
- * (per PR-review-learnings.md #18) since the specific reason - not priced yet, the quote can't
- * transition, the request itself isn't approvable, or a reverted-to-DRAFT PDF failure - is
- * backend-owned copy, not something the client should re-derive from a status code alone.
+ * since the specific reason - not priced yet, the quote can't transition, the request itself
+ * isn't approvable, or a reverted-to-DRAFT PDF failure - is backend-owned copy, not something
+ * the client should re-derive from a status code alone.
  */
 export function resolveApproveQuoteError(error: ApproveQuoteError): string {
   const status = error.response?.status;

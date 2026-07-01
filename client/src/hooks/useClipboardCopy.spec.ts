@@ -48,6 +48,25 @@ describe('useClipboardCopy', () => {
     document.body.removeChild(el);
   });
 
+  it('falls back to calling select() on a textarea fallback target', async () => {
+    vi.mocked(navigator.clipboard.writeText).mockRejectedValue(new Error('denied'));
+    const el = document.createElement('textarea');
+    document.body.appendChild(el);
+    const select = vi.spyOn(el, 'select');
+    const fallbackRef = { current: el };
+
+    const { result } = renderHook(() => useClipboardCopy());
+
+    await act(async () => {
+      await result.current.copy('hello world', fallbackRef);
+    });
+
+    expect(select).toHaveBeenCalled();
+    expect(result.current.status).toBe('fallback');
+
+    document.body.removeChild(el);
+  });
+
   it('does not throw and still sets status to "fallback" when writeText rejects with no fallbackRef', async () => {
     vi.mocked(navigator.clipboard.writeText).mockRejectedValue(new Error('denied'));
     const { result } = renderHook(() => useClipboardCopy());

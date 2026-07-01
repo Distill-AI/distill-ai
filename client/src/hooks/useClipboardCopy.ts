@@ -17,7 +17,9 @@ export function useClipboardCopy() {
       setStatus('copied');
     } catch {
       const el = fallbackRef?.current;
-      if (el) {
+      if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) {
+        el.select();
+      } else if (el) {
         const range = document.createRange();
         range.selectNodeContents(el);
         window.getSelection()?.removeAllRanges();
