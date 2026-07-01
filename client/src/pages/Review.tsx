@@ -147,7 +147,7 @@ export function Review() {
       </div>,
     );
     return () => setActions(null);
-  }, [request, setActions]);
+  }, [id, request, setActions, navigate]);
 
   return (
     <div className="flex h-full flex-col px-6 py-6">

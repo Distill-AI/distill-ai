@@ -59,13 +59,13 @@ function BlockerDialog({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       onClick={onCancel}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="unsaved-title"
     >
       <div
         ref={dialogRef}
         tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="unsaved-title"
         onClick={(e) => e.stopPropagation()}
         className="mx-4 w-full max-w-sm rounded-card border border-border bg-surface p-6 shadow-lg"
       >
@@ -188,7 +188,7 @@ export function ClarificationView() {
   }, [setActions, dirty, sending, clarification?.sent_at]);
 
   async function handleSend() {
-    if (!clarification || !canSend) return;
+    if (!clarification || !canSend || clarification.sent_at) return;
     setSendError('');
     setSending(true);
 
@@ -198,6 +198,8 @@ export function ClarificationView() {
           clarificationId: clarification.id,
           payload: { draft_subject: subjectTrimmed, draft_body: bodyTrimmed },
         });
+        setSubject(subjectTrimmed);
+        setBody(bodyTrimmed);
         setDirty(false);
       }
 
