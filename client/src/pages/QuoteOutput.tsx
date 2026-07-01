@@ -161,7 +161,11 @@ export function QuoteOutput() {
                     onClick={() => void copy(`${emailSubject}\n\n${emailBody}`, bodyRef)}
                     className="h-9 rounded-button border border-border px-3 text-sm font-medium text-body-text hover:bg-canvas"
                   >
-                    {copyStatus === 'copied' ? 'Copied!' : 'Copy to Clipboard'}
+                    {copyStatus === 'copied'
+                      ? 'Copied!'
+                      : copyStatus === 'fallback'
+                        ? 'Press Ctrl+C to copy'
+                        : 'Copy to Clipboard'}
                   </button>
                 }
               />
