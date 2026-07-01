@@ -3,11 +3,18 @@ import { CustomHttpException } from '@common/exceptions/custom-http.exception';
 import { RenderQuotePdfToolFactory } from '../tools/render-quote-pdf.tool';
 import { QuoteStatus } from '../enums/quote-status.enum';
 
+const QUOTE_ID = '11111111-1111-1111-1111-111111111111';
+const ORG_ID = '22222222-2222-2222-2222-222222222222';
+const OTHER_ORG_ID = '33333333-3333-3333-3333-333333333333';
+const REQUEST_ID = '44444444-4444-4444-4444-444444444444';
+const MISSING_QUOTE_ID = '55555555-5555-5555-5555-555555555555';
+const STORAGE_URL = `quotes/${ORG_ID}/${QUOTE_ID}/idem-1.pdf`;
+
 function setup() {
   const quote = {
-    id: 'quote-1',
-    org_id: 'org-1',
-    request_id: 'req-1',
+    id: QUOTE_ID,
+    org_id: ORG_ID,
+    request_id: REQUEST_ID,
     quote_number: 'Q-001',
     status: QuoteStatus.APPROVED,
     subtotal_minor: 1000,
@@ -30,7 +37,7 @@ function setup() {
     },
   ];
   const request = {
-    id: 'req-1',
+    id: REQUEST_ID,
     sender_company: 'Acme',
     sender_contact: 'Jane',
     sender_email: 'jane@acme.example',
@@ -48,7 +55,7 @@ function setup() {
     render: vi.fn().mockResolvedValue(bytes),
   };
   const objectStore = {
-    put: vi.fn().mockResolvedValue('quotes/org-1/quote-1/idem-1.pdf'),
+    put: vi.fn().mockResolvedValue(STORAGE_URL),
   };
 
   const factory = new RenderQuotePdfToolFactory(
@@ -67,8 +74,8 @@ describe('RenderQuotePdfToolFactory', () => {
     const contract = factory.create();
 
     const result = await contract.execute({
-      quoteId: 'quote-1',
-      orgId: 'org-1',
+      quoteId: QUOTE_ID,
+      orgId: ORG_ID,
       idempotencyKey: 'idem-1',
     });
 
@@ -92,23 +99,20 @@ describe('RenderQuotePdfToolFactory', () => {
         validUntil: '2026-08-01',
       }),
     );
-    expect(objectStore.put).toHaveBeenCalledWith(
-      'quotes/org-1/quote-1/idem-1.pdf',
-      expect.any(Buffer),
-    );
-    expect(quotes.markReady).toHaveBeenCalledWith('quote-1', 'quotes/org-1/quote-1/idem-1.pdf');
-    expect(result).toEqual({ storageUrl: 'quotes/org-1/quote-1/idem-1.pdf', bytesWritten: 9 });
+    expect(objectStore.put).toHaveBeenCalledWith(STORAGE_URL, expect.any(Buffer));
+    expect(quotes.markReady).toHaveBeenCalledWith(QUOTE_ID, STORAGE_URL);
+    expect(result).toEqual({ storageUrl: STORAGE_URL, bytesWritten: 9 });
   });
 
   it('produces the same key for repeated calls with the same idempotencyKey', async () => {
     const { factory, objectStore } = setup();
     const contract = factory.create();
 
-    await contract.execute({ quoteId: 'quote-1', orgId: 'org-1', idempotencyKey: 'idem-1' });
-    await contract.execute({ quoteId: 'quote-1', orgId: 'org-1', idempotencyKey: 'idem-1' });
+    await contract.execute({ quoteId: QUOTE_ID, orgId: ORG_ID, idempotencyKey: 'idem-1' });
+    await contract.execute({ quoteId: QUOTE_ID, orgId: ORG_ID, idempotencyKey: 'idem-1' });
 
     const keys = objectStore.put.mock.calls.map((call: unknown[]) => call[0]);
-    expect(keys).toEqual(['quotes/org-1/quote-1/idem-1.pdf', 'quotes/org-1/quote-1/idem-1.pdf']);
+    expect(keys).toEqual([STORAGE_URL, STORAGE_URL]);
   });
 
   it('throws before touching object storage when the quote is not found', async () => {
@@ -117,8 +121,10 @@ describe('RenderQuotePdfToolFactory', () => {
     const contract = factory.create();
 
     await expect(
-      contract.execute({ quoteId: 'missing', orgId: 'org-1', idempotencyKey: 'idem-1' }),
-    ).rejects.toEqual(new CustomHttpException('Quote missing not found', HttpStatus.NOT_FOUND));
+      contract.execute({ quoteId: MISSING_QUOTE_ID, orgId: ORG_ID, idempotencyKey: 'idem-1' }),
+    ).rejects.toEqual(
+      new CustomHttpException(`Quote ${MISSING_QUOTE_ID} not found`, HttpStatus.NOT_FOUND),
+    );
     expect(objectStore.put).not.toHaveBeenCalled();
   });
 
@@ -127,8 +133,8 @@ describe('RenderQuotePdfToolFactory', () => {
     const contract = factory.create();
 
     await expect(
-      contract.execute({ quoteId: 'quote-1', orgId: 'org-2', idempotencyKey: 'idem-1' }),
-    ).rejects.toEqual(new CustomHttpException('Quote quote-1 not found', HttpStatus.NOT_FOUND));
+      contract.execute({ quoteId: QUOTE_ID, orgId: OTHER_ORG_ID, idempotencyKey: 'idem-1' }),
+    ).rejects.toEqual(new CustomHttpException(`Quote ${QUOTE_ID} not found`, HttpStatus.NOT_FOUND));
     expect(objectStore.put).not.toHaveBeenCalled();
   });
 
@@ -138,7 +144,7 @@ describe('RenderQuotePdfToolFactory', () => {
     const contract = factory.create();
 
     await expect(
-      contract.execute({ quoteId: 'quote-1', orgId: 'org-1', idempotencyKey: 'idem-1' }),
+      contract.execute({ quoteId: QUOTE_ID, orgId: ORG_ID, idempotencyKey: 'idem-1' }),
     ).rejects.toThrow(CustomHttpException);
     expect(objectStore.put).not.toHaveBeenCalled();
   });
