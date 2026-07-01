@@ -61,6 +61,15 @@ describe('EmailDraftPanel', () => {
     expect(onBodyChange).toHaveBeenCalled();
   });
 
+  it('treats subject and body as read-only when no change handler is provided, even if readOnly is false', () => {
+    render(
+      <EmailDraftPanel subject="Subject" body="Body" trailingActions={<button>Send</button>} />,
+    );
+
+    expect(screen.getByLabelText('Subject')).toHaveAttribute('readOnly');
+    expect(screen.getByLabelText('Message')).toHaveAttribute('readOnly');
+  });
+
   it('marks subject and body read-only when readOnly is true', () => {
     render(
       <EmailDraftPanel

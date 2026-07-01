@@ -23,6 +23,12 @@ export function EmailDraftPanel({
   readOnly = false,
   trailingActions,
 }: EmailDraftPanelProps) {
+  // A missing change handler makes the field non-editable regardless of `readOnly`: without an
+  // onChange, a value-controlled field would look editable but silently discard keystrokes on
+  // the next re-render (React's uncontrolled-without-onChange trap).
+  const subjectReadOnly = readOnly || !onSubjectChange;
+  const bodyReadOnly = readOnly || !onBodyChange;
+
   return (
     <div className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4">
       {to !== undefined && (
@@ -48,7 +54,7 @@ export function EmailDraftPanel({
           id="email-draft-subject"
           type="text"
           value={subject}
-          readOnly={readOnly}
+          readOnly={subjectReadOnly}
           onChange={onSubjectChange ? (e) => onSubjectChange(e.target.value) : undefined}
           className="rounded-lg border border-border bg-white px-3 py-2 text-sm text-body-text read-only:bg-canvas"
         />
@@ -61,7 +67,7 @@ export function EmailDraftPanel({
         <textarea
           id="email-draft-body"
           value={body}
-          readOnly={readOnly}
+          readOnly={bodyReadOnly}
           onChange={onBodyChange ? (e) => onBodyChange(e.target.value) : undefined}
           rows={10}
           className="rounded-lg border border-border bg-white px-3 py-2 text-sm text-body-text read-only:bg-canvas"
