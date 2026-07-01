@@ -58,7 +58,7 @@ export function ProcessingRequestPage() {
 
   return (
     <>
-      <div className="w-full h-0.75 bg-border">
+      <div className="w-full h-[3px] bg-border">
         <div
           className="h-full bg-indigo-600 transition-all duration-500"
           style={{ width: `${pct}%` }}
