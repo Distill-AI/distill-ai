@@ -182,6 +182,19 @@ export const PRICE_RULES_MISSING =
 
 // Quotes
 export const QUOTE_NOT_FOUND = (id: string) => `Quote ${id} not found`;
+export const QUOTE_EMAIL_DRAFT_PARSE_FAILED = 'Failed to parse quote email draft from LLM response';
+export const QUOTE_REQUEST_NOT_APPROVABLE = (status: string) =>
+  `Request with status "${status}" is not approvable for a quote`;
+export const QUOTE_NOT_PRICED = (requestId: string) =>
+  `Request ${requestId} has no priced quote to approve`;
+export const QUOTE_INVALID_TRANSITION = (status: string) =>
+  `Quote with status "${status}" cannot be approved`;
+export const QUOTE_PDF_GENERATION_FAILED = 'Failed to generate the quote PDF';
+export const QUOTE_APPROVED_SUCCESS = 'Quote approved successfully';
+export const QUOTE_PDF_NOT_READY = (requestId: string) =>
+  `Quote for request ${requestId} has no generated PDF yet`;
+export const QUOTE_PDF_RETRIEVAL_FAILED = (requestId: string) =>
+  `Failed to retrieve the generated PDF for request ${requestId}`;
 
 // Policy node
 export const POLICY_OK = 'No policy breaches';
