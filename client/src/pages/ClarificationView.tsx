@@ -45,12 +45,36 @@ function BlockerDialog({
 
   useEffect(() => {
     if (!open) return;
-    dialogRef.current?.focus();
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onCancel();
+
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    dialog.focus();
+
+    const focusable = dialog.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    );
+
+    function trapTab(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        onCancel();
+        return;
+      }
+      if (e.key !== 'Tab' || focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     }
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
+
+    document.addEventListener('keydown', trapTab);
+    return () => document.removeEventListener('keydown', trapTab);
   }, [open, onCancel]);
 
   if (!open) return null;
@@ -132,6 +156,7 @@ export function ClarificationView() {
 
   const confirmNav = useCallback(
     (to: string) => {
+      if (sending) return;
       if (dirty) {
         pendingNavigation.current = to;
         setShowBlocker(true);
@@ -139,7 +164,7 @@ export function ClarificationView() {
         navigate(to);
       }
     },
-    [dirty, navigate],
+    [dirty, navigate, sending],
   );
 
   const handleDiscard = useCallback(() => {
@@ -172,7 +197,7 @@ export function ClarificationView() {
       </div>,
     );
     return () => setTitle(null);
-  }, [request, setTitle, confirmNav]);
+  }, [request, setTitle, confirmNav, sending]);
 
   useEffect(() => {
     setActions(
