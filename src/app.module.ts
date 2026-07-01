@@ -1,3 +1,4 @@
+import { ClarificationModule } from './modules/clarification/clarification.module';
 import { ToolsModule } from './modules/tools/tools.module';
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
@@ -78,6 +79,7 @@ import { RlsContextMiddleware } from '@modules/auth/middleware/rls-context.middl
     EventsModule,
     RequestsModule,
     LineItemsModule,
+    ClarificationModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
