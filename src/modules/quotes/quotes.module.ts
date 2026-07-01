@@ -2,6 +2,7 @@ import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ObjectStoreModule } from '@common/object-store/object-store.module';
 import { LLMModule } from '@modules/llm/llm.module';
+import { EventsModule } from '@modules/events/events.module';
 import { ToolsModule } from '@modules/tools/tools.module';
 import { ToolRegistry } from '@modules/tools/registry';
 import { RequestsDataModule } from '@modules/requests/requests-data.module';
@@ -11,6 +12,7 @@ import { QuoteModelAction } from './quote.model-action';
 import { QuotePdfRenderer } from './services/quote-pdf-renderer.service';
 import { RenderQuotePdfToolFactory } from './tools/render-quote-pdf.tool';
 import { DraftQuoteEmailToolFactory } from './tools/draft-quote-email.tool';
+import { QuoteApprovalActions } from './actions/quote-approval.actions';
 
 /** Persistence for priced quotes. Exports QuoteModelAction for the price node (US-E4-1). */
 @Module({
@@ -18,6 +20,7 @@ import { DraftQuoteEmailToolFactory } from './tools/draft-quote-email.tool';
     TypeOrmModule.forFeature([Quote, QuoteLineItem]),
     ObjectStoreModule,
     LLMModule,
+    EventsModule,
     ToolsModule,
     RequestsDataModule,
   ],
@@ -26,8 +29,9 @@ import { DraftQuoteEmailToolFactory } from './tools/draft-quote-email.tool';
     QuotePdfRenderer,
     RenderQuotePdfToolFactory,
     DraftQuoteEmailToolFactory,
+    QuoteApprovalActions,
   ],
-  exports: [QuoteModelAction],
+  exports: [QuoteModelAction, QuoteApprovalActions],
 })
 export class QuotesModule implements OnModuleInit {
   constructor(

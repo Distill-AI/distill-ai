@@ -191,4 +191,12 @@ export class QuoteModelAction extends AbstractModelAction<Quote> {
       return { quote, lines };
     });
   }
+
+  /** Persists a best-effort follow-up email draft generated after the quote's PDF is ready. */
+  async saveEmailDraft(quoteId: string, subject: string, body: string): Promise<void> {
+    await this.repository.update(
+      { id: quoteId },
+      { email_draft_subject: subject, email_draft_body: body },
+    );
+  }
 }
