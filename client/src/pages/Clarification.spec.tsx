@@ -225,6 +225,33 @@ describe('Clarification', () => {
     );
   });
 
+  it('edit flow: shows an error and stays in edit mode when saving fails', async () => {
+    const user = userEvent.setup();
+    mockUseRequest.mockReturnValue({
+      data: requestFixture,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    mockUseClarification.mockReturnValue({
+      data: clarificationFixture,
+      isLoading: false,
+      isError: false,
+    });
+    mockUpdateMutate.mockImplementation((_payload: unknown, { onError }: { onError: () => void }) =>
+      onError(),
+    );
+
+    renderClarification();
+
+    await user.click(screen.getByRole('button', { name: /^edit$/i }));
+    await user.click(screen.getByRole('button', { name: /^save$/i }));
+
+    expect(screen.getByText(/could not save the draft/i)).toBeInTheDocument();
+    // Stays in edit mode so the user doesn't lose their in-progress edits.
+    expect(screen.getByLabelText('Subject')).not.toHaveAttribute('readOnly');
+  });
+
   it('send flow: Mark as sent calls sendClarification with the clarification id', async () => {
     const user = userEvent.setup();
     mockUseRequest.mockReturnValue({
@@ -243,7 +270,31 @@ describe('Clarification', () => {
 
     await user.click(screen.getByRole('button', { name: /mark as sent/i }));
 
-    expect(mockSendMutate).toHaveBeenCalledWith('clar-1');
+    expect(mockSendMutate).toHaveBeenCalledWith('clar-1', expect.any(Object));
+  });
+
+  it('send flow: shows an error when marking as sent fails', async () => {
+    const user = userEvent.setup();
+    mockUseRequest.mockReturnValue({
+      data: requestFixture,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    mockUseClarification.mockReturnValue({
+      data: clarificationFixture,
+      isLoading: false,
+      isError: false,
+    });
+    mockSendMutate.mockImplementation((_id: string, { onError }: { onError: () => void }) =>
+      onError(),
+    );
+
+    renderClarification();
+
+    await user.click(screen.getByRole('button', { name: /mark as sent/i }));
+
+    expect(screen.getByText(/could not mark this clarification as sent/i)).toBeInTheDocument();
   });
 
   it('shows a sent notice instead of action buttons once sent_at is set', () => {
