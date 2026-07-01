@@ -70,11 +70,17 @@ const detail: RequestDetail = {
     },
   ],
   quote: {
+    quote_number: 'Q-2041',
+    status: 'draft',
     subtotal_minor: 300000,
     discount_minor: 15000,
     total_minor: 285000,
     currency: 'NGN',
     lead_time_days: 5,
+    pdf_storage_url: null,
+    pdf_generated_at: null,
+    email_draft_subject: null,
+    email_draft_body: null,
     lines: [
       {
         position: 1,
