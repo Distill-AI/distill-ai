@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import PDFDocument from 'pdfkit';
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- pdfkit's types use `export =`; a default import type-checks but calls a nonexistent `.default` at runtime.
+import PDFDocument = require('pdfkit');
 
 export interface QuotePdfLineInput {
   sku: string | null;
