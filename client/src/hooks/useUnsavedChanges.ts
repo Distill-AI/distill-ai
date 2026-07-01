@@ -13,6 +13,7 @@ export function useUnsavedChanges(hasUnsaved: boolean) {
 
     function onBeforeUnload(event: BeforeUnloadEvent) {
       event.preventDefault();
+      event.returnValue = '';
     }
 
     addEventListener('beforeunload', onBeforeUnload);
