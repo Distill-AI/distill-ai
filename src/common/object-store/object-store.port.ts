@@ -19,3 +19,13 @@ export interface ObjectStore {
 
 /** DI token for the active {@link ObjectStore} implementation. */
 export const OBJECT_STORE = Symbol('OBJECT_STORE');
+
+/** Thrown by {@link ObjectStore.get} when `storageUrl` does not resolve to a stored object, as
+ * distinct from a retrieval/transport failure. Callers use this to tell a genuinely missing object
+ * (404) apart from a transient store outage (502/503). */
+export class ObjectNotFoundError extends Error {
+  constructor(storageUrl: string) {
+    super(`Object not found: ${storageUrl}`);
+    this.name = 'ObjectNotFoundError';
+  }
+}

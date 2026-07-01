@@ -61,7 +61,9 @@ export class DraftQuoteEmailToolFactory {
   private buildPrompt(input: DraftQuoteEmailInput): string {
     const total = `${input.currency} ${(input.totalMinor / 100).toFixed(2)}`;
     const leadTime = input.leadTimeDays !== null ? `${input.leadTimeDays} days` : 'not specified';
-    const recipient = input.senderContact ?? input.senderCompany ?? 'the customer';
+    const recipient = this.sanitizeForPrompt(
+      input.senderContact ?? input.senderCompany ?? 'the customer',
+    );
 
     return `Generate a follow-up email for a B2B customer whose quote is ready.
 
@@ -82,5 +84,14 @@ Return ONLY valid JSON with no markdown or prose:
 }
 
 The email should be polite and professional. Address the customer directly.`;
+  }
+
+  /**
+   * Strips `<`/`>` from untrusted, customer-submitted values before they are interpolated into the
+   * prompt's `<data>` block, so a crafted sender field cannot close the delimiter early and escape
+   * the "treat as literal" instruction.
+   */
+  private sanitizeForPrompt(value: string): string {
+    return value.replace(/[<>]/g, '');
   }
 }
