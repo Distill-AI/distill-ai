@@ -14,7 +14,7 @@ function summarizeValue(value: unknown, indent: string): string {
 }
 
 function stringifyObject(obj: Record<string, unknown>, indent: string): string {
-  const keys = Object.keys(obj);
+  const keys = Object.keys(obj).filter((key) => obj[key] !== undefined);
   if (keys.length === 0) return '{}';
   const nextIndent = `${indent}  `;
   const lines = keys.map((key, i) => {
