@@ -263,4 +263,51 @@ describe('Review', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith('/requests/req-1/clarification');
   });
+
+  it('enables Approve & generate when the request has a quote and is in an approvable status', () => {
+    mockUseRequest.mockReturnValue({
+      data: { ...detail, status: 'priced' },
+      isLoading: false,
+      isError: false,
+    });
+    renderReview();
+
+    expect(screen.getByRole('button', { name: /approve & generate/i })).toBeEnabled();
+  });
+
+  it('disables Approve & generate when the request has no quote yet', () => {
+    mockUseRequest.mockReturnValue({
+      data: { ...detail, status: 'needs_review', quote: null },
+      isLoading: false,
+      isError: false,
+    });
+    renderReview();
+
+    expect(screen.getByRole('button', { name: /approve & generate/i })).toBeDisabled();
+  });
+
+  it('disables Approve & generate when the status is not approvable', () => {
+    mockUseRequest.mockReturnValue({
+      data: { ...detail, status: 'needs_clarification' },
+      isLoading: false,
+      isError: false,
+    });
+    renderReview();
+
+    expect(screen.getByRole('button', { name: /approve & generate/i })).toBeDisabled();
+  });
+
+  it('navigates to the Quote Output screen when Approve & generate is clicked', async () => {
+    const user = userEvent.setup();
+    mockUseRequest.mockReturnValue({
+      data: { ...detail, status: 'priced' },
+      isLoading: false,
+      isError: false,
+    });
+    renderReview();
+
+    await user.click(screen.getByRole('button', { name: /approve & generate/i }));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/requests/req-1/quote');
+  });
 });
