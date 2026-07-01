@@ -264,9 +264,9 @@ export function ClarificationView() {
     <div className="px-6 py-6">
       <BlockerDialog
         open={blocker.state === 'blocked'}
-        onConfirm={blocker.proceed}
+        onConfirm={() => blocker.proceed?.()}
         onCancel={() => {
-          blocker.reset();
+          blocker.reset?.();
           lastActiveRef.current?.focus();
           lastActiveRef.current = null;
         }}
