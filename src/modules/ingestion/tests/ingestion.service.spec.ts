@@ -26,6 +26,7 @@ function setup() {
       .mockImplementation((opts: { createPayload: Record<string, unknown> }) =>
         Promise.resolve({ id: 'req-1', ...opts.createPayload }),
       ),
+    markProcessing: vi.fn().mockResolvedValue(undefined),
   };
   const attachments = { create: vi.fn().mockResolvedValue({ id: 'att-1' }) };
   const store = {
@@ -100,6 +101,22 @@ describe('IngestionService', () => {
     await service.createRequest({ source_body: 'hi' }, [], em);
 
     expect(runner.enqueue).toHaveBeenCalledWith('req-1');
+  });
+
+  it('recovers an already-committed request when the deferred enqueue fails (#93 review)', async () => {
+    const { service, requests, runner, em } = setup();
+    runner.enqueue.mockRejectedValueOnce(new Error('Bull unavailable'));
+    const afterCommit: Array<() => Promise<void>> = [];
+
+    // The request is created and the enqueue is deferred; the failure only surfaces post-commit.
+    await service.createRequest({ source_body: 'hi' }, [], em, afterCommit);
+    expect(requests.markProcessing).not.toHaveBeenCalled();
+
+    await afterCommit[0]();
+
+    // Enqueue rejected, but the row is not orphaned: markProcessing stamps processing_started_at so
+    // the existing RecoverySweep re-enqueues it after the stale window.
+    expect(requests.markProcessing).toHaveBeenCalledWith('req-1');
   });
 
   it('rejects an unsupported file type and persists nothing', async () => {
