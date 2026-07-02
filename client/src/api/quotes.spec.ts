@@ -146,9 +146,10 @@ describe('useApproveQuote', () => {
     mockPost.mockReset();
   });
 
-  it('merges the approved quote into the existing RequestDetail cache on success', async () => {
+  it('invalidates the request detail and list caches on success', async () => {
     const queryClient = makeQueryClient();
     queryClient.setQueryData(requestKeys.detail('req-1'), requestFixture);
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
     const readyQuote: QuoteDetail = {
       ...quoteFixture,
       status: 'ready',
@@ -166,9 +167,8 @@ describe('useApproveQuote', () => {
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    const cached = queryClient.getQueryData<RequestDetail>(requestKeys.detail('req-1'));
-    expect(cached?.quote?.status).toBe('ready');
-    expect(cached?.quote?.pdf_storage_url).toBe('https://cdn.example/q-2041.pdf');
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: requestKeys.detail('req-1') });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: requestKeys.lists() });
   });
 
   it('succeeds on an idempotent re-call against an already-READY quote', async () => {
@@ -188,9 +188,6 @@ describe('useApproveQuote', () => {
       result.current.mutate();
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-
-    const cached = queryClient.getQueryData<RequestDetail>(requestKeys.detail('req-1'));
-    expect(cached?.quote?.status).toBe('ready');
   });
 
   it('exposes a 409 failure for the caller to resolve into display copy', async () => {
