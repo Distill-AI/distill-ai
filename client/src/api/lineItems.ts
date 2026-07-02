@@ -1,4 +1,3 @@
-import { useRef } from 'react';
 import type { AxiosError } from 'axios';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import client from './client';
@@ -139,18 +138,25 @@ function reconcileTotals(detail: RequestDetail, quote: RemapResult['quote']): Re
  * makes rapid re-maps last-write-wins so a late, out-of-order response can't restore a stale total
  * (EC-02). A background invalidate then refreshes the quote lines (the response carries totals only).
  */
+// Latest issued re-map sequence per request id. Module-scoped, not a hook ref, so it survives the
+// RemapDrawer unmount/remount between opens: only the most-recently-issued re-map for a request may
+// write to the quote cache, so an earlier PATCH that resolves while a newer one is still in flight
+// (or after the drawer reopened) can't clobber the newer optimistic/reconciled total (US-E6-3 EC-02).
+const remapSeqByRequest = new Map<string, number>();
+
 export function useRemapLineItem(requestId: string) {
   const queryClient = useQueryClient();
   const detailKey = requestKeys.detail(requestId);
-  const seqCounter = useRef(0);
-  const settledSeq = useRef(0);
+  const isCurrent = (ctx: RemapContext | undefined): boolean =>
+    ctx != null && ctx.seq === remapSeqByRequest.get(requestId);
 
   return useMutation<RemapResult, AxiosError, RemapVariables, RemapContext>({
     mutationFn: ({ lineId, payload }) => remapLineItem(requestId, lineId, payload),
     onMutate: async ({ lineId, optimisticUnitPriceMinor }) => {
       await queryClient.cancelQueries({ queryKey: detailKey });
       const previous = queryClient.getQueryData<RequestDetail>(detailKey);
-      const seq = (seqCounter.current += 1);
+      const seq = (remapSeqByRequest.get(requestId) ?? 0) + 1;
+      remapSeqByRequest.set(requestId, seq);
       if (previous && optimisticUnitPriceMinor !== undefined) {
         const optimistic = withOptimisticTotal(previous, lineId, optimisticUnitPriceMinor);
         if (optimistic) queryClient.setQueryData(detailKey, optimistic);
@@ -158,14 +164,15 @@ export function useRemapLineItem(requestId: string) {
       return { previous, seq };
     },
     onError: (_error, _vars, ctx) => {
-      // Roll back only if a newer re-map hasn't already settled, so we never clobber a fresher total.
-      if (!ctx || ctx.seq < settledSeq.current) return;
-      settledSeq.current = ctx.seq;
-      if (ctx.previous) queryClient.setQueryData(detailKey, ctx.previous);
+      // Only the latest issued re-map may touch the cache; an older/superseded one failing must not
+      // roll a newer in-flight re-map's optimistic total back (EC-02 / EC-03).
+      if (!isCurrent(ctx)) return;
+      if (ctx?.previous) queryClient.setQueryData(detailKey, ctx.previous);
     },
     onSuccess: (data, _vars, ctx) => {
-      if (!ctx || ctx.seq < settledSeq.current) return; // stale, out-of-order response — ignore (EC-02)
-      settledSeq.current = ctx.seq;
+      // Ignore a response from any re-map that a newer one has already superseded, even if the newer
+      // one is still in flight — otherwise its stale total clobbers the newer optimistic value (EC-02).
+      if (!isCurrent(ctx)) return;
       queryClient.setQueryData<RequestDetail>(detailKey, (current) =>
         current ? reconcileTotals(current, data.quote) : current,
       );
@@ -173,9 +180,7 @@ export function useRemapLineItem(requestId: string) {
     onSettled: (_data, _error, _vars, ctx) => {
       // Refresh the quote lines (the response carries totals only); the refetch total matches the
       // reconciled one, so no flicker. Only the latest re-map triggers it.
-      if (ctx && ctx.seq >= settledSeq.current) {
-        queryClient.invalidateQueries({ queryKey: detailKey });
-      }
+      if (isCurrent(ctx)) queryClient.invalidateQueries({ queryKey: detailKey });
     },
   });
 }
