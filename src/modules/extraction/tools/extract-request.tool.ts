@@ -1,8 +1,7 @@
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 import { Injectable } from '@nestjs/common';
 import { env } from '@config/env';
 import * as SYS_MSG from '@constants/system-messages';
+import { matchDemoFixture } from '@common/demo/demo-fixtures';
 import { LLMProvider } from '@modules/llm/llm.provider';
 import { ToolContract } from '@modules/tools/interfaces/tool-contract.interface';
 import {
@@ -13,12 +12,8 @@ import {
   type ExtractionV1,
 } from '../schemas/extraction-v1.schema';
 
-const CLEAN_FIXTURE_ID = 'rfq_01_catalog_clean';
-
 @Injectable()
 export class ExtractRequestToolFactory {
-  private demoFixtures: Record<string, unknown>[] | null = null;
-
   constructor(private readonly llm: LLMProvider) {}
 
   create(): ToolContract<typeof ExtractRequestInputSchema, typeof ExtractionV1Schema> {
@@ -61,13 +56,13 @@ export class ExtractRequestToolFactory {
     return ExtractionV1Schema.parse(parsed);
   }
 
-  /** Maps the best-matching seed fixture's `extracted_fields` into the extraction shape. Picks the
-   * fixture whose line items appear in the source text so the result reconciles, defaulting to the
-   * clean catalog RFQ. */
+  /** Maps the best-matching seed fixture's `extracted_fields` into the extraction shape so the result
+   * reconciles against the source text; defaults to the clean catalog RFQ. */
   private extractFromFixture(text: string): ExtractionV1 {
-    const fields = this.pickFixture(text);
-    if (!fields) throw new Error(SYS_MSG.EXTRACTION_DEMO_FIXTURE_UNAVAILABLE);
+    const fixture = matchDemoFixture(text);
+    if (!fixture) throw new Error(SYS_MSG.EXTRACTION_DEMO_FIXTURE_UNAVAILABLE);
 
+    const fields = fixture.extractedFields;
     const rawItems = Array.isArray(fields.line_items) ? fields.line_items : [];
     return ExtractionV1Schema.parse({
       company: fields.sender_company ?? null,
@@ -85,65 +80,6 @@ export class ExtractRequestToolFactory {
         };
       }),
     });
-  }
-
-  private pickFixture(text: string): Record<string, unknown> | null {
-    const fixtures = this.loadDemoFixtures();
-    if (fixtures.length === 0) return null;
-
-    const haystack = text.toLowerCase();
-    let best = fixtures[0];
-    let bestScore = -1;
-    for (const fixture of fixtures) {
-      const items = Array.isArray(fixture.line_items) ? fixture.line_items : [];
-      const score = items.reduce<number>((count, entry) => {
-        const raw = String((entry as Record<string, unknown>)?.raw_text ?? '').toLowerCase();
-        return count + (raw.length > 0 && haystack.includes(raw) ? 1 : 0);
-      }, 0);
-      if (score > bestScore) {
-        bestScore = score;
-        best = fixture;
-      }
-    }
-
-    // No line item matched the text — fall back to the clean catalog RFQ for a deterministic demo.
-    if (bestScore <= 0) {
-      return fixtures.find((f) => f.__sample_id === CLEAN_FIXTURE_ID) ?? fixtures[0];
-    }
-    return best;
-  }
-
-  private loadDemoFixtures(): Record<string, unknown>[] {
-    if (this.demoFixtures) return this.demoFixtures;
-
-    const loaded: Record<string, unknown>[] = [];
-    try {
-      const dir = path.resolve(process.cwd(), 'src/database/seed');
-      const files = fs
-        .readdirSync(dir)
-        .filter((file) => file.endsWith('.json'))
-        .sort();
-      for (const file of files) {
-        try {
-          const raw = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8')) as Record<
-            string,
-            unknown
-          >;
-          const fields = raw.extracted_fields;
-          if (fields && typeof fields === 'object') {
-            const meta = (raw._meta ?? {}) as Record<string, unknown>;
-            loaded.push({ ...(fields as Record<string, unknown>), __sample_id: meta.sample_id });
-          }
-        } catch {
-          // Skip an unparseable fixture rather than failing the whole demo path.
-        }
-      }
-    } catch {
-      // Seed directory unavailable — leave the list empty; extractFromFixture surfaces a clear error.
-    }
-
-    this.demoFixtures = loaded;
-    return loaded;
   }
 
   private buildPrompt(input: ExtractRequestInput): string {
