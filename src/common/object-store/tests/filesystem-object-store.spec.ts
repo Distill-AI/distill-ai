@@ -1,6 +1,7 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { ObjectNotFoundError } from '../object-store.port';
 import { FilesystemObjectStore, resolveStoreRoot } from '../filesystem-object-store';
 
 describe('FilesystemObjectStore', () => {
@@ -31,8 +32,8 @@ describe('FilesystemObjectStore', () => {
     expect(onDisk.toString()).toBe('x');
   });
 
-  it('throws when reading a key that was never written', async () => {
-    await expect(store.get('attachments/missing.txt')).rejects.toThrow();
+  it('throws ObjectNotFoundError when reading a key that was never written', async () => {
+    await expect(store.get('attachments/missing.txt')).rejects.toThrow(ObjectNotFoundError);
   });
 
   it('rejects a key that escapes the store root (path traversal)', async () => {
@@ -51,8 +52,8 @@ describe('FilesystemObjectStore', () => {
     const rootStore = new FilesystemObjectStore('/');
     // Regression guard: the old `path.startsWith(root + sep)` check became `startsWith('//')` when
     // root was '/', wrongly rejecting every key. A normal key must now pass confinement and only
-    // fail later at readFile.
-    await expect(rootStore.get('definitely/missing/a.txt')).rejects.toThrow(/ENOENT|no such file/i);
+    // fail later at readFile as an ObjectNotFoundError.
+    await expect(rootStore.get('definitely/missing/a.txt')).rejects.toThrow(ObjectNotFoundError);
   });
 });
 
