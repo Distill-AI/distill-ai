@@ -35,7 +35,19 @@ export interface SseCompleteEvent {
   total_duration_ms?: number;
 }
 
-export type SseEvent = SseNodeEvent | SseToolEvent | SseErrorEvent | SseCompleteEvent;
+export interface SseResumedEvent {
+  type: 'request.resumed';
+  request_id: string;
+  resumed_from_node: string;
+  reason?: string;
+}
+
+export type SseEvent =
+  | SseNodeEvent
+  | SseToolEvent
+  | SseErrorEvent
+  | SseCompleteEvent
+  | SseResumedEvent;
 
 export interface NodeState {
   id: string;
@@ -51,11 +63,38 @@ export interface NodeState {
 export interface SseConnectionState {
   status: 'connecting' | 'connected' | 'disconnected' | 'error';
   error?: string;
+  /** Set when the backend emits `request.resumed`, i.e. the pipeline continued from a checkpoint. */
+  resumed?: { from: string };
 }
 
 const NODE_ORDER = ['parse', 'extract', 'classify', 'match', 'price', 'policy', 'score'];
 
-export function useSSEEvents(requestId: string | null): {
+/** Statuses that mean the pipeline is no longer running, so the whole trace has already executed. */
+const SETTLED_STATUSES = new Set(['needs_review', 'auto_approved', 'priced', 'sent', 'declined']);
+
+/**
+ * How many leading nodes are already done given the request's persisted `current_node`. Live events
+ * only cover stages that run after the SSE connection opens; on (re)connect to a request that has
+ * already advanced (a resume, or reopening a finished request) this backfills the earlier nodes so
+ * the trace matches reality instead of showing everything as pending.
+ */
+function completedNodeCount(currentNode?: string, status?: string): number {
+  if (status && SETTLED_STATUSES.has(status)) return NODE_ORDER.length;
+  if (!currentNode) return 0;
+  const idx = NODE_ORDER.indexOf(currentNode);
+  return idx >= 0 ? idx : 0;
+}
+
+/** A persisted snapshot from GET /requests/:id used to backfill trace state the live stream missed. */
+export interface RequestSnapshot {
+  currentNode?: string;
+  status?: string;
+}
+
+export function useSSEEvents(
+  requestId: string | null,
+  snapshot?: RequestSnapshot | null,
+): {
   nodes: NodeState[];
   connection: SseConnectionState;
   finalOutput: Record<string, unknown> | null;
@@ -177,6 +216,17 @@ export function useSSEEvents(requestId: string | null): {
       }
     });
 
+    es.addEventListener('request.resumed', (e: MessageEvent) => {
+      resetInactivity();
+      try {
+        const data = JSON.parse(e.data) as SseResumedEvent;
+        // Merge, don't replace: a node.entered can arrive right after and must not clear `resumed`.
+        setConnection((prev) => ({ ...prev, resumed: { from: data.resumed_from_node } }));
+      } catch {
+        // Ignore malformed events; connection remains active
+      }
+    });
+
     es.addEventListener('processing.complete', (e: MessageEvent) => {
       try {
         const data = JSON.parse(e.data) as SseCompleteEvent;
@@ -202,6 +252,22 @@ export function useSSEEvents(requestId: string | null): {
     connect();
     return () => close();
   }, [connect, close]);
+
+  const snapshotNode = snapshot?.currentNode;
+  const snapshotStatus = snapshot?.status;
+  useEffect(() => {
+    const done = completedNodeCount(snapshotNode, snapshotStatus);
+    const settled = Boolean(snapshotStatus && SETTLED_STATUSES.has(snapshotStatus));
+    if (done === 0 && !settled) return;
+    // Layer over the live stream: only fill nodes still pending, so a live node.entered/exited that
+    // already arrived always wins.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setNodes((prev) =>
+      prev.map((n, i) => (i < done && n.status === 'pending' ? { ...n, status: 'success' } : n)),
+    );
+
+    if (settled) setFinalOutput((prev) => prev ?? { status: snapshotStatus });
+  }, [snapshotNode, snapshotStatus]);
 
   const reconnect = useCallback(() => {
     connect();
