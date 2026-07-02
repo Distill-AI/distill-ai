@@ -272,6 +272,136 @@ describe('useSSEEvents', () => {
     }
   });
 
+  it('populates connection.resumed from request.resumed without dropping connected status', () => {
+    const { result } = renderHook(() => useSSEEvents('req-1'));
+    act(() => {
+      onOpen?.();
+    });
+    act(() => {
+      emitSSEEvent('request.resumed', {
+        type: 'request.resumed',
+        request_id: 'req-1',
+        resumed_from_node: 'classify',
+        reason: 'crash_recovery',
+      });
+    });
+    expect(result.current.connection.resumed).toEqual({ from: 'classify' });
+    expect(result.current.connection.status).toBe('connected');
+  });
+
+  it('keeps connection.resumed set when a node event arrives afterwards', () => {
+    const { result } = renderHook(() => useSSEEvents('req-1'));
+    act(() => {
+      onOpen?.();
+    });
+    act(() => {
+      emitSSEEvent('request.resumed', {
+        type: 'request.resumed',
+        request_id: 'req-1',
+        resumed_from_node: 'match',
+        reason: 'crash_recovery',
+      });
+    });
+    act(() => {
+      emitSSEEvent('node.entered', {
+        type: 'node.entered',
+        node: 'match',
+        status: 'processing',
+        timestamp: new Date().toISOString(),
+      });
+    });
+    expect(result.current.connection.resumed).toEqual({ from: 'match' });
+    expect(result.current.nodes.find((n) => n.name === 'match')?.status).toBe('in-progress');
+  });
+
+  it('backfills earlier nodes as success from a resumed-from snapshot', () => {
+    // Reopening/resuming at `match`: parse/extract/classify ran before this connection opened.
+    const { result } = renderHook(() =>
+      useSSEEvents('req-1', { currentNode: 'match', status: 'parsing' }),
+    );
+    const byName = (n: string) => result.current.nodes.find((x) => x.name === n)?.status;
+    expect(byName('parse')).toBe('success');
+    expect(byName('extract')).toBe('success');
+    expect(byName('classify')).toBe('success');
+    expect(byName('match')).toBe('pending');
+    expect(byName('price')).toBe('pending');
+  });
+
+  it('does not let the snapshot override a live event that already advanced a node', () => {
+    const { result } = renderHook(() =>
+      useSSEEvents('req-1', { currentNode: 'match', status: 'parsing' }),
+    );
+    act(() => onOpen?.());
+    act(() => {
+      emitSSEEvent('node.exited', {
+        type: 'node.exited',
+        node: 'match',
+        status: 'success',
+        duration_ms: 300,
+        timestamp: new Date().toISOString(),
+      });
+    });
+    expect(result.current.nodes.find((n) => n.name === 'match')?.status).toBe('success');
+    expect(result.current.nodes.find((n) => n.name === 'match')?.duration_ms).toBe(300);
+  });
+
+  it('marks the whole trace success and seeds output when reopening a settled request', () => {
+    const { result } = renderHook(() =>
+      useSSEEvents('req-1', { currentNode: 'done', status: 'needs_review' }),
+    );
+    for (const node of result.current.nodes) {
+      expect(node.status).toBe('success');
+    }
+    expect(result.current.finalOutput).toEqual({ status: 'needs_review' });
+  });
+
+  it('treats a settled "ready" status as fully complete (matches RequestStatus)', () => {
+    // Regression for the approved/PDF-ready state: it must settle the trace like needs_review.
+    const { result } = renderHook(() =>
+      useSSEEvents('req-1', { currentNode: 'done', status: 'ready' }),
+    );
+    for (const node of result.current.nodes) {
+      expect(node.status).toBe('success');
+    }
+    expect(result.current.finalOutput).toEqual({ status: 'ready' });
+  });
+
+  it('does not mark the trace all-success for a failed request', () => {
+    // `failed` is not a settled-success status: the run did not complete every node.
+    const { result } = renderHook(() =>
+      useSSEEvents('req-1', { currentNode: 'classify', status: 'failed' }),
+    );
+    // Only nodes before the current one are backfilled; nothing is force-marked success.
+    expect(result.current.nodes.find((n) => n.name === 'score')?.status).toBe('pending');
+    expect(result.current.finalOutput).toBeNull();
+  });
+
+  it('does not backfill for a fresh request still at parse', () => {
+    const { result } = renderHook(() =>
+      useSSEEvents('req-1', { currentNode: 'parse', status: 'parsing' }),
+    );
+    for (const node of result.current.nodes) {
+      expect(node.status).toBe('pending');
+    }
+    expect(result.current.finalOutput).toBeNull();
+  });
+
+  it('does not set connection.resumed for an uninterrupted run (AC-04, no false positive)', () => {
+    const { result } = renderHook(() => useSSEEvents('req-1'));
+    act(() => {
+      onOpen?.();
+    });
+    act(() => {
+      emitSSEEvent('node.entered', {
+        type: 'node.entered',
+        node: 'parse',
+        status: 'processing',
+        timestamp: new Date().toISOString(),
+      });
+    });
+    expect(result.current.connection.resumed).toBeUndefined();
+  });
+
   it('does nothing when requestId is null', () => {
     const { result } = renderHook(() => useSSEEvents(null));
     expect(result.current.nodes).toHaveLength(7);
