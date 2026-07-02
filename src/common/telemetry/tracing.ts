@@ -1,25 +1,24 @@
-import { diag, DiagLogLevel, propagation } from '@opentelemetry/api';
+import { propagation } from '@opentelemetry/api';
 import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import {
-  BatchSpanProcessor,
+  ConsoleSpanExporter,
   NodeTracerProvider,
+  SimpleSpanProcessor,
   type SpanProcessor,
 } from '@opentelemetry/sdk-trace-node';
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { env } from '@config/env';
 
 let started = false;
 
 /**
- * Registers a global OpenTelemetry tracer provider and the W3C trace-context propagator for this
- * process (US-E7-1-OTEL). Runs unconditionally so spans and trace ids exist even with no collector
- * configured — that is what correlates a request's node/tool spans and log lines by trace id. Spans
- * are only exported over the wire when `OTEL_EXPORTER_OTLP_ENDPOINT` is set; otherwise they are
- * created and propagated in-process (still enough to link the trace and stamp logs). Skipped when
- * Sentry owns tracing (it registers its own OpenTelemetry provider), so the two never fight over the
- * global provider. Idempotent: both `main.ts` and `worker.ts` import `instrument`.
+ * Registers a global, always-on OpenTelemetry tracer provider and the W3C trace-context propagator
+ * for this process (US-E7-1-OTEL). Runs unconditionally so a request's node/tool spans and log lines
+ * share a real trace id for correlation even with no telemetry backend wired. When `OTEL_TRACE_CONSOLE`
+ * is set the spans are also printed to stdout for local inspection; production export is layered on
+ * externally via the standard OpenTelemetry SDK/collector, which consumes these same spans. Idempotent:
+ * both `main.ts` and `worker.ts` import `instrument`.
  */
 export function initTracing(): void {
   if (started) return;
@@ -30,16 +29,9 @@ export function initTracing(): void {
   propagation.setGlobalPropagator(new W3CTraceContextPropagator());
 
   const spanProcessors: SpanProcessor[] = [];
-  if (env.OTEL_EXPORTER_OTLP_ENDPOINT) {
-    diag.setLogger(
-      { error: () => {}, warn: () => {}, info: () => {}, debug: () => {}, verbose: () => {} },
-      DiagLogLevel.ERROR,
-    );
-    spanProcessors.push(
-      new BatchSpanProcessor(
-        new OTLPTraceExporter({ url: `${env.OTEL_EXPORTER_OTLP_ENDPOINT}/v1/traces` }),
-      ),
-    );
+  if (env.OTEL_TRACE_CONSOLE) {
+    // Pure-JS exporter (no native deps) — a safe way to see the request's trace tree locally.
+    spanProcessors.push(new SimpleSpanProcessor(new ConsoleSpanExporter()));
   }
 
   const provider = new NodeTracerProvider({
