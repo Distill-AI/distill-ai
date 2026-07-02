@@ -52,6 +52,7 @@ export interface LineItemDetail {
 /** Full request detail for the Review screen. Read model for `GET /requests/:id`. */
 export interface RequestDetail extends RequestSummary {
   sender_email: string | null;
+  sender_address: string | null;
   source_body: string | null;
   current_node: CurrentNode;
   routing: RequestRouting | null;

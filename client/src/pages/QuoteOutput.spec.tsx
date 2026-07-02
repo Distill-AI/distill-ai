@@ -67,6 +67,7 @@ const requestFixture: RequestDetail = {
   sender_company: 'Apex Fabrication',
   sender_contact: 'James Okafor',
   sender_email: 'james.okafor@apexfab.example',
+  sender_address: null,
   source_subject: 'RFQ',
   source_body: null,
   request_type: 'catalog_rfq',

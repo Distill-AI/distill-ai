@@ -11,6 +11,7 @@ const mockRequest = {
   sender_company: 'Apex',
   sender_contact: 'Dana',
   sender_email: 'dana@apex.example',
+  sender_address: '123 Main St, Springfield, IL 62701',
   source_subject: 'RFQ',
   source_body: 'please quote',
   request_type: 'catalog_rfq',
@@ -133,6 +134,7 @@ describe('RequestsService', () => {
 
       expect(attachmentsService.listForRequest).toHaveBeenCalledWith('req-1');
       expect(detail.sender_email).toBe('dana@apex.example');
+      expect(detail.sender_address).toBe('123 Main St, Springfield, IL 62701');
       expect(detail.source_body).toBe('please quote');
       expect(detail.current_node).toBe('extract');
       expect(detail.attachments).toHaveLength(1);
@@ -161,6 +163,14 @@ describe('RequestsService', () => {
       const detail = await service.getDetail(mockRequest);
       expect(detail.quote).toBeNull();
       expect(detail.line_items).toHaveLength(1);
+    });
+
+    it('passes through a null sender_address unchanged', async () => {
+      const detail = await service.getDetail({
+        ...mockRequest,
+        sender_address: null,
+      } as unknown as Request);
+      expect(detail.sender_address).toBeNull();
     });
   });
 });
