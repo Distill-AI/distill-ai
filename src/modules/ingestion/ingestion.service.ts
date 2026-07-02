@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { extname } from 'node:path';
 import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
 import type { EntityManager } from 'typeorm';
+import type { AfterCommitTask } from '@common/http/after-commit';
 import type { AnyTransactionOptions } from '@common/model-action/abstract.model-action';
 import { CustomHttpException } from '@common/exceptions/custom-http.exception';
 import { OBJECT_STORE, type ObjectStore } from '@common/object-store/object-store.port';
@@ -38,12 +39,15 @@ export class IngestionService {
   /**
    * Create a request from an upload or a paste, persist its attachments, and enqueue processing.
    * Writes go through the request-scoped `entityManager` (when present) so the org_id RLS policy is
-   * satisfied; the same manager makes the request + attachment inserts one unit of work.
+   * satisfied; the same manager makes the request + attachment inserts one unit of work. The pipeline
+   * enqueue is deferred onto `afterCommit` (when provided) so the worker never reads a request that
+   * the caller's transaction has not committed yet (issue #93).
    */
   async createRequest(
     dto: CreateRequestDto,
     files: UploadedFile[],
     entityManager?: EntityManager,
+    afterCommit?: AfterCommitTask[],
   ): Promise<Request> {
     this.validateFiles(files);
     this.ensureHasInput(dto, files);
@@ -85,7 +89,15 @@ export class IngestionService {
       });
     }
 
-    await this.runner.enqueue(request.id);
+    // Defer to after the caller's transaction commits so the worker cannot dequeue and read the
+    // request before its row is visible (issue #93). Without a transactional context (non-HTTP
+    // callers/tests) there is nothing to wait on, so enqueue inline.
+    const enqueue = () => this.enqueueOrRecover(request.id);
+    if (afterCommit) {
+      afterCommit.push(enqueue);
+    } else {
+      await enqueue();
+    }
     this.logger.log({
       event: 'request_created',
       request_id: request.id,
@@ -93,6 +105,33 @@ export class IngestionService {
       attachments: files.length,
     });
     return request;
+  }
+
+  /**
+   * Enqueue the pipeline run, and if that fails, keep the already-committed request recoverable
+   * instead of orphaning it at `parsing` with no job (#93 review). Stamping `processing_started_at`
+   * via `markProcessing` is exactly what `findStaleParsing` keys off, so the existing RecoverySweep
+   * re-enqueues it after the stale window without needing a clock-skew-prone `IS NULL` sweep query.
+   */
+  private async enqueueOrRecover(requestId: string): Promise<void> {
+    try {
+      await this.runner.enqueue(requestId);
+    } catch (err) {
+      this.logger.error({
+        event: 'pipeline_enqueue_failed',
+        request_id: requestId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      // Best-effort: make the crash-recovery sweep own it. If this write also fails there is nothing
+      // more to do here (the row stays parsing), but the id is already in the error log above.
+      await this.requests.markProcessing(requestId).catch((markErr: unknown) => {
+        this.logger.error({
+          event: 'pipeline_enqueue_recover_failed',
+          request_id: requestId,
+          error: markErr instanceof Error ? markErr.message : String(markErr),
+        });
+      });
+    }
   }
 
   /** Reject any file outside the pdf/csv/txt allowlist or over the size cap. The declared mime is
