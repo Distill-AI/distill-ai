@@ -20,6 +20,7 @@ const emptySummary: AnalyticsSummary = {
   ...summary,
   quotes_this_week: 0,
   confidence_distribution: { high_pct: 0, medium_pct: 0, low_pct: 0 },
+  quote_funnel: { ingested: 0, drafted: 0, approved: 0, sent: 0 },
 };
 
 const meta: Meta<typeof AnalyticsView> = {

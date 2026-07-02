@@ -30,6 +30,7 @@ const emptySummary: AnalyticsSummary = {
   ...summary,
   quotes_this_week: 0,
   confidence_distribution: { high_pct: 0, medium_pct: 0, low_pct: 0 },
+  quote_funnel: { ingested: 0, drafted: 0, approved: 0, sent: 0 },
 };
 
 function renderAnalytics() {
@@ -76,6 +77,17 @@ describe('Analytics', () => {
     expect(screen.queryByText('Quotes this week')).not.toBeInTheDocument();
   });
 
+  it('does not hide a non-zero card behind the empty state when only quotes_this_week is zero', () => {
+    mockUseAnalyticsSummary.mockReturnValue({
+      data: { ...summary, quotes_this_week: 0 },
+      isLoading: false,
+      isError: false,
+    });
+    renderAnalytics();
+    expect(screen.queryByText('No quotes processed in this period yet.')).not.toBeInTheDocument();
+    expect(screen.getByText('Crash recoveries')).toBeInTheDocument();
+  });
+
   it('renders KPI cards and charts when data is present', () => {
     mockUseAnalyticsSummary.mockReturnValue({ data: summary, isLoading: false, isError: false });
     renderAnalytics();
@@ -89,5 +101,16 @@ describe('Analytics', () => {
     expect(screen.getByText('Crash recoveries')).toBeInTheDocument();
     expect(screen.getByText('Confidence distribution')).toBeInTheDocument();
     expect(screen.getByText('Quote funnel')).toBeInTheDocument();
+  });
+
+  it('does not crash when the response is missing nested fields', () => {
+    const malformed = { ...summary, confidence_distribution: undefined, quote_funnel: undefined };
+    mockUseAnalyticsSummary.mockReturnValue({
+      data: malformed,
+      isLoading: false,
+      isError: false,
+    });
+    expect(() => renderAnalytics()).not.toThrow();
+    expect(screen.getByText('No quotes processed in this period yet.')).toBeInTheDocument();
   });
 });

@@ -43,6 +43,25 @@ function formatDelta(value: number, suffix: string): string {
   return `${value >= 0 ? '+' : ''}${value}${suffix}`;
 }
 
+type Sentiment = 'positive' | 'negative';
+
+/** Metrics where a falling value is the good outcome (e.g. fewer false negatives, a faster draft). */
+function lowerIsBetter(value: number): Sentiment {
+  return value <= 0 ? 'positive' : 'negative';
+}
+
+/** Metrics where a rising value is the good outcome (e.g. more approvals, more quotes). */
+function higherIsBetter(value: number): Sentiment {
+  return value >= 0 ? 'positive' : 'negative';
+}
+
+/** Numeric field guard: the response is trusted to the TS interface at compile time only, so a
+ * malformed or partial payload (e.g. a missing nested object) falls back to 0 instead of throwing
+ * a render-time TypeError that the error banner would never catch. */
+function num(value: number | undefined | null): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
 export interface AnalyticsViewProps {
   data: AnalyticsSummary | undefined;
   isLoading: boolean;
@@ -62,11 +81,10 @@ export function AnalyticsView({ data, isLoading, isError, onRetry }: AnalyticsVi
     );
   }
 
-  const isEmpty =
-    data.quotes_this_week === 0 &&
-    data.confidence_distribution.high_pct === 0 &&
-    data.confidence_distribution.medium_pct === 0 &&
-    data.confidence_distribution.low_pct === 0;
+  // Funnel's first stage is the true "nothing happened this period" signal — quotes_this_week or an
+  // individual chart being zero doesn't mean the whole period was empty (e.g. a lull this week with a
+  // non-zero crash-recovery count from earlier in the period should still show its card).
+  const isEmpty = num(data.quote_funnel?.ingested) === 0;
 
   if (isEmpty) {
     return (
@@ -81,41 +99,45 @@ export function AnalyticsView({ data, isLoading, isError, onRetry }: AnalyticsVi
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <KpiCard
           label="Median time to draft"
-          value={formatDuration(data.median_time_to_draft_seconds)}
-          delta={formatDelta(data.median_time_to_draft_delta_pct, '%')}
+          value={formatDuration(num(data.median_time_to_draft_seconds))}
+          delta={formatDelta(num(data.median_time_to_draft_delta_pct), '%')}
+          sentiment={lowerIsBetter(num(data.median_time_to_draft_delta_pct))}
         />
         <KpiCard
           label="Zero-edit approval"
-          value={`${data.zero_edit_approval_pct}%`}
-          delta={formatDelta(data.zero_edit_approval_delta_pts, 'pts')}
+          value={`${num(data.zero_edit_approval_pct)}%`}
+          delta={formatDelta(num(data.zero_edit_approval_delta_pts), 'pts')}
+          sentiment={higherIsBetter(num(data.zero_edit_approval_delta_pts))}
         />
         <KpiCard
           label="Auto-eligible false-neg"
-          value={`${data.auto_eligible_false_negative_pct}%`}
-          delta={formatDelta(data.auto_eligible_false_negative_delta_pts, 'pts')}
+          value={`${num(data.auto_eligible_false_negative_pct)}%`}
+          delta={formatDelta(num(data.auto_eligible_false_negative_delta_pts), 'pts')}
+          sentiment={lowerIsBetter(num(data.auto_eligible_false_negative_delta_pts))}
         />
         <KpiCard
           label="Quotes this week"
-          value={String(data.quotes_this_week)}
-          delta={formatDelta(data.quotes_this_week_delta, '')}
+          value={String(num(data.quotes_this_week))}
+          delta={formatDelta(num(data.quotes_this_week_delta), '')}
+          sentiment={higherIsBetter(num(data.quotes_this_week_delta))}
         />
-        <KpiCard label="Crash recoveries" value={String(data.crash_recoveries_this_month)} />
+        <KpiCard label="Crash recoveries" value={String(num(data.crash_recoveries_this_month))} />
       </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard title="Confidence distribution">
           <ConfidenceDistributionChart
-            highPct={data.confidence_distribution.high_pct}
-            mediumPct={data.confidence_distribution.medium_pct}
-            lowPct={data.confidence_distribution.low_pct}
+            highPct={num(data.confidence_distribution?.high_pct)}
+            mediumPct={num(data.confidence_distribution?.medium_pct)}
+            lowPct={num(data.confidence_distribution?.low_pct)}
           />
         </ChartCard>
         <ChartCard title="Quote funnel">
           <QuoteFunnelChart
             stages={[
-              { label: 'Ingested', value: data.quote_funnel.ingested },
-              { label: 'Drafted', value: data.quote_funnel.drafted },
-              { label: 'Approved', value: data.quote_funnel.approved },
-              { label: 'Sent', value: data.quote_funnel.sent },
+              { label: 'Ingested', value: num(data.quote_funnel?.ingested) },
+              { label: 'Drafted', value: num(data.quote_funnel?.drafted) },
+              { label: 'Approved', value: num(data.quote_funnel?.approved) },
+              { label: 'Sent', value: num(data.quote_funnel?.sent) },
             ]}
           />
         </ChartCard>
