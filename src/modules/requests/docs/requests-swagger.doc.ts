@@ -14,7 +14,11 @@ import {
 import { PasteAttachmentDto } from '../dto/paste-attachment.dto';
 import { DeclineRequestDto } from '../dto/decline-request.dto';
 import { PatchLineItemDto } from '../dto/patch-line-item.dto';
-import { RequestSummaryResponseDto, RequestDetailResponseDto } from './requests-response.dto';
+import {
+  RequestSummaryResponseDto,
+  RequestDetailResponseDto,
+  RequestHistoryEventResponseDto,
+} from './requests-response.dto';
 import * as SYS_MSG from '@constants/system-messages';
 
 const BASE_PATH = '/api/v1/requests/{id}/attachments/{attachmentId}/paste';
@@ -110,6 +114,50 @@ export function GetRequestDocs(): MethodDecorator {
           statusCode: { type: 'number', example: HttpStatus.OK },
           message: { type: 'string', example: SYS_MSG.REQUEST_RETRIEVED },
           data: { $ref: getSchemaPath(RequestDetailResponseDto) },
+        },
+      },
+    }),
+    ApiResponse({ status: HttpStatus.NOT_FOUND, description: SYS_MSG.REQUEST_NOT_FOUND('{id}') }),
+    ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: SYS_MSG.AUTH_UNAUTHORIZED }),
+    ApiResponse({ status: HttpStatus.FORBIDDEN, description: SYS_MSG.AUTH_FORBIDDEN }),
+  );
+}
+
+export function RequestHistoryDocs(): MethodDecorator {
+  return applyDecorators(
+    ApiTags('Requests'),
+    ApiExtraModels(RequestHistoryEventResponseDto),
+    ApiOperation({
+      summary: "Get a request's full event trail, chronologically",
+      description:
+        'Returns every audit_events row for the request in ascending created_at order - a retrospective ' +
+        'reconstruction of exactly what happened, distinct from the live SSE stream at GET :id/events. ' +
+        'Paginated via `page` and `limit`; pagination fields are returned under `meta`. ' +
+        'A missing or cross-org request returns 404 so existence is not leaked across tenants.',
+    }),
+    ApiParam({
+      name: 'id',
+      description: 'UUID of the request',
+      required: true,
+      type: 'string',
+      format: 'uuid',
+    }),
+    ApiQuery({ name: 'page', required: false, type: 'integer', description: 'Page number (>= 1)' }),
+    ApiQuery({
+      name: 'limit',
+      required: false,
+      type: 'integer',
+      description: 'Page size (1-100, default 50)',
+    }),
+    ApiResponse({
+      status: HttpStatus.OK,
+      schema: {
+        properties: {
+          success: { type: 'boolean', example: true },
+          statusCode: { type: 'number', example: HttpStatus.OK },
+          message: { type: 'string', example: SYS_MSG.REQUEST_HISTORY_RETRIEVED },
+          data: { type: 'array', items: { $ref: getSchemaPath(RequestHistoryEventResponseDto) } },
+          meta: PAGINATION_META_SCHEMA,
         },
       },
     }),

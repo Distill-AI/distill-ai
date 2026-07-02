@@ -51,6 +51,7 @@ export const REQUEST_NOT_FOUND = (id: string) => `Request ${id} not found`;
 export const ATTACHMENT_NOT_FOUND = (id: string) => `Attachment ${id} not found`;
 export const REQUESTS_RETRIEVED = 'Requests retrieved successfully';
 export const REQUEST_RETRIEVED = 'Request retrieved successfully';
+export const REQUEST_HISTORY_RETRIEVED = 'Request history retrieved successfully';
 export const PIPELINE_ENQUEUED = 'Request enqueued for pipeline processing';
 export const PIPELINE_RESUMED = 'Request resumed for pipeline processing';
 
