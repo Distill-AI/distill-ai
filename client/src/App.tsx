@@ -6,6 +6,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { Inbox } from './pages/Inbox';
 import { Review } from './pages/Review';
 import { Clarification } from './pages/Clarification';
+import { QuoteOutput } from './pages/QuoteOutput';
 import { Quotes } from './pages/Quotes';
 import { Catalog } from './pages/Catalog';
 import { Analytics } from './pages/Analytics';
@@ -23,6 +24,7 @@ export default function App() {
             <Route path="/requests/:id" element={<ProcessingRequestPage />} />
             <Route path="/requests/:id/review" element={<Review />} />
             <Route path="/requests/:id/clarification" element={<Clarification />} />
+            <Route path="/requests/:id/quote" element={<QuoteOutput />} />
             <Route path="/quotes" element={<Quotes />} />
             <Route
               path="/catalog"
