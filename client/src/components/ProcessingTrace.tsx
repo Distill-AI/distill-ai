@@ -23,16 +23,18 @@ export function ProcessingTrace({
   lineItems,
   thresholds,
 }: ProcessingTraceProps) {
-  const isResumeNotice = connection.status === 'error' && connection.error?.startsWith('Resumed');
+  const resumed = connection.resumed;
 
   return (
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="rounded-lg bg-slate-900 overflow-hidden flex flex-col">
-          {isResumeNotice && (
+          {resumed && (
             <div className="bg-slate-800 border-l-[3px] border-accent px-4 py-3 flex items-center gap-3">
               <RotateCw className="h-3.5 w-3.5 text-banner-text" aria-hidden="true" />
-              <span className="font-mono text-xs text-banner-text">{connection.error}</span>
+              <span className="font-mono text-xs text-banner-text">
+                {`Resumed from ${resumed.from} after interruption`}
+              </span>
             </div>
           )}
           <div className="p-5 flex flex-col flex-1">
@@ -43,7 +45,7 @@ export function ProcessingTrace({
               ))}
             </div>
 
-            {connection.status === 'error' && !isResumeNotice && (
+            {connection.status === 'error' && (
               <div className="mt-4 flex items-center gap-3 rounded-lg bg-lo-bg/30 p-3 text-sm text-lo-tx">
                 <span className="flex-1">{connection.error ?? 'Connection lost'}</span>
                 <button
