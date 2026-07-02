@@ -98,6 +98,13 @@ const envSchema = z
 
     // ── Observability ─────────────────────────────────────────────────────────
     SENTRY_DSN: z.string().url().optional(),
+    // OTLP HTTP collector base URL (e.g. http://localhost:4318). When unset/blank, spans are created
+    // and propagated in-process for correlation but not exported (US-E7-1-OTEL). Blank is coerced to
+    // undefined so the `.env` placeholder (`OTEL_EXPORTER_OTLP_ENDPOINT=`) validates.
+    OTEL_EXPORTER_OTLP_ENDPOINT: z.preprocess(
+      (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+      z.string().url().optional(),
+    ),
   })
   .superRefine((data, ctx) => {
     if (!data.DEMO_MODE && !data.LLM_API_KEY) {
