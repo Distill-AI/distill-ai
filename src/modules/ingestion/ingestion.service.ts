@@ -92,10 +92,11 @@ export class IngestionService {
     // Defer to after the caller's transaction commits so the worker cannot dequeue and read the
     // request before its row is visible (issue #93). Without a transactional context (non-HTTP
     // callers/tests) there is nothing to wait on, so enqueue inline.
+    const enqueue = () => this.enqueueOrRecover(request.id);
     if (afterCommit) {
-      afterCommit.push(() => this.runner.enqueue(request.id));
+      afterCommit.push(enqueue);
     } else {
-      await this.runner.enqueue(request.id);
+      await enqueue();
     }
     this.logger.log({
       event: 'request_created',
@@ -104,6 +105,33 @@ export class IngestionService {
       attachments: files.length,
     });
     return request;
+  }
+
+  /**
+   * Enqueue the pipeline run, and if that fails, keep the already-committed request recoverable
+   * instead of orphaning it at `parsing` with no job (#93 review). Stamping `processing_started_at`
+   * via `markProcessing` is exactly what `findStaleParsing` keys off, so the existing RecoverySweep
+   * re-enqueues it after the stale window without needing a clock-skew-prone `IS NULL` sweep query.
+   */
+  private async enqueueOrRecover(requestId: string): Promise<void> {
+    try {
+      await this.runner.enqueue(requestId);
+    } catch (err) {
+      this.logger.error({
+        event: 'pipeline_enqueue_failed',
+        request_id: requestId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      // Best-effort: make the crash-recovery sweep own it. If this write also fails there is nothing
+      // more to do here (the row stays parsing), but the id is already in the error log above.
+      await this.requests.markProcessing(requestId).catch((markErr: unknown) => {
+        this.logger.error({
+          event: 'pipeline_enqueue_recover_failed',
+          request_id: requestId,
+          error: markErr instanceof Error ? markErr.message : String(markErr),
+        });
+      });
+    }
   }
 
   /** Reject any file outside the pdf/csv/txt allowlist or over the size cap. The declared mime is
