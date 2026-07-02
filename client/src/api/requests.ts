@@ -75,6 +75,7 @@ export interface RequestDetail {
   sender_company: string | null;
   sender_contact: string | null;
   sender_email: string | null;
+  sender_address: string | null;
   source_subject: string | null;
   source_body: string | null;
   request_type: string;
