@@ -56,3 +56,37 @@ describe('RequestModelAction.trySetStatus', () => {
     expect(result).toBe(false);
   });
 });
+
+describe('RequestModelAction.findStaleParsing', () => {
+  function qbSetup() {
+    const rows = [{ id: 'r1' }];
+    const qb = {
+      where: vi.fn().mockReturnThis(),
+      andWhere: vi.fn().mockReturnThis(),
+      getMany: vi.fn().mockResolvedValue(rows),
+    };
+    const repository = { createQueryBuilder: vi.fn().mockReturnValue(qb) };
+    const action = new RequestModelAction(repository as never);
+    return { action, qb, rows };
+  }
+
+  it('scopes to parsing and checks staleness against the DB clock (both branches)', async () => {
+    const { action, qb, rows } = qbSetup();
+
+    const result = await action.findStaleParsing(120);
+
+    expect(qb.where).toHaveBeenCalledWith('request.status = :status', {
+      status: RequestStatus.PARSING,
+    });
+    const [sql, params] = qb.andWhere.mock.calls[0];
+    // DB-side age (NOW()), not a caller-computed cutoff, so worker/DB clock skew can't mislead it.
+    expect(sql).toContain('NOW() - make_interval(secs => :secs)');
+    // Started-then-stalled branch.
+    expect(sql).toContain('request.processing_started_at < NOW()');
+    // Intake-stranded branch: null processing_started_at, bounded by created_at.
+    expect(sql).toContain('request.processing_started_at IS NULL');
+    expect(sql).toContain('request.created_at < NOW()');
+    expect(params).toEqual({ secs: 120 });
+    expect(result).toBe(rows);
+  });
+});
