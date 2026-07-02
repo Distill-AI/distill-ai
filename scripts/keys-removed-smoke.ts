@@ -35,12 +35,29 @@ async function main(): Promise<void> {
   }
   ok('DEMO_MODE=true and no provider keys present');
 
-  // 2. Ingest a request whose line items match the seeded catalog.
+  // 2. Ingest the canonical clean-RFQ fixture text (src/database/seed/rfq_01_catalog_clean.json) so
+  //    extraction reconciles against a known fixture in any environment and produces a priced quote.
   const form = new FormData();
-  form.set('source_subject', 'keys-removed CI smoke');
+  form.set('source_subject', 'RFQ - Fastener Restock Order #DR-2025-441');
   form.set(
     'source_body',
-    'Please quote 10x M8 Hex Bolt Zinc Plated and 20x M6 Flat Washer Zinc Plated',
+    [
+      'Hi team,',
+      '',
+      'We need to restock our fastener inventory before end of month. Please quote on the following:',
+      '',
+      '- 500x M8 Hex Bolt, Zinc Plated, Grade 8.8',
+      '- 500x M8 Hex Nut, Zinc Plated',
+      '- 200x M8 Flat Washer, Zinc Plated',
+      '- 100x M10 Hex Bolt, Zinc Plated, Grade 8.8',
+      '- 100x M10 Hex Nut, Zinc Plated',
+      '',
+      'Delivery required by 27 June 2025 to our Coventry warehouse. Standard payment terms (Net 30) apply.',
+      '',
+      'Thanks,',
+      'Marcus Webb',
+      'Procurement Manager - Delta Ridge Manufacturing',
+    ].join('\n'),
   );
   const created = await fetch(`${BASE}/requests`, { method: 'POST', body: form });
   if (!created.ok) fail(`ingest returned HTTP ${created.status}`);
