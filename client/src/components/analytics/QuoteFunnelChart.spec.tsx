@@ -1,0 +1,38 @@
+import { render, screen } from '@testing-library/react';
+import { QuoteFunnelChart } from './QuoteFunnelChart';
+
+const fourStage = [
+  { label: 'Ingested', value: 410 },
+  { label: 'Drafted', value: 372 },
+  { label: 'Approved', value: 295 },
+  { label: 'Sent', value: 268 },
+];
+
+describe('QuoteFunnelChart', () => {
+  it('renders a label and value per stage', () => {
+    render(<QuoteFunnelChart stages={fourStage} />);
+    expect(screen.getByText('Ingested')).toBeInTheDocument();
+    expect(screen.getByText('410')).toBeInTheDocument();
+    expect(screen.getByText('Sent')).toBeInTheDocument();
+    expect(screen.getByText('268')).toBeInTheDocument();
+  });
+
+  it('does not overflow when every stage equals the first', () => {
+    const stages = [
+      { label: 'Ingested', value: 100 },
+      { label: 'Drafted', value: 100 },
+    ];
+    render(<QuoteFunnelChart stages={stages} />);
+    expect(screen.getAllByText('100')).toHaveLength(2);
+  });
+
+  it('renders an empty-state message for an empty stage list', () => {
+    render(<QuoteFunnelChart stages={[]} />);
+    expect(screen.getByText('No quotes processed in this period')).toBeInTheDocument();
+  });
+
+  it('renders an empty-state message when the first stage is zero', () => {
+    render(<QuoteFunnelChart stages={[{ label: 'Ingested', value: 0 }]} />);
+    expect(screen.getByText('No quotes processed in this period')).toBeInTheDocument();
+  });
+});
