@@ -21,6 +21,7 @@ Please quote:
     expected: {
       company: 'Acme Industrial',
       contact: 'John Smith',
+      sender_address: null,
       sender_email: 'john@acme.com',
       delivery_date: '2026-07-15',
       line_items: [
@@ -39,6 +40,7 @@ RFQ for SKU-1234, SKU-5678, qty 50 each
     expected: {
       company: 'PartsCo',
       contact: 'Jane Doe',
+      sender_address: null,
       sender_email: null,
       delivery_date: null,
       line_items: [
@@ -58,6 +60,7 @@ Total quantity: 15 units`,
     expected: {
       company: 'BuildRight',
       contact: 'Sam Lee',
+      sender_address: null,
       sender_email: null,
       delivery_date: null,
       line_items: [
@@ -74,6 +77,7 @@ Company name not on letterhead.`,
     expected: {
       company: null,
       contact: null,
+      sender_address: null,
       sender_email: null,
       delivery_date: null,
       line_items: [

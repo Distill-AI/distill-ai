@@ -8,6 +8,7 @@ import { Analytics } from './pages/Analytics';
 import { Settings } from './pages/Settings';
 import { ProcessingRequestPage } from './pages/ProcessingRequestPage';
 import { ClarificationView } from './pages/ClarificationView';
+import { QuoteOutput } from './pages/QuoteOutput';
 import { PasteFallbackDemo } from './pages/PasteFallbackDemo';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
@@ -19,6 +20,7 @@ export const router = createBrowserRouter([
       { path: '/requests/:id', element: <ProcessingRequestPage /> },
       { path: '/requests/:id/review', element: <Review /> },
       { path: '/requests/:id/clarification', element: <ClarificationView /> },
+      { path: '/requests/:id/quote', element: <QuoteOutput /> },
       { path: '/quotes', element: <Quotes /> },
       {
         path: '/catalog',

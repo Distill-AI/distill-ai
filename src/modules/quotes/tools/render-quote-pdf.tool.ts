@@ -61,6 +61,7 @@ export class RenderQuotePdfToolFactory {
       senderCompany: request.sender_company,
       senderContact: request.sender_contact,
       senderEmail: request.sender_email,
+      senderAddress: request.sender_address,
       lines: found.lines.map((line) => ({
         sku: line.sku?.sku_code ?? null,
         description: line.description,
