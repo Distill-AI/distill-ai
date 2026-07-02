@@ -1,4 +1,4 @@
-import { TrendingUp } from 'lucide-react';
+import { TrendingDown, TrendingUp } from 'lucide-react';
 
 interface KpiCardProps {
   label: string;
@@ -15,7 +15,11 @@ export function KpiCard({ label, value, delta }: KpiCardProps) {
         <span className="text-2xl font-bold text-slate-900">{value}</span>
         {delta && (
           <span className="flex items-center gap-1 text-sm text-hi-tx">
-            <TrendingUp aria-hidden="true" className="h-3.5 w-3.5" />
+            {delta.startsWith('-') ? (
+              <TrendingDown aria-hidden="true" className="h-3.5 w-3.5" />
+            ) : (
+              <TrendingUp aria-hidden="true" className="h-3.5 w-3.5" />
+            )}
             {delta}
           </span>
         )}
