@@ -29,6 +29,10 @@ export function isRequestStatus(value: string): value is RequestStatus {
   return Object.prototype.hasOwnProperty.call(requestStatusLabels, value);
 }
 
+// Hand-mirrors the backend's QUOTE_APPROVABLE_STATUSES allowlist
+// (src/modules/requests/constants/quote-approval.constants.ts) - update both together.
+export const QUOTE_APPROVABLE_STATUSES: readonly RequestStatus[] = ['priced', 'needs_review'];
+
 export const requestTypeLabels: Record<RequestType, string> = {
   catalog_rfq: 'Catalog RFQ',
   service_quote: 'Service Quote',
