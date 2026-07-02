@@ -1,3 +1,5 @@
+import { useId } from 'react';
+
 export interface EmailDraftPanelProps {
   /** Recipient, shown as a read-only row. Omitted entirely when the recipient is implicit (Clarification). */
   to?: string;
@@ -28,16 +30,20 @@ export function EmailDraftPanel({
   // the next re-render (React's uncontrolled-without-onChange trap).
   const subjectReadOnly = readOnly || !onSubjectChange;
   const bodyReadOnly = readOnly || !onBodyChange;
+  const instanceId = useId();
+  const toId = `email-draft-to-${instanceId}`;
+  const subjectId = `email-draft-subject-${instanceId}`;
+  const bodyId = `email-draft-body-${instanceId}`;
 
   return (
     <div className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4">
       {to !== undefined && (
         <div className="flex flex-col gap-1">
-          <label htmlFor="email-draft-to" className="text-xs font-medium text-muted">
+          <label htmlFor={toId} className="text-xs font-medium text-muted">
             To
           </label>
           <input
-            id="email-draft-to"
+            id={toId}
             type="text"
             value={to}
             readOnly
@@ -47,11 +53,11 @@ export function EmailDraftPanel({
       )}
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="email-draft-subject" className="text-xs font-medium text-muted">
+        <label htmlFor={subjectId} className="text-xs font-medium text-muted">
           Subject
         </label>
         <input
-          id="email-draft-subject"
+          id={subjectId}
           type="text"
           value={subject}
           readOnly={subjectReadOnly}
@@ -61,11 +67,11 @@ export function EmailDraftPanel({
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="email-draft-body" className="text-xs font-medium text-muted">
+        <label htmlFor={bodyId} className="text-xs font-medium text-muted">
           Message
         </label>
         <textarea
-          id="email-draft-body"
+          id={bodyId}
           value={body}
           readOnly={bodyReadOnly}
           onChange={onBodyChange ? (e) => onBodyChange(e.target.value) : undefined}
