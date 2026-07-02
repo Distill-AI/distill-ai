@@ -79,4 +79,22 @@ describe('useClipboardCopy', () => {
 
     expect(result.current.status).toBe('fallback');
   });
+
+  it('resets status to "idle" after the reset delay', async () => {
+    vi.useFakeTimers();
+    vi.mocked(navigator.clipboard.writeText).mockResolvedValue(undefined);
+    const { result } = renderHook(() => useClipboardCopy());
+
+    await act(async () => {
+      await result.current.copy('hello world');
+    });
+    expect(result.current.status).toBe('copied');
+
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(result.current.status).toBe('idle');
+
+    vi.useRealTimers();
+  });
 });
