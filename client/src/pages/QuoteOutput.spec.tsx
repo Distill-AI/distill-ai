@@ -80,8 +80,6 @@ const requestFixture: RequestDetail = {
       filename: 'RFQ_Apex_Oct24.eml',
       mime_type: 'message/rfc822',
       size_bytes: 2048,
-      parse_status: 'parsed',
-      parse_error_reason: null,
       created_at: '2026-06-24T10:00:00.000Z',
     },
   ],

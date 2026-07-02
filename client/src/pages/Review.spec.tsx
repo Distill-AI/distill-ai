@@ -52,8 +52,6 @@ const detail: RequestDetail = {
       filename: 'rfq_apex.pdf',
       mime_type: 'application/pdf',
       size_bytes: 1258291,
-      parse_status: 'parsed',
-      parse_error_reason: null,
       created_at: '2026-06-24T10:00:00.000Z',
     },
   ],
@@ -70,7 +68,7 @@ const detail: RequestDetail = {
     },
   ],
   quote: {
-    quote_number: 'Q-2041',
+    quote_number: 'Q-2026-001',
     status: 'draft',
     subtotal_minor: 300000,
     discount_minor: 15000,
@@ -236,30 +234,16 @@ describe('Review', () => {
     expect(screen.queryByRole('button', { name: /review flags/i })).not.toBeInTheDocument();
   });
 
-  it('disables Request clarification unless status is needs_clarification', () => {
-    mockUseRequest.mockReturnValue({
-      data: { ...detail, status: 'needs_review' },
-      isLoading: false,
-      isError: false,
-    });
-    renderReview();
-
-    expect(screen.getByRole('button', { name: /request clarification/i })).toBeDisabled();
-  });
-
-  it('navigates to the Clarification screen when Request clarification is clicked', async () => {
+  it('navigates to the Clarification screen when Clarification is clicked', async () => {
     const user = userEvent.setup();
     mockUseRequest.mockReturnValue({
-      data: { ...detail, status: 'needs_clarification' },
+      data: detail,
       isLoading: false,
       isError: false,
     });
     renderReview();
 
-    const button = screen.getByRole('button', { name: /request clarification/i });
-    expect(button).toBeEnabled();
-
-    await user.click(button);
+    await user.click(screen.getByRole('button', { name: /^clarification$/i }));
 
     expect(mockNavigate).toHaveBeenCalledWith('/requests/req-1/clarification');
   });

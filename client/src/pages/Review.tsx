@@ -122,12 +122,11 @@ export function Review() {
       <div className="flex items-center gap-2">
         <button
           type="button"
-          onClick={() => navigate(`/requests/${request.id}/clarification`)}
-          disabled={request.status !== 'needs_clarification'}
-          className="flex h-9 items-center gap-2 px-3 text-sm text-body-text disabled:cursor-not-allowed disabled:opacity-50"
+          onClick={() => navigate(`/requests/${id}/clarification`)}
+          className="flex h-9 items-center gap-2 px-3 text-sm text-body-text hover:text-accent"
         >
           <QuestionMarkCircleIcon />
-          Request clarification
+          Clarification
         </button>
         <button
           ref={declineBtnRef}
@@ -154,7 +153,7 @@ export function Review() {
       </div>,
     );
     return () => setActions(null);
-  }, [request, setActions, navigate]);
+  }, [id, request, setActions, navigate]);
 
   return (
     <div className="flex h-full flex-col px-6 py-6">

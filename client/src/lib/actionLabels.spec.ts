@@ -1,10 +1,9 @@
 import { PRIMARY_ACTION_LABELS } from './actionLabels';
 
 describe('PRIMARY_ACTION_LABELS', () => {
-  it('holds the exact label for each of the three primary-action screens', () => {
+  it('holds the exact label for each primary-action screen', () => {
     expect(PRIMARY_ACTION_LABELS).toEqual({
       reviewApprove: 'Approve & generate',
-      clarificationSend: 'Mark as sent',
       quoteApprove: 'Approve & ready',
     });
   });

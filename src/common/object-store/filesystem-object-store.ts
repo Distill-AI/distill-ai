@@ -3,7 +3,7 @@ import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { HttpStatus, Logger } from '@nestjs/common';
 import { CustomHttpException } from '@common/exceptions/custom-http.exception';
 import * as SYS_MSG from '@constants/system-messages';
-import type { ObjectStore } from './object-store.port';
+import { ObjectNotFoundError, type ObjectStore } from './object-store.port';
 
 /**
  * Resolve the on-disk root from an `OBJECT_STORE_URL`. Accepts a bare path or a `file://` URL and
@@ -51,7 +51,15 @@ export class FilesystemObjectStore implements ObjectStore {
   }
 
   async get(storageUrl: string): Promise<Buffer> {
-    return readFile(this.resolveKey(storageUrl));
+    const path = this.resolveKey(storageUrl);
+    try {
+      return await readFile(path);
+    } catch (error) {
+      if (this.isEnoent(error)) {
+        throw new ObjectNotFoundError(storageUrl);
+      }
+      throw error;
+    }
   }
 
   /** Resolve a key under the root, refusing a blank key or any key that escapes the root. Both are
@@ -66,5 +74,9 @@ export class FilesystemObjectStore implements ObjectStore {
       throw new CustomHttpException(SYS_MSG.OBJECT_STORE_KEY_TRAVERSAL, HttpStatus.BAD_REQUEST);
     }
     return path;
+  }
+
+  private isEnoent(error: unknown): boolean {
+    return error instanceof Error && 'code' in error && error.code === 'ENOENT';
   }
 }

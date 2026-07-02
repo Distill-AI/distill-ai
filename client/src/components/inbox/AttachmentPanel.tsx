@@ -1,8 +1,15 @@
 import type { RefObject } from 'react';
-import { REASON_LABELS } from '../../lib/parseErrorReasons';
-import type { ParseErrorReason, ParseStatus } from '../../lib/parseErrorReasons';
 
-export type { ParseErrorReason, ParseStatus };
+const REASON_LABELS = {
+  corrupt: 'This file appears to be password-protected or corrupt.',
+  no_text_layer: 'This file contains only scanned images with no readable text.',
+  unsupported_format: 'This file format is not supported.',
+  size_limit_exceeded: 'This file exceeds the maximum allowed size.',
+  unknown: 'This file could not be read.',
+} as const;
+
+export type ParseStatus = 'parsed' | 'unparsed' | 'manual_paste';
+export type ParseErrorReason = keyof typeof REASON_LABELS;
 
 interface AttachmentPanelProps {
   filename: string;
