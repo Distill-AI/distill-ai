@@ -76,16 +76,21 @@ describe('ProcessingTrace', () => {
     expect(screen.getByText('Reconnect')).toBeInTheDocument();
   });
 
-  it('shows resumed notices without the generic reconnect error', () => {
+  it('shows the resume banner from the resumed field, without a reconnect error', () => {
     render(
       <ProcessingTrace
         {...defaultProps}
-        connection={{ status: 'error', error: 'Resumed from checkpoint' }}
+        connection={{ status: 'connected', resumed: { from: 'classify' } }}
       />,
     );
 
-    expect(screen.getByText('Resumed from checkpoint')).toBeInTheDocument();
+    expect(screen.getByText('Resumed from classify after interruption')).toBeInTheDocument();
     expect(screen.queryByText('Reconnect')).not.toBeInTheDocument();
+  });
+
+  it('does not show the resume banner when the resumed field is absent', () => {
+    render(<ProcessingTrace {...defaultProps} connection={{ status: 'connected' }} />);
+    expect(screen.queryByText(/Resumed from/)).not.toBeInTheDocument();
   });
 
   it('calls reconnect when Reconnect button is clicked', async () => {

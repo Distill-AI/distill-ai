@@ -213,6 +213,7 @@ describe('graph-resume', () => {
       expect.objectContaining({
         eventName: 'request.resumed',
         attributes: expect.objectContaining({
+          type: 'request.resumed',
           resumed_from_node: CurrentNode.CLASSIFY,
           reason: 'crash_recovery',
         }),
