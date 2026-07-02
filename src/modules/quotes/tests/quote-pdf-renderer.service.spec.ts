@@ -11,6 +11,7 @@ describe('QuotePdfRenderer', () => {
       senderCompany: 'Acme Corp',
       senderContact: 'Jane Doe',
       senderEmail: 'jane@acme.example',
+      senderAddress: '42 Baker Street, London, NW1 6XE',
       lines: [
         {
           sku: 'WGT-A',
@@ -47,6 +48,7 @@ describe('QuotePdfRenderer', () => {
       expect(text).toContain('Acme Corp');
       expect(text).toContain('Jane Doe');
       expect(text).toContain('jane@acme.example');
+      expect(text).toContain('42 Baker Street, London, NW1 6XE');
       expect(text).toContain('Widget A');
       expect(text).toContain('WGT-A');
       expect(text).toContain('Widget B');
@@ -71,6 +73,7 @@ describe('QuotePdfRenderer', () => {
       senderCompany: 'Acme Corp',
       senderContact: 'Jane Doe',
       senderEmail: 'jane@acme.example',
+      senderAddress: null,
       lines: Array.from({ length: 30 }, (_, i) => ({
         sku: `SKU-${i}`,
         description: `Widget ${i}`,
@@ -111,6 +114,7 @@ describe('QuotePdfRenderer', () => {
       senderCompany: 'Acme Corp',
       senderContact: 'Jane Doe',
       senderEmail: 'jane@acme.example',
+      senderAddress: null,
       lines: [
         ...Array.from({ length: 15 }, (_, i) => ({
           sku: null,
@@ -166,6 +170,7 @@ describe('QuotePdfRenderer', () => {
       senderCompany: null,
       senderContact: null,
       senderEmail: null,
+      senderAddress: null,
       lines: [
         {
           sku: null,
