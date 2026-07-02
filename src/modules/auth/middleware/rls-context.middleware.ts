@@ -3,8 +3,9 @@ import { DataSource, QueryRunner, EntityManager } from 'typeorm';
 import { AuthService } from '../services/auth.service';
 import { authConfig } from '@config/auth.config';
 import type { Response } from 'express';
+import type { AfterCommitTask, WithAfterCommit } from '@common/http/after-commit';
 
-interface RlsRequest {
+interface RlsRequest extends WithAfterCommit {
   headers?: Record<string, string | string[] | undefined>;
   queryRunner?: QueryRunner;
   entityManager?: EntityManager;
@@ -48,16 +49,29 @@ export class RlsContextMiddleware implements NestMiddleware {
 
       request.queryRunner = queryRunner;
       request.entityManager = queryRunner.manager;
+      const afterCommit: AfterCommitTask[] = [];
+      request.afterCommit = afterCommit;
 
       response.on('finish', async () => {
         try {
-          if (!queryRunner.isReleased) {
-            if (hasError || response.statusCode >= 400) {
-              await queryRunner.rollbackTransaction();
-            } else {
-              await queryRunner.commitTransaction();
-            }
+          if (queryRunner.isReleased) return;
+          if (hasError || response.statusCode >= 400) {
+            await queryRunner.rollbackTransaction();
             await queryRunner.release();
+            return;
+          }
+          await queryRunner.commitTransaction();
+          await queryRunner.release();
+          // Only now that the rows are durably visible to other connections do we run post-commit
+          // side effects (e.g. enqueueing the pipeline). Running them mid-transaction lets the worker
+          // read a not-yet-committed request and drop the job as not-found (issue #93). One failing
+          // task must not skip the rest.
+          for (const task of afterCommit) {
+            try {
+              await task();
+            } catch (taskError) {
+              this.logger.error('After-commit task failed:', taskError);
+            }
           }
         } catch (error) {
           this.logger.error('Failed to finalize RLS transaction:', error);
