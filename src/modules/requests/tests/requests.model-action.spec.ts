@@ -89,4 +89,11 @@ describe('RequestModelAction.findStaleParsing', () => {
     expect(params).toEqual({ secs: 120 });
     expect(result).toBe(rows);
   });
+
+  it('rejects a non-positive window rather than matching every in-flight row', async () => {
+    const { action, qb } = qbSetup();
+    await expect(action.findStaleParsing(0)).rejects.toThrow(/staleSeconds > 0/);
+    await expect(action.findStaleParsing(-30)).rejects.toThrow(/staleSeconds > 0/);
+    expect(qb.getMany).not.toHaveBeenCalled();
+  });
 });
