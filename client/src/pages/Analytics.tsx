@@ -39,6 +39,10 @@ function AnalyticsSkeleton() {
   );
 }
 
+function formatDelta(value: number, suffix: string): string {
+  return `${value >= 0 ? '+' : ''}${value}${suffix}`;
+}
+
 export interface AnalyticsViewProps {
   data: AnalyticsSummary | undefined;
   isLoading: boolean;
@@ -78,22 +82,22 @@ export function AnalyticsView({ data, isLoading, isError, onRetry }: AnalyticsVi
         <KpiCard
           label="Median time to draft"
           value={formatDuration(data.median_time_to_draft_seconds)}
-          delta={`+${data.median_time_to_draft_delta_pct}%`}
+          delta={formatDelta(data.median_time_to_draft_delta_pct, '%')}
         />
         <KpiCard
           label="Zero-edit approval"
           value={`${data.zero_edit_approval_pct}%`}
-          delta={`+${data.zero_edit_approval_delta_pts}pts`}
+          delta={formatDelta(data.zero_edit_approval_delta_pts, 'pts')}
         />
         <KpiCard
           label="Auto-eligible false-neg"
           value={`${data.auto_eligible_false_negative_pct}%`}
-          delta={`+${data.auto_eligible_false_negative_delta_pts}pts`}
+          delta={formatDelta(data.auto_eligible_false_negative_delta_pts, 'pts')}
         />
         <KpiCard
           label="Quotes this week"
           value={String(data.quotes_this_week)}
-          delta={`+${data.quotes_this_week_delta}`}
+          delta={formatDelta(data.quotes_this_week_delta, '')}
         />
         <KpiCard label="Crash recoveries" value={String(data.crash_recoveries_this_month)} />
       </div>
