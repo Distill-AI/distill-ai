@@ -25,15 +25,22 @@ export const ExtractionLineItemSchema = z.object({
   unit: z.string().min(1),
 });
 
-/** Accepts null or a non-empty string; maps legacy UNKNOWN sentinel to null. */
+/** Accepts null or a non-empty string; maps the legacy UNKNOWN sentinel to null. An absent key still fails validation. */
 const nullableExtractionField = z.preprocess(
   (value) => (value === UNKNOWN_FIELD ? null : value),
+  z.string().min(1).nullable(),
+);
+
+/** Same as nullableExtractionField, but also maps an absent key to null (field predates this in older fixtures/tool outputs). */
+const optionalNullableExtractionField = z.preprocess(
+  (value) => (value === UNKNOWN_FIELD || value === undefined ? null : value),
   z.string().min(1).nullable(),
 );
 
 export const ExtractionV1Schema = z.object({
   company: nullableExtractionField,
   contact: nullableExtractionField,
+  sender_address: optionalNullableExtractionField,
   sender_email: z.string().email().nullable(),
   delivery_date: z
     .string()

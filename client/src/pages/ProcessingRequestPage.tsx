@@ -4,11 +4,18 @@ import { ProcessingTrace } from '../components/ProcessingTrace';
 import { usePageHeader } from '../context/PageHeaderContext';
 import { ChevronLeftIcon } from '../components/ui/ChevronLeftIcon';
 import { useSSEEvents } from '../hooks/useSSEEvents';
+import { useRequest } from '../api/requests';
 
 export function ProcessingRequestPage() {
   const { id } = useParams<{ id?: string }>();
   const { setTitle, setActions } = usePageHeader();
-  const { nodes, connection, finalOutput, reconnect } = useSSEEvents(id ?? null);
+  // Persisted snapshot backfills nodes that finished before this SSE connection opened (e.g. after a
+  // resume, or when reopening an already-processed request), so the trace is not shown all-pending.
+  const { data: request } = useRequest(id);
+  const { nodes, connection, finalOutput, reconnect } = useSSEEvents(
+    id ?? null,
+    request ? { currentNode: request.current_node, status: request.status } : null,
+  );
 
   useEffect(() => {
     setTitle(
