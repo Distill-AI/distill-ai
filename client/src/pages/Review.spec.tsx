@@ -70,11 +70,17 @@ const detail: RequestDetail = {
     },
   ],
   quote: {
+    quote_number: 'Q-2041',
+    status: 'draft',
     subtotal_minor: 300000,
     discount_minor: 15000,
     total_minor: 285000,
     currency: 'NGN',
     lead_time_days: 5,
+    pdf_storage_url: null,
+    pdf_generated_at: null,
+    email_draft_subject: null,
+    email_draft_body: null,
     lines: [
       {
         position: 1,
@@ -256,5 +262,52 @@ describe('Review', () => {
     await user.click(button);
 
     expect(mockNavigate).toHaveBeenCalledWith('/requests/req-1/clarification');
+  });
+
+  it('enables Approve & generate when the request has a quote and is in an approvable status', () => {
+    mockUseRequest.mockReturnValue({
+      data: { ...detail, status: 'priced' },
+      isLoading: false,
+      isError: false,
+    });
+    renderReview();
+
+    expect(screen.getByRole('button', { name: /approve & generate/i })).toBeEnabled();
+  });
+
+  it('disables Approve & generate when the request has no quote yet', () => {
+    mockUseRequest.mockReturnValue({
+      data: { ...detail, status: 'needs_review', quote: null },
+      isLoading: false,
+      isError: false,
+    });
+    renderReview();
+
+    expect(screen.getByRole('button', { name: /approve & generate/i })).toBeDisabled();
+  });
+
+  it('disables Approve & generate when the status is not approvable', () => {
+    mockUseRequest.mockReturnValue({
+      data: { ...detail, status: 'needs_clarification' },
+      isLoading: false,
+      isError: false,
+    });
+    renderReview();
+
+    expect(screen.getByRole('button', { name: /approve & generate/i })).toBeDisabled();
+  });
+
+  it('navigates to the Quote Output screen when Approve & generate is clicked', async () => {
+    const user = userEvent.setup();
+    mockUseRequest.mockReturnValue({
+      data: { ...detail, status: 'priced' },
+      isLoading: false,
+      isError: false,
+    });
+    renderReview();
+
+    await user.click(screen.getByRole('button', { name: /approve & generate/i }));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/requests/req-1/quote');
   });
 });

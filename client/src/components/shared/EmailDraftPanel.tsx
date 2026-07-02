@@ -9,6 +9,8 @@ export interface EmailDraftPanelProps {
   onBodyChange?: (value: string) => void;
   readOnly?: boolean;
   trailingActions: React.ReactNode;
+  /** Forwarded to the body textarea so a copy-to-clipboard fallback can select visible text. */
+  bodyRef?: React.RefObject<HTMLTextAreaElement | null>;
 }
 
 /**
@@ -24,6 +26,7 @@ export function EmailDraftPanel({
   onBodyChange,
   readOnly = false,
   trailingActions,
+  bodyRef,
 }: EmailDraftPanelProps) {
   // A missing change handler makes the field non-editable regardless of `readOnly`: without an
   // onChange, a value-controlled field would look editable but silently discard keystrokes on
@@ -72,6 +75,7 @@ export function EmailDraftPanel({
         </label>
         <textarea
           id={bodyId}
+          ref={bodyRef}
           value={body}
           readOnly={bodyReadOnly}
           onChange={onBodyChange ? (e) => onBodyChange(e.target.value) : undefined}

@@ -56,13 +56,20 @@ export interface QuoteLineDetail {
   amount_minor: number;
 }
 
-/** The suggested quote with its running total (US-E6-1 quote pane). */
+/** The suggested quote with its running total (US-E6-1 quote pane); also the Quote Output screen's
+ * only read model (US-E6-6-FE): pre- and post-approval state both come from this same shape. */
 export interface QuoteDetail {
+  quote_number: string;
+  status: 'draft' | 'approved' | 'ready' | 'sent';
   subtotal_minor: number;
   discount_minor: number;
   total_minor: number;
   currency: string;
   lead_time_days: number | null;
+  pdf_storage_url: string | null;
+  pdf_generated_at: string | null;
+  email_draft_subject: string | null;
+  email_draft_body: string | null;
   lines: QuoteLineDetail[];
 }
 
