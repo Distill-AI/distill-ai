@@ -41,6 +41,7 @@ function setup() {
     sender_company: 'Acme',
     sender_contact: 'Jane',
     sender_email: 'jane@acme.example',
+    sender_address: '1 Acme Way, London, EC1A 1BB',
   };
 
   const quotes = {
@@ -85,6 +86,7 @@ describe('RenderQuotePdfToolFactory', () => {
         senderCompany: 'Acme',
         senderContact: 'Jane',
         senderEmail: 'jane@acme.example',
+        senderAddress: '1 Acme Way, London, EC1A 1BB',
         lines: [
           {
             sku: 'HX-M10-50-A4',

@@ -11,6 +11,7 @@ describe('QuotePdfRenderer', () => {
       senderCompany: 'Acme Corp',
       senderContact: 'Jane Doe',
       senderEmail: 'jane@acme.example',
+      senderAddress: '42 Baker Street, London, NW1 6XE',
       lines: [
         {
           sku: 'WGT-A',
@@ -47,6 +48,7 @@ describe('QuotePdfRenderer', () => {
       expect(text).toContain('Acme Corp');
       expect(text).toContain('Jane Doe');
       expect(text).toContain('jane@acme.example');
+      expect(text).toContain('42 Baker Street, London, NW1 6XE');
       expect(text).toContain('Widget A');
       expect(text).toContain('WGT-A');
       expect(text).toContain('Widget B');
@@ -71,6 +73,7 @@ describe('QuotePdfRenderer', () => {
       senderCompany: 'Acme Corp',
       senderContact: 'Jane Doe',
       senderEmail: 'jane@acme.example',
+      senderAddress: null,
       lines: Array.from({ length: 30 }, (_, i) => ({
         sku: `SKU-${i}`,
         description: `Widget ${i}`,
@@ -111,6 +114,7 @@ describe('QuotePdfRenderer', () => {
       senderCompany: 'Acme Corp',
       senderContact: 'Jane Doe',
       senderEmail: 'jane@acme.example',
+      senderAddress: null,
       lines: [
         ...Array.from({ length: 15 }, (_, i) => ({
           sku: null,
@@ -157,6 +161,56 @@ describe('QuotePdfRenderer', () => {
     }
   });
 
+  it('wraps a multi-line sender address without corrupting height measurement or overlapping the column headers', async () => {
+    const renderer = new QuotePdfRenderer();
+    const wrappingAddress =
+      'Building 4, Innovation Business Park, 1500 Long Street Boulevard, North Industrial Estate, Springfield, IL 62701, United States of America';
+
+    const buffer = await renderer.render({
+      quoteNumber: 'Q-2026-006',
+      issuedDate: new Date('2026-07-01T00:00:00Z'),
+      senderCompany: 'Acme Corp',
+      senderContact: 'Jane Doe',
+      senderEmail: 'jane@acme.example',
+      senderAddress: wrappingAddress,
+      lines: [
+        {
+          sku: 'WGT-A',
+          description: 'Widget A',
+          quantity: 1,
+          unitPriceMinor: 1000,
+          amountMinor: 1000,
+        },
+      ],
+      subtotalMinor: 1000,
+      discountMinor: 0,
+      totalMinor: 1000,
+      currency: 'GBP',
+      leadTimeDays: 7,
+      terms: 'Net 30',
+      validUntil: '2026-08-01',
+    });
+
+    expect(buffer.length).toBeGreaterThan(0);
+
+    const parser = new PDFParse({ data: buffer });
+    try {
+      const result = await parser.getText();
+      const text = result.text;
+
+      expect(text).toContain('Building 4, Innovation Business Park,');
+      expect(text).toContain('United States of America');
+
+      const addressEnd = text.indexOf('United States of America');
+      const itemHeaderStart = text.indexOf('ITEM DESCRIPTION');
+      expect(addressEnd).toBeGreaterThan(-1);
+      expect(itemHeaderStart).toBeGreaterThan(addressEnd);
+      expect(text).toContain('Widget A');
+    } finally {
+      await parser.destroy();
+    }
+  });
+
   it('omits bill-to lines, SKU, and footer fields that are null rather than rendering "null"', async () => {
     const renderer = new QuotePdfRenderer();
 
@@ -166,6 +220,7 @@ describe('QuotePdfRenderer', () => {
       senderCompany: null,
       senderContact: null,
       senderEmail: null,
+      senderAddress: null,
       lines: [
         {
           sku: null,

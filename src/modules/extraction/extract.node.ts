@@ -199,6 +199,7 @@ export class ExtractNode implements PipelineNode {
           sender_company: extracted.company,
           sender_contact: extracted.contact,
           sender_email: extracted.sender_email,
+          sender_address: extracted.sender_address,
           delivery_date: extracted.delivery_date,
         },
         transactionOptions: { useTransaction: true, transaction },
