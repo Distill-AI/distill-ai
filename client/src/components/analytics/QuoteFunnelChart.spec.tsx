@@ -36,6 +36,26 @@ describe('QuoteFunnelChart', () => {
     expect(bars[1].style.width).toBe('100%');
   });
 
+  it('clamps a negative stage value to 0% instead of a negative width', () => {
+    const stages = [
+      { label: 'Ingested', value: 100 },
+      { label: 'Drafted', value: -10 },
+    ];
+    const { container } = render(<QuoteFunnelChart stages={stages} />);
+    const bars = container.querySelectorAll<HTMLElement>('.bg-indigo-600');
+    expect(bars[1].style.width).toBe('0%');
+  });
+
+  it('treats a non-finite stage value as 0% instead of emitting NaN', () => {
+    const stages = [
+      { label: 'Ingested', value: 100 },
+      { label: 'Drafted', value: NaN },
+    ];
+    const { container } = render(<QuoteFunnelChart stages={stages} />);
+    const bars = container.querySelectorAll<HTMLElement>('.bg-indigo-600');
+    expect(bars[1].style.width).toBe('0%');
+  });
+
   it('renders an empty-state message for an empty stage list', () => {
     render(<QuoteFunnelChart stages={[]} />);
     expect(screen.getByText('No quotes processed in this period')).toBeInTheDocument();

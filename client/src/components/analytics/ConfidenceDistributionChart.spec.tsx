@@ -32,4 +32,19 @@ describe('ConfidenceDistributionChart', () => {
     expect(screen.getByText('No data')).toBeInTheDocument();
     expect(screen.queryByText('High')).not.toBeInTheDocument();
   });
+
+  it('clamps an out-of-range value to 100 instead of overflowing the track', () => {
+    const { container } = render(
+      <ConfidenceDistributionChart highPct={120} mediumPct={0} lowPct={0} />,
+    );
+    expect(screen.getByText('100%')).toBeInTheDocument();
+    const bars = container.querySelectorAll<HTMLElement>('.rounded-t');
+    expect(bars[0].style.height).toBe('100%');
+  });
+
+  it('treats a non-finite value as zero instead of emitting NaN%', () => {
+    render(<ConfidenceDistributionChart highPct={NaN} mediumPct={0} lowPct={0} />);
+    expect(screen.getByText('No data')).toBeInTheDocument();
+    expect(screen.queryByText('NaN%')).not.toBeInTheDocument();
+  });
 });

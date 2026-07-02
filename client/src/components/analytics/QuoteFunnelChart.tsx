@@ -8,6 +8,11 @@ interface QuoteFunnelChartProps {
   stages: QuoteFunnelStage[];
 }
 
+function widthPct(value: number, total: number): number {
+  const raw = Number.isFinite(value) ? (value / total) * 100 : 0;
+  return Math.min(100, Math.max(0, raw));
+}
+
 export function QuoteFunnelChart({ stages }: QuoteFunnelChartProps) {
   const total = stages[0]?.value ?? 0;
 
@@ -23,7 +28,7 @@ export function QuoteFunnelChart({ stages }: QuoteFunnelChartProps) {
           <div className="h-6 flex-1 rounded bg-canvas">
             <div
               className="h-full rounded bg-indigo-600"
-              style={{ width: `${Math.min(100, (stage.value / total) * 100)}%` }}
+              style={{ width: `${widthPct(stage.value, total)}%` }}
             />
           </div>
           <span className="w-12 shrink-0 text-right font-mono text-xs text-slate-900">
