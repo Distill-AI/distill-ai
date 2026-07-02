@@ -10,7 +10,7 @@ export const ExplainRoutingInputSchema = z.object({
   overallConfidence: z.number().min(0).max(1),
   routingReasons: z.array(
     z.object({
-      code: z.string(),
+      code: z.nativeEnum(RoutingReasonCode),
       message: z.string(),
       source: z.enum(['extraction', 'confidence', 'policy']),
     }),
@@ -27,8 +27,6 @@ export type ExplainRoutingInput = z.infer<typeof ExplainRoutingInputSchema>;
 export type ExplainRoutingOutput = z.infer<typeof ExplainRoutingOutputSchema>;
 
 const ROUTING_REASON_MAP: Partial<Record<RoutingReasonCode, () => string>> = {
-  [RoutingReasonCode.LOW_LINE_CONFIDENCE]: () => SYS_MSG.EXPLAIN_ROUTING_REVIEW_REQUIRED,
-  [RoutingReasonCode.POLICY_FLAGS_DETECTED]: () => SYS_MSG.EXPLAIN_ROUTING_REVIEW_REQUIRED,
   [RoutingReasonCode.INCOMPLETE_DEAL_VALUE]: () => SYS_MSG.EXPLAIN_ROUTING_DEAL_VALUE_INCOMPLETE,
   [RoutingReasonCode.NO_LINE_ITEMS]: () => SYS_MSG.EXPLAIN_ROUTING_NO_LINE_ITEMS,
   [RoutingReasonCode.EXTRACTION_FAILED]: () => SYS_MSG.EXPLAIN_ROUTING_EXTRACTION_FAILED,
@@ -53,8 +51,7 @@ export class ExplainRoutingToolFactory {
     };
   }
 
-  private async execute(raw: ExplainRoutingInput): Promise<ExplainRoutingOutput> {
-    const input = ExplainRoutingInputSchema.parse(raw);
+  private async execute(input: ExplainRoutingInput): Promise<ExplainRoutingOutput> {
     try {
       const prompt = this.buildPrompt(input);
       const response = await this.llm.invoke({ prompt, temperature: 0.3, maxTokens: 300 });
@@ -113,7 +110,7 @@ export class ExplainRoutingToolFactory {
     }
 
     for (const reason of routingReasons) {
-      const code = reason.code as RoutingReasonCode;
+      const code = reason.code;
       const factory = ROUTING_REASON_MAP[code];
       if (factory) {
         parts.push(factory());
