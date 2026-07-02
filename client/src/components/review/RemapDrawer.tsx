@@ -129,7 +129,13 @@ export function RemapDrawer({ requestId, lineId, lineLabel, onClose }: RemapDraw
 
   const confirm = () => {
     if (!selected) return;
-    remap.mutate({ lineId, payload: { sku_id: selected } }, { onSuccess: onClose });
+    // Pass the picked SKU's price so the running total can update optimistically before the server
+    // responds (US-E6-3 FR-1); it is reconciled to the authoritative total on the PATCH response.
+    const picked = [...candidateOptions, ...searchOptions].find((o) => o.sku_id === selected);
+    remap.mutate(
+      { lineId, payload: { sku_id: selected }, optimisticUnitPriceMinor: picked?.base_price_minor },
+      { onSuccess: onClose },
+    );
   };
 
   const candidateOptions: Option[] = (candidates.data ?? []).map((c) => ({

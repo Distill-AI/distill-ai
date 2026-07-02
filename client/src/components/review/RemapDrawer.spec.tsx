@@ -51,8 +51,9 @@ describe('RemapDrawer', () => {
     fireEvent.click(screen.getByText('SKU-061', { exact: false }));
     fireEvent.click(screen.getByRole('button', { name: /confirm match/i }));
 
+    // US-E6-3: also forwards the picked SKU's price so the total can update optimistically.
     expect(mockMutate).toHaveBeenCalledWith(
-      { lineId: 'li-1', payload: { sku_id: 'sku-1' } },
+      { lineId: 'li-1', payload: { sku_id: 'sku-1' }, optimisticUnitPriceMinor: 1000 },
       expect.objectContaining({ onSuccess: expect.any(Function) }),
     );
   });
@@ -83,7 +84,7 @@ describe('RemapDrawer', () => {
     fireEvent.click(screen.getByRole('button', { name: /confirm match/i }));
 
     expect(mockMutate).toHaveBeenCalledWith(
-      { lineId: 'li-1', payload: { sku_id: 'sku-9' } },
+      { lineId: 'li-1', payload: { sku_id: 'sku-9' }, optimisticUnitPriceMinor: 300 },
       expect.anything(),
     );
   });
