@@ -128,7 +128,10 @@ export function RequestEventsDocs(): MethodDecorator {
         'Opens a Server-Sent Events (SSE) connection that streams live processing trace events ' +
         'for the given request. Events are emitted as each pipeline stage executes: ' +
         'parse -> extract -> match -> score -> price -> policy. ' +
-        'Tool invocations (extract, match) are included with retry indicators. ' +
+        'Event types: node.entered, node.exited, tool.invoked (extract/match, with retry ' +
+        'indicators), request.resumed (when a run continues from a checkpoint after an ' +
+        'interruption, carrying resumed_from_node), stage.error (a stage failed and escalated to a ' +
+        'human), and processing.complete. ' +
         'No raw model reasoning or chain-of-thought is emitted. ' +
         'The stream closes when processing completes (success or failure) or on client disconnect.',
     }),
@@ -143,7 +146,8 @@ export function RequestEventsDocs(): MethodDecorator {
     ApiResponse({
       status: 200,
       description:
-        'SSE event stream of node.entered / node.exited / tool.invoked / processing.complete events.',
+        'SSE event stream of node.entered / node.exited / tool.invoked / request.resumed / ' +
+        'stage.error / processing.complete events.',
       content: { 'text/event-stream': { schema: { type: 'string' } } },
     }),
     ApiResponse({ status: 404, description: SYS_MSG.REQUEST_NOT_FOUND('{id}') }),
