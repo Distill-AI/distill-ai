@@ -19,6 +19,11 @@ export interface AnalyticsSummary {
   quote_funnel: { ingested: number; drafted: number; approved: number; sent: number };
 }
 
+// GET /analytics/summary has no server-side implementation yet (frontend + mock data only, per
+// plan-m4-storybook.md's scope). Until a backend track ships this endpoint with this exact field
+// shape, the Analytics page will only ever render its error state in a running app — expected, not
+// a bug. AnalyticsView.tsx additionally guards individual fields against a malformed/partial
+// response so a shape mismatch degrades to zeroed cards rather than a render-time crash.
 export async function fetchAnalyticsSummary(): Promise<AnalyticsSummary> {
   const res = await client.get<{ data: AnalyticsSummary }>('/analytics/summary');
   return res.data.data;
