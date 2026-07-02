@@ -70,6 +70,7 @@ export class RequestsService {
     return {
       ...toRequestSummary(request),
       sender_email: request.sender_email,
+      sender_address: request.sender_address,
       source_body: request.source_body,
       current_node: request.current_node,
       routing: request.routing,

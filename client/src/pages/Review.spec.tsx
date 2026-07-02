@@ -31,6 +31,7 @@ const detail: RequestDetail = {
   sender_company: 'Apex Fabrication',
   sender_contact: 'Dana Reyes',
   sender_email: 'dana@apex.example',
+  sender_address: null,
   source_subject: 'RFQ: 200x steel brackets',
   source_body: 'Hi, please quote 200 steel brackets.',
   request_type: 'catalog_rfq',

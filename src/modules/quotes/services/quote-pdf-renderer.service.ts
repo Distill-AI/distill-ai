@@ -16,6 +16,7 @@ export interface QuotePdfInput {
   senderCompany: string | null;
   senderContact: string | null;
   senderEmail: string | null;
+  senderAddress: string | null;
   lines: QuotePdfLineInput[];
   subtotalMinor: number;
   discountMinor: number;
@@ -179,6 +180,14 @@ export class QuotePdfRenderer {
     if (input.senderEmail) {
       doc.fillColor(COLOR.body).fontSize(10).text(input.senderEmail, columns.desc.x, y);
       y += 14;
+    }
+    if (input.senderAddress) {
+      doc.fillColor(COLOR.body).fontSize(10);
+      const addressHeight = doc.heightOfString(input.senderAddress, { width: columns.desc.width });
+      doc.text(input.senderAddress, columns.desc.x, y, {
+        width: columns.desc.width,
+      });
+      y += addressHeight + 2;
     }
     return y + 30;
   }
