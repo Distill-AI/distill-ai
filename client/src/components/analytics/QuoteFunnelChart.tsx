@@ -16,7 +16,7 @@ function widthPct(value: number, total: number): number {
 export function QuoteFunnelChart({ stages }: QuoteFunnelChartProps) {
   const total = stages[0]?.value ?? 0;
 
-  if (stages.length === 0 || total === 0) {
+  if (stages.length === 0 || !Number.isFinite(total) || total <= 0) {
     return <p className="text-sm text-muted">No quotes processed in this period</p>;
   }
 
