@@ -30,29 +30,16 @@ const sampleLineItems: MatchedLine[] = [
   { position: 3, rawText: 'Nylon washer pack', skuLabel: 'WSHR-NYLON', confidence: 0.85 },
 ];
 
-let mockHook = {
+const defaultProps = {
   nodes: emptyNodes,
   connection: { status: 'connected' } as SseConnectionState,
   finalOutput: null as Record<string, unknown> | null,
   reconnect: vi.fn(),
 };
 
-vi.mock('../hooks/useSSEEvents', () => ({
-  useSSEEvents: () => mockHook,
-}));
-
 describe('ProcessingTrace', () => {
-  afterEach(() => {
-    mockHook = {
-      nodes: emptyNodes,
-      connection: { status: 'connected' },
-      finalOutput: null,
-      reconnect: vi.fn(),
-    };
-  });
-
   it('renders all 7 node names', () => {
-    render(<ProcessingTrace requestId="test-uuid" />);
+    render(<ProcessingTrace {...defaultProps} />);
     expect(screen.getByText('parse')).toBeInTheDocument();
     expect(screen.getByText('extract')).toBeInTheDocument();
     expect(screen.getByText('classify')).toBeInTheDocument();
@@ -62,56 +49,65 @@ describe('ProcessingTrace', () => {
     expect(screen.getByText('score')).toBeInTheDocument();
   });
 
-  it('renders Extraction Trace heading', () => {
-    render(<ProcessingTrace requestId="test-uuid" />);
-    expect(screen.getByText('Extraction Trace')).toBeInTheDocument();
+  it('renders Extraction trace heading', () => {
+    render(<ProcessingTrace {...defaultProps} />);
+    expect(screen.getByText('Extraction trace')).toBeInTheDocument();
   });
 
-  it('renders Run Summary heading', () => {
-    render(<ProcessingTrace requestId="test-uuid" />);
-    expect(screen.getByText('Run Summary')).toBeInTheDocument();
+  it('renders STRUCTURED OUTPUT heading', () => {
+    render(<ProcessingTrace {...defaultProps} />);
+    expect(screen.getByText('STRUCTURED OUTPUT')).toBeInTheDocument();
   });
 
   it('shows success nodes with checkmarks', () => {
-    mockHook = { ...mockHook, nodes: mockNodes };
-    render(<ProcessingTrace requestId="test-uuid" />);
-    const checks = screen.getAllByText('\u2713');
+    const { container } = render(<ProcessingTrace {...defaultProps} nodes={mockNodes} />);
+    const checks = container.querySelectorAll('svg.lucide-check');
     expect(checks).toHaveLength(7);
   });
 
   it('shows error banner and reconnect button on connection error', () => {
-    mockHook = {
-      ...mockHook,
-      connection: { status: 'error', error: 'SSE connection lost' },
-    };
-    render(<ProcessingTrace requestId="test-uuid" />);
+    render(
+      <ProcessingTrace
+        {...defaultProps}
+        connection={{ status: 'error', error: 'SSE connection lost' }}
+      />,
+    );
     expect(screen.getByText('SSE connection lost')).toBeInTheDocument();
     expect(screen.getByText('Reconnect')).toBeInTheDocument();
   });
 
+  it('shows resumed notices without the generic reconnect error', () => {
+    render(
+      <ProcessingTrace
+        {...defaultProps}
+        connection={{ status: 'error', error: 'Resumed from checkpoint' }}
+      />,
+    );
+
+    expect(screen.getByText('Resumed from checkpoint')).toBeInTheDocument();
+    expect(screen.queryByText('Reconnect')).not.toBeInTheDocument();
+  });
+
   it('calls reconnect when Reconnect button is clicked', async () => {
     const reconnect = vi.fn();
-    mockHook = {
-      ...mockHook,
-      connection: { status: 'error', error: 'SSE connection lost' },
-      reconnect,
-    };
-    render(<ProcessingTrace requestId="test-uuid" />);
+    render(
+      <ProcessingTrace
+        {...defaultProps}
+        connection={{ status: 'error', error: 'SSE connection lost' }}
+        reconnect={reconnect}
+      />,
+    );
     await userEvent.click(screen.getByText('Reconnect'));
     expect(reconnect).toHaveBeenCalledTimes(1);
   });
 
   it('shows connecting message while connecting', () => {
-    mockHook = {
-      ...mockHook,
-      connection: { status: 'connecting' },
-    };
-    render(<ProcessingTrace requestId="test-uuid" />);
+    render(<ProcessingTrace {...defaultProps} connection={{ status: 'connecting' }} />);
     expect(screen.getByText('Connecting to live trace...')).toBeInTheDocument();
   });
 
   it('renders Matched Lines section when lineItems are provided', () => {
-    render(<ProcessingTrace requestId="test-uuid" lineItems={sampleLineItems} />);
+    render(<ProcessingTrace {...defaultProps} lineItems={sampleLineItems} />);
     expect(screen.getByText('Matched Lines')).toBeInTheDocument();
     expect(screen.getByText('M12 Bolt x 50')).toBeInTheDocument();
     expect(screen.getByText('Custom assembly')).toBeInTheDocument();
@@ -119,7 +115,7 @@ describe('ProcessingTrace', () => {
   });
 
   it('renders confidence chips for each matched line', () => {
-    render(<ProcessingTrace requestId="test-uuid" lineItems={sampleLineItems} />);
+    render(<ProcessingTrace {...defaultProps} lineItems={sampleLineItems} />);
     expect(screen.getByText('98%')).toBeInTheDocument();
     expect(screen.getByText('85%')).toBeInTheDocument();
     expect(screen.getByText('64%')).toBeInTheDocument();
@@ -127,12 +123,12 @@ describe('ProcessingTrace', () => {
   });
 
   it('does not render Matched Lines section when lineItems is empty', () => {
-    render(<ProcessingTrace requestId="test-uuid" lineItems={[]} />);
+    render(<ProcessingTrace {...defaultProps} lineItems={[]} />);
     expect(screen.queryByText('Matched Lines')).not.toBeInTheDocument();
   });
 
   it('does not render Matched Lines section when lineItems is undefined', () => {
-    render(<ProcessingTrace requestId="test-uuid" />);
+    render(<ProcessingTrace {...defaultProps} />);
     expect(screen.queryByText('Matched Lines')).not.toBeInTheDocument();
   });
 });

@@ -13,14 +13,16 @@ import { ApiTags } from '@nestjs/swagger';
 import type { Request as ExpressRequest } from 'express';
 import type { EntityManager } from 'typeorm';
 import * as SYS_MSG from '@constants/system-messages';
+import type { WithAfterCommit } from '@common/http/after-commit';
 import { IngestionService } from './ingestion.service';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { CreateRequestDocs } from './docs/ingestion-swagger.doc';
 import { MAX_FILES_PER_REQUEST, MAX_UPLOAD_BYTES, type UploadedFile } from './ingestion.constants';
 
-/** The RLS middleware attaches a per-request transactional manager (with app.org_id set) to the
- * Express request; intersect rather than replace so the standard request typings are preserved. */
-type RlsRequest = ExpressRequest & { entityManager?: EntityManager };
+/** The RLS middleware attaches a per-request transactional manager (with app.org_id set) and a
+ * post-commit task queue to the Express request; intersect rather than replace so the standard
+ * request typings are preserved. */
+type RlsRequest = ExpressRequest & { entityManager?: EntityManager } & WithAfterCommit;
 
 @ApiTags('Requests')
 @Controller('requests')
@@ -42,7 +44,12 @@ export class IngestionController {
     @UploadedFiles() files: UploadedFile[] | undefined,
     @Req() req: RlsRequest,
   ) {
-    const request = await this.ingestion.createRequest(dto, files ?? [], req.entityManager);
+    const request = await this.ingestion.createRequest(
+      dto,
+      files ?? [],
+      req.entityManager,
+      req.afterCommit,
+    );
     return {
       statusCode: HttpStatus.ACCEPTED,
       message: SYS_MSG.REQUEST_CREATED,

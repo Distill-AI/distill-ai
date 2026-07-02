@@ -1,81 +1,71 @@
+import { Check, Loader2, X } from 'lucide-react';
+
 interface TraceNodeProps {
   name: string;
   status: 'pending' | 'in-progress' | 'success' | 'failed';
   tool_name?: string;
-  attempt?: number;
   duration_ms?: number;
   summary?: string;
   error?: string;
 }
 
-const statusIcons: Record<TraceNodeProps['status'], string> = {
-  pending: '\u2022',
-  'in-progress': '\u27F3',
-  success: '\u2713',
-  failed: '\u2717',
-};
-
-const statusColors: Record<TraceNodeProps['status'], string> = {
-  pending: 'text-gray-400',
-  'in-progress': 'text-blue-400',
-  success: 'text-green-400',
-  failed: 'text-red-400',
-};
-
-const statusBg: Record<TraceNodeProps['status'], string> = {
-  pending: 'bg-gray-50',
-  'in-progress': 'bg-blue-50',
-  success: 'bg-green-50',
-  failed: 'bg-red-50',
-};
+function StatusIcon({ status }: { status: TraceNodeProps['status'] }) {
+  if (status === 'success') {
+    return <Check className="h-4 w-4 text-success-icon" aria-hidden="true" />;
+  }
+  if (status === 'in-progress') {
+    return <Loader2 className="h-4 w-4 text-blue-400 animate-spin" aria-hidden="true" />;
+  }
+  if (status === 'failed') {
+    return <X className="h-4 w-4 text-red-400" aria-hidden="true" />;
+  }
+  return <span className="inline-block h-1.5 w-1.5 rounded-full bg-body-text" aria-hidden="true" />;
+}
 
 export function TraceNode({
   name,
   status,
   tool_name,
-  attempt,
   duration_ms,
   summary,
   error,
 }: TraceNodeProps) {
-  const showTool =
-    status === 'in-progress' && tool_name && (name === 'extract' || name === 'match');
+  const showTool = tool_name && (status === 'success' || status === 'in-progress');
+  const durationLabel = duration_ms !== undefined ? `${(duration_ms / 1000).toFixed(1)}s` : null;
+  const statusLabel = status === 'success' ? 'ok' : 'running';
 
   return (
-    <div
-      className={`flex items-center gap-3 rounded-lg px-4 py-3 transition-colors ${statusBg[status]}`}
-    >
-      <span
-        className={`inline-flex h-6 w-6 items-center justify-center text-sm font-bold ${statusColors[status]} ${status === 'in-progress' ? 'animate-spin' : ''}`}
-        aria-label={status}
-      >
-        {statusIcons[status]}
-      </span>
-      <div className="flex flex-1 items-center gap-2 min-w-0">
+    <div className="flex flex-col gap-2 py-1">
+      <div className="flex items-center gap-3" aria-label={`${name}: ${status}`}>
+        <StatusIcon status={status} />
         <span
-          className={`text-sm font-medium capitalize ${status === 'pending' ? 'text-gray-400' : 'text-slate-900'}`}
+          className={`font-mono text-[13px] ${status === 'pending' ? 'text-muted' : 'text-white'}`}
         >
           {name}
         </span>
-        {showTool && (
-          <span className="inline-flex items-center rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
-            {tool_name}
-            {attempt ? ` (attempt ${attempt})` : ''}
+        {duration_ms !== undefined && (
+          <span className="text-xs text-muted whitespace-nowrap">{duration_ms}ms</span>
+        )}
+        {summary && status === 'success' && (
+          <span className="hidden text-xs text-muted truncate max-w-50 lg:inline">{summary}</span>
+        )}
+        {error && status === 'failed' && (
+          <span className="text-xs text-red-400 truncate max-w-50" title={error}>
+            {error}
           </span>
         )}
       </div>
-      {duration_ms !== undefined && (
-        <span className="text-xs text-gray-400 whitespace-nowrap">{duration_ms}ms</span>
-      )}
-      {summary && status === 'success' && (
-        <span className="hidden text-xs text-gray-500 truncate max-w-[200px] lg:inline">
-          {summary}
-        </span>
-      )}
-      {error && status === 'failed' && (
-        <span className="text-xs text-red-500 truncate max-w-[200px]" title={error}>
-          {error}
-        </span>
+      {showTool && (
+        <div className="ml-7">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 text-indigo-700 px-2 py-0.5 text-[11px] font-medium font-mono">
+            🔧 {tool_name}
+            {durationLabel && ` · ${durationLabel}`}
+            {' · '}
+            <span className={status === 'success' ? 'text-success-text' : 'text-indigo-700'}>
+              {statusLabel}
+            </span>
+          </span>
+        </div>
       )}
     </div>
   );
