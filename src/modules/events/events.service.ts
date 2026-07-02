@@ -3,7 +3,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { SseService } from '../../sse/sse.service';
 import { AuditEventModelAction } from './audit-event.model-action';
-import { StageErrorPayloadSchema } from '@constants/events.constants';
+import { EVENT_PAYLOAD_SCHEMAS, StageErrorPayloadSchema } from '@constants/events.constants';
 
 /** Parameters for a single audit event. `attributes` must be non-sensitive metadata only. */
 export interface EmitEventParams {
@@ -31,17 +31,21 @@ export class EventsService implements OnModuleInit {
 
   onModuleInit(): void {
     const schemaPath = join(process.cwd(), 'events.schema.json');
-    let parsed: Record<string, unknown>;
+    let parsed: { $defs?: Record<string, unknown> };
     try {
-      parsed = JSON.parse(readFileSync(schemaPath, 'utf8')) as Record<string, unknown>;
+      parsed = JSON.parse(readFileSync(schemaPath, 'utf8')) as { $defs?: Record<string, unknown> };
     } catch (err) {
       throw new Error(
         `Failed to load events.schema.json: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
-    if (parsed.$id !== 'stage.error') {
+    const definedEventNames = new Set(Object.keys(parsed.$defs ?? {}));
+    const missing = Object.keys(EVENT_PAYLOAD_SCHEMAS).filter(
+      (eventName) => !definedEventNames.has(eventName),
+    );
+    if (missing.length > 0) {
       throw new Error(
-        `Failed to load events.schema.json: $id must be "stage.error", got "${String(parsed.$id)}"`,
+        `Failed to load events.schema.json: missing $defs entries for: ${missing.join(', ')}`,
       );
     }
   }
@@ -52,7 +56,25 @@ export class EventsService implements OnModuleInit {
       return this.emitStageError(params);
     }
 
+    const schema = EVENT_PAYLOAD_SCHEMAS[params.eventName];
+    if (!schema) {
+      this.logger.warn({
+        event: 'event_emit_unschema_rejected',
+        event_name: params.eventName,
+      });
+      return;
+    }
+
     const attributes = params.attributes ?? {};
+    const result = schema.safeParse(attributes);
+    if (!result.success) {
+      this.logger.warn({
+        event: 'event_emit_validation_failed',
+        event_name: params.eventName,
+        errors: result.error.flatten(),
+      });
+      return;
+    }
 
     if (params.orgId) {
       await this.auditEvents.create({

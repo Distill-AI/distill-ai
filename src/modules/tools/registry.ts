@@ -90,7 +90,7 @@ export class ToolRegistry implements OnModuleInit {
     const rid = requestId ?? '00000000-0000-0000-0000-000000000000';
     const node = TOOL_NODE_MAP[name as ToolName] ?? null;
 
-    await this.emitToolEvent(rid, node, name, 'running', attempt, 'Invoking tool');
+    await this.emitToolEvent(rid, node, name, 'running', attempt, 'Invoking tool', orgId);
 
     const contract = this.registry.get(name);
     if (!contract) {
@@ -103,7 +103,7 @@ export class ToolRegistry implements OnModuleInit {
         errorDetail: SYS_MSG.TOOL_NOT_FOUND(name),
         requestId: rid,
       });
-      await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Tool not found');
+      await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Tool not found', orgId);
       await this.emitStageError(rid, node, StageErrorReason.TOOL_NOT_FOUND, orgId);
       return { status: ToolStatus.ERROR, latency, error: SYS_MSG.TOOL_NOT_FOUND(name) };
     }
@@ -119,7 +119,15 @@ export class ToolRegistry implements OnModuleInit {
         errorDetail: `${SYS_MSG.TOOL_INPUT_VALIDATION_FAILED}: ${inputParse.error.message}`,
         requestId: rid,
       });
-      await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Input validation failed');
+      await this.emitToolEvent(
+        rid,
+        node,
+        name,
+        'failed',
+        attempt,
+        'Input validation failed',
+        orgId,
+      );
       await this.emitStageError(rid, node, StageErrorReason.TOOL_INPUT_INVALID, orgId);
       return {
         status: ToolStatus.VALIDATION_ERROR,
@@ -149,7 +157,7 @@ export class ToolRegistry implements OnModuleInit {
         errorDetail: msg,
         requestId: rid,
       });
-      await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Execution failed');
+      await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Execution failed', orgId);
       await this.emitStageError(rid, node, StageErrorReason.TOOL_EXECUTION_FAILED, orgId);
       return { status: ToolStatus.ERROR, latency, error: msg };
     }
@@ -164,7 +172,15 @@ export class ToolRegistry implements OnModuleInit {
         errorDetail: `${SYS_MSG.TOOL_OUTPUT_VALIDATION_FAILED}: ${outputParse.error.message}`,
         requestId: rid,
       });
-      await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Output validation failed');
+      await this.emitToolEvent(
+        rid,
+        node,
+        name,
+        'failed',
+        attempt,
+        'Output validation failed',
+        orgId,
+      );
       await this.emitStageError(rid, node, StageErrorReason.TOOL_OUTPUT_INVALID, orgId);
       return {
         status: ToolStatus.VALIDATION_ERROR,
@@ -184,7 +200,7 @@ export class ToolRegistry implements OnModuleInit {
       requestId: rid,
     });
 
-    await this.emitToolEvent(rid, node, name, 'success', attempt, resultSummary);
+    await this.emitToolEvent(rid, node, name, 'success', attempt, resultSummary, orgId);
 
     return { status: ToolStatus.OK, latency, result: outputParse.data };
   }
@@ -203,10 +219,12 @@ export class ToolRegistry implements OnModuleInit {
     status: string,
     attempt: number,
     resultSummary: string,
+    orgId: string | null,
   ): Promise<void> {
     await this.events.emit({
       eventName: 'tool.invoked',
       requestId,
+      orgId: orgId ?? undefined,
       attributes: {
         type: 'tool.invoked',
         timestamp: getTimestamp(),
