@@ -182,8 +182,9 @@ export class QuotePdfRenderer {
       y += 14;
     }
     if (input.senderAddress) {
+      doc.fillColor(COLOR.body).fontSize(10);
       const addressHeight = doc.heightOfString(input.senderAddress, { width: columns.desc.width });
-      doc.fillColor(COLOR.body).fontSize(10).text(input.senderAddress, columns.desc.x, y, {
+      doc.text(input.senderAddress, columns.desc.x, y, {
         width: columns.desc.width,
       });
       y += addressHeight + 2;
