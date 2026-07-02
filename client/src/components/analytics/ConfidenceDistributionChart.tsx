@@ -13,18 +13,22 @@ const bars: { key: 'high' | 'medium' | 'low'; label: string; barClass: string }[
   { key: 'low', label: 'Low', barClass: 'bg-lo-dot' },
 ];
 
+function clampPct(value: number): number {
+  return Number.isFinite(value) ? Math.min(Math.max(value, 0), 100) : 0;
+}
+
 export function ConfidenceDistributionChart({
   highPct,
   mediumPct,
   lowPct,
 }: ConfidenceDistributionChartProps) {
   const values: Record<'high' | 'medium' | 'low', number> = {
-    high: highPct,
-    medium: mediumPct,
-    low: lowPct,
+    high: clampPct(highPct),
+    medium: clampPct(mediumPct),
+    low: clampPct(lowPct),
   };
 
-  if (highPct === 0 && mediumPct === 0 && lowPct === 0) {
+  if (values.high === 0 && values.medium === 0 && values.low === 0) {
     return <p className="text-sm text-muted">No data</p>;
   }
 
