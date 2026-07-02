@@ -249,3 +249,13 @@ export const REMAP_LINE_NOT_FOUND = 'Line item not found for this request';
 export const REMAP_OVERRIDE_PRICE_REQUIRED =
   'override requires unit_price_minor (or a line that already has a manual price)';
 export const REMAP_OVERRIDE_CONFLICT = 'unit_price_minor cannot be combined with override:false';
+
+// Explain routing
+export const EXPLAIN_ROUTING_ALL_CLEAR = 'All checks passed - quote is auto-eligible for pricing.';
+export const EXPLAIN_ROUTING_REVIEW_REQUIRED = 'This quote requires manual review.';
+export const EXPLAIN_ROUTING_POLICY_FLAGS = (count: number) =>
+  `${count} policy flag(s) on line items.`;
+export const EXPLAIN_ROUTING_DEAL_VALUE_INCOMPLETE = 'Some line items have incomplete pricing.';
+export const EXPLAIN_ROUTING_NO_LINE_ITEMS = 'No line items were found on this quote.';
+export const EXPLAIN_ROUTING_EXTRACTION_FAILED =
+  'The source document could not be fully extracted.';
