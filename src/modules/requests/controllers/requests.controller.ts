@@ -27,12 +27,14 @@ import { StreamService } from '../services/stream.service';
 import { RequestActions } from '../actions/request.actions';
 import { LineItemRemapActions } from '../actions/line-item-remap.actions';
 import { ResumeReason } from '../enums/resume-reason.enum';
+import { AuditEventModelAction } from '@modules/events/audit-event.model-action';
 import {
   RequestEventsDocs,
   RequestResumeDocs,
   DownloadAttachmentDocs,
   ListRequestsDocs,
   GetRequestDocs,
+  RequestHistoryDocs,
   PasteAttachmentDocs,
   RequestDeclineDocs,
   RequestLineItemRemapDocs,
@@ -57,6 +59,7 @@ export class RequestsController {
     private readonly requestActions: RequestActions,
     private readonly lineItemRemapActions: LineItemRemapActions,
     private readonly attachmentsService: AttachmentsService,
+    private readonly auditEvents: AuditEventModelAction,
   ) {}
 
   /** Lists requests for the calling org, newest first; unscoped in single-tenant dev mode. */
@@ -114,6 +117,44 @@ export class RequestsController {
       statusCode: HttpStatus.OK,
       message: SYS_MSG.REQUEST_RETRIEVED,
       data,
+    };
+  }
+
+  /**
+   * Returns the request's full audit_events trail, oldest first - a retrospective reconstruction
+   * distinct from the live SSE stream at `:id/events`. RLS enforces org isolation at the DB layer;
+   * this app-level check is a second, independent layer so a cross-org id 404s before any query runs.
+   */
+  @Get(':id/history')
+  @Roles(Role.ESTIMATOR, Role.ADMIN)
+  @RequestHistoryDocs()
+  async history(
+    @Param('id') requestId: string,
+    @Req() req: { user?: AuthUser },
+    @Query('page') rawPage?: string,
+    @Query('limit') rawLimit?: string,
+  ) {
+    const request = await this.requestsService.findByIdOrFail(requestId);
+
+    if (authConfig.enabled) {
+      const user = req.user;
+      if (!user || request.org_id !== user.orgId) {
+        throw new NotFoundException(SYS_MSG.REQUEST_NOT_FOUND(requestId));
+      }
+    }
+
+    const { page, limit } = parsePagination(rawPage, rawLimit);
+    const result = await this.auditEvents.list({
+      filterRecordOptions: { request_id: requestId },
+      paginationPayload: { page, limit },
+      order: { created_at: 'ASC' },
+    });
+
+    return {
+      statusCode: HttpStatus.OK,
+      message: SYS_MSG.REQUEST_HISTORY_RETRIEVED,
+      data: result.payload,
+      ...(result.paginationMeta as Record<string, unknown>),
     };
   }
 
