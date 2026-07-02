@@ -52,11 +52,12 @@ function setup() {
 }
 
 describe('IngestionService', () => {
-  it('upload: persists a parsing request, stores each file, records attachments, enqueues', async () => {
+  it('upload: persists a parsing request, stores each file, records attachments, defers enqueue', async () => {
     const { service, requests, attachments, store, runner, em } = setup();
     const files = [file('rfq.pdf'), file('items.csv', { mimetype: 'text/csv' })];
+    const afterCommit: Array<() => Promise<void>> = [];
 
-    const result = await service.createRequest({}, files, em);
+    const result = await service.createRequest({}, files, em, afterCommit);
 
     const call = requests.create.mock.calls[0][0];
     expect(call.createPayload.channel).toBe(RequestChannel.UPLOAD);
@@ -69,19 +70,35 @@ describe('IngestionService', () => {
     expect(call.transactionOptions).toEqual({ useTransaction: true, transaction: em });
     expect(store.put).toHaveBeenCalledTimes(2);
     expect(attachments.create).toHaveBeenCalledTimes(2);
+    // The enqueue is deferred, not fired inside the still-open transaction (issue #93).
+    expect(runner.enqueue).not.toHaveBeenCalled();
+    expect(afterCommit).toHaveLength(1);
+    await afterCommit[0]();
     expect(runner.enqueue).toHaveBeenCalledWith('req-1');
     expect(result.id).toBe('req-1');
   });
 
   it('paste: records channel=email with source_body and no attachments', async () => {
     const { service, requests, store, runner, em } = setup();
+    const afterCommit: Array<() => Promise<void>> = [];
 
-    await service.createRequest({ source_body: 'need 200 M12 bolts' }, [], em);
+    await service.createRequest({ source_body: 'need 200 M12 bolts' }, [], em, afterCommit);
 
     const payload = requests.create.mock.calls[0][0].createPayload;
     expect(payload.channel).toBe(RequestChannel.EMAIL);
     expect(payload.source_body).toBe('need 200 M12 bolts');
     expect(store.put).not.toHaveBeenCalled();
+    expect(runner.enqueue).not.toHaveBeenCalled();
+    expect(afterCommit).toHaveLength(1);
+    await afterCommit[0]();
+    expect(runner.enqueue).toHaveBeenCalledWith('req-1');
+  });
+
+  it('enqueues inline when there is no after-commit registry (non-HTTP caller)', async () => {
+    const { service, runner, em } = setup();
+
+    await service.createRequest({ source_body: 'hi' }, [], em);
+
     expect(runner.enqueue).toHaveBeenCalledWith('req-1');
   });
 
