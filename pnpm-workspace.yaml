@@ -5,7 +5,6 @@ allowBuilds:
   "@nestjs/core": true
   "@scarf/scarf": true
   msgpackr-extract: true
-  protobufjs: false # OTLP exporter transitive; its native build is optional (pure-JS fallback)
 
 # Force patched versions of vulnerable transitive dependencies.
 # Review on major NestJS / Axios upgrades.
