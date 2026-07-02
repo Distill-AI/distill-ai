@@ -249,3 +249,23 @@ export const REMAP_LINE_NOT_FOUND = 'Line item not found for this request';
 export const REMAP_OVERRIDE_PRICE_REQUIRED =
   'override requires unit_price_minor (or a line that already has a manual price)';
 export const REMAP_OVERRIDE_CONFLICT = 'unit_price_minor cannot be combined with override:false';
+
+// Explain routing (US-E6-7)
+export const EXPLAIN_ROUTING_SUCCESS = 'Routing explanation generated';
+export const EXPLAIN_ROUTING_ALL_CLEAR =
+  'All checks passed \u2013 quote is auto-eligible for pricing.';
+export const EXPLAIN_ROUTING_REVIEW_REQUIRED = 'This quote requires manual review.';
+export const EXPLAIN_ROUTING_LLM_UNAVAILABLE =
+  'AI explanation unavailable; generated fallback from routing data.';
+export const EXPLAIN_ROUTING_POLICY_FLAGS = (count: number) =>
+  `${count} policy flag(s) on line items.`;
+export const EXPLAIN_ROUTING_LOW_CONFIDENCE = (confidence: number, threshold: number) =>
+  `Line confidence ${(confidence * 100).toFixed(0)}% is below the auto threshold of ${(threshold * 100).toFixed(0)}%.`;
+export const EXPLAIN_ROUTING_DEAL_VALUE_EXCEEDS_CAP = (total: number, cap: number) =>
+  `Deal value ${total} exceeds the auto-send cap ${cap}.`;
+export const EXPLAIN_ROUTING_DEAL_VALUE_INCOMPLETE = 'Some line items have incomplete pricing.';
+export const EXPLAIN_ROUTING_NO_LINE_ITEMS = 'No line items were found on this quote.';
+export const EXPLAIN_ROUTING_EXTRACTION_FAILED =
+  'The source document could not be fully extracted.';
+export const EXPLAIN_ROUTING_AUTO_ELIGIBLE = (confidence: number) =>
+  `All checks passed at ${Math.round(confidence * 100)}% confidence.`;
