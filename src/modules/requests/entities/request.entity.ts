@@ -34,6 +34,9 @@ export class Request extends BaseEntity {
   @Column({ type: 'text', nullable: true })
   sender_contact: string | null;
 
+  @Column({ type: 'text', nullable: true })
+  sender_address: string | null;
+
   // DB column is citext (set by migration) — TypeORM sees text; compatible at runtime.
   // When running migration:generate, remove any ALTER COLUMN for this field.
   @Column({ type: 'text', nullable: true })
