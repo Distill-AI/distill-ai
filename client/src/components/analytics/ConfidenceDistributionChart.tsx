@@ -17,6 +17,10 @@ function clampPct(value: number): number {
   return Number.isFinite(value) ? Math.min(Math.max(value, 0), 100) : 0;
 }
 
+function formatPct(value: number): string {
+  return `${Math.round(value * 10) / 10}%`;
+}
+
 export function ConfidenceDistributionChart({
   highPct,
   mediumPct,
@@ -37,7 +41,7 @@ export function ConfidenceDistributionChart({
       <div className="flex items-end justify-center gap-8" style={{ height: TRACK_HEIGHT_PX }}>
         {bars.map(({ key, barClass }) => (
           <div key={key} className="flex h-full w-12 flex-col items-center justify-end gap-2">
-            <span className="font-mono text-xs text-body-text">{values[key]}%</span>
+            <span className="font-mono text-xs text-body-text">{formatPct(values[key])}</span>
             <div className={`w-full rounded-t ${barClass}`} style={{ height: `${values[key]}%` }} />
           </div>
         ))}

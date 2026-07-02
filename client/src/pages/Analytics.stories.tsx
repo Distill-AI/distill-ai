@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { fn } from 'storybook/test';
 import { AnalyticsView } from './Analytics';
 import type { AnalyticsSummary } from '../api/analytics';
 
@@ -26,7 +27,7 @@ const emptySummary: AnalyticsSummary = {
 const meta: Meta<typeof AnalyticsView> = {
   component: AnalyticsView,
   title: 'Pages/Analytics',
-  args: { onRetry: () => {} },
+  args: { onRetry: fn() },
 };
 
 export default meta;
@@ -36,7 +37,7 @@ export const Loading: Story = {
   args: { data: undefined, isLoading: true, isError: false },
 };
 
-export const Error: Story = {
+export const ErrorState: Story = {
   args: { data: undefined, isLoading: false, isError: true },
 };
 

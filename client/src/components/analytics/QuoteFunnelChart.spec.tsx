@@ -32,7 +32,7 @@ describe('QuoteFunnelChart', () => {
       { label: 'Drafted', value: 150 },
     ];
     const { container } = render(<QuoteFunnelChart stages={stages} />);
-    const bars = container.querySelectorAll<HTMLElement>('.bg-indigo-600');
+    const bars = container.querySelectorAll<HTMLElement>('.bg-accent');
     expect(bars[1].style.width).toBe('100%');
   });
 
@@ -42,7 +42,7 @@ describe('QuoteFunnelChart', () => {
       { label: 'Drafted', value: -10 },
     ];
     const { container } = render(<QuoteFunnelChart stages={stages} />);
-    const bars = container.querySelectorAll<HTMLElement>('.bg-indigo-600');
+    const bars = container.querySelectorAll<HTMLElement>('.bg-accent');
     expect(bars[1].style.width).toBe('0%');
   });
 
@@ -52,7 +52,7 @@ describe('QuoteFunnelChart', () => {
       { label: 'Drafted', value: NaN },
     ];
     const { container } = render(<QuoteFunnelChart stages={stages} />);
-    const bars = container.querySelectorAll<HTMLElement>('.bg-indigo-600');
+    const bars = container.querySelectorAll<HTMLElement>('.bg-accent');
     expect(bars[1].style.width).toBe('0%');
   });
 

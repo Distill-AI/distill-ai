@@ -27,7 +27,7 @@ export function QuoteFunnelChart({ stages }: QuoteFunnelChartProps) {
           <span className="w-20 shrink-0 text-sm text-body-text">{stage.label}</span>
           <div className="h-6 flex-1 rounded bg-canvas">
             <div
-              className="h-full rounded bg-indigo-600"
+              className="h-full rounded bg-accent"
               style={{ width: `${widthPct(stage.value, total)}%` }}
             />
           </div>
