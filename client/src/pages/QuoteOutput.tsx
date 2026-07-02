@@ -30,9 +30,15 @@ function buildFallbackEmail(quote: QuoteDetail): { subject: string; body: string
 export function QuoteOutput() {
   const { id } = useParams<{ id: string }>();
   const { data: request, isLoading, isError, refetch } = useRequest(id);
-  const approveQuote = useApproveQuote(id ?? '');
+  const {
+    mutate: approveQuoteMutate,
+    isPending: isApprovingQuote,
+    isError: isApproveQuoteError,
+    error: approveQuoteError,
+  } = useApproveQuote(id ?? '');
   const { status: copyStatus, copy } = useClipboardCopy();
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const copyFallbackRef = useRef<HTMLTextAreaElement>(null);
   const { setTitle, setActions } = usePageHeader();
   const [downloadError, setDownloadError] = useState('');
 
@@ -68,7 +74,7 @@ export function QuoteOutput() {
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
-      URL.revokeObjectURL(url);
+      setTimeout(() => URL.revokeObjectURL(url), 0);
       setDownloadError('');
     } catch {
       setDownloadError('Could not download the quote PDF. Please try again.');
@@ -96,25 +102,26 @@ export function QuoteOutput() {
         ) : (
           <button
             type="button"
-            onClick={() => approveQuote.mutate()}
-            disabled={approveQuote.isPending}
+            onClick={() => approveQuoteMutate()}
+            disabled={isApprovingQuote}
             className="h-9 rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {approveQuote.isPending ? 'Approving…' : PRIMARY_ACTION_LABELS.quoteApprove}
+            {isApprovingQuote ? 'Approving…' : PRIMARY_ACTION_LABELS.quoteApprove}
           </button>
         )}
       </div>,
     );
     return () => setActions(null);
-  }, [quote, isReady, approveQuote, handleDownload, setActions]);
+  }, [quote, isReady, approveQuoteMutate, isApprovingQuote, handleDownload, setActions]);
 
-  const approveErrorMessage = approveQuote.isError
-    ? resolveApproveQuoteError(approveQuote.error)
+  const approveErrorMessage = isApproveQuoteError
+    ? resolveApproveQuoteError(approveQuoteError)
     : null;
 
   const emailDraft = quote ? buildFallbackEmail(quote) : null;
   const emailSubject = quote?.email_draft_subject ?? emailDraft?.subject ?? '';
   const emailBody = quote?.email_draft_body ?? emailDraft?.body ?? '';
+  const emailClipboardText = `${emailSubject}\n\n${emailBody}`;
 
   return (
     <div className="flex h-full flex-col px-6 py-6">
@@ -158,7 +165,7 @@ export function QuoteOutput() {
                 trailingActions={
                   <button
                     type="button"
-                    onClick={() => void copy(`${emailSubject}\n\n${emailBody}`, bodyRef)}
+                    onClick={() => void copy(emailClipboardText, copyFallbackRef)}
                     className="h-9 rounded-button border border-border px-3 text-sm font-medium text-body-text hover:bg-canvas"
                   >
                     {copyStatus === 'copied'
@@ -168,6 +175,14 @@ export function QuoteOutput() {
                         : 'Copy to Clipboard'}
                   </button>
                 }
+              />
+              <textarea
+                ref={copyFallbackRef}
+                value={emailClipboardText}
+                readOnly
+                tabIndex={-1}
+                aria-hidden="true"
+                className="sr-only"
               />
             </div>
           </div>
