@@ -98,6 +98,10 @@ const envSchema = z
 
     // ── Observability ─────────────────────────────────────────────────────────
     SENTRY_DSN: z.string().url().optional(),
+    // Print request trace spans to stdout for local inspection (US-E7-1-OTEL). Off by default; spans
+    // are always created in-process for correlation regardless. Production export is wired externally
+    // via the standard OpenTelemetry SDK/collector.
+    OTEL_TRACE_CONSOLE: boolEnv.default(false),
   })
   .superRefine((data, ctx) => {
     if (!data.DEMO_MODE && !data.LLM_API_KEY) {
