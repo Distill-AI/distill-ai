@@ -177,6 +177,46 @@ describe('useRemapLineItem (US-E6-3)', () => {
     await waitFor(() => expect(total(qc)).toBe(2000));
   });
 
+  it('an earlier re-map resolving while a newer one is in flight does not clobber it (EC-02)', async () => {
+    const first = deferred<unknown>();
+    const second = deferred<unknown>();
+    mockPatch.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+    const { qc, wrapper } = setup();
+    const { result } = renderHook(() => useRemapLineItem(REQ), { wrapper });
+
+    // A (optimistic 900) then B (optimistic 1000) both issued and in flight; B is newest.
+    act(() => {
+      result.current.mutate({
+        lineId: 'line-1',
+        payload: { sku_id: 'a' },
+        optimisticUnitPriceMinor: 900,
+      });
+    });
+    act(() => {
+      result.current.mutate({
+        lineId: 'line-1',
+        payload: { sku_id: 'b' },
+        optimisticUnitPriceMinor: 1000,
+      });
+    });
+    // B's optimistic total is showing: subtotal 1800(after A) - 1800 + 2*1000 = 2000, total 1900.
+    await waitFor(() => expect(total(qc)).toBe(1900));
+
+    // A (older) resolves FIRST with a stale server total; it must be ignored, B's optimistic stands.
+    await act(async () => {
+      first.resolve(serverQuote(1500));
+      await first.promise;
+    });
+    await waitFor(() => expect(total(qc)).toBe(1900));
+
+    // B (newest) resolves and reconciles to its server total.
+    await act(async () => {
+      second.resolve(serverQuote(2000));
+      await second.promise;
+    });
+    await waitFor(() => expect(total(qc)).toBe(2000));
+  });
+
   it('reconciles from the response even without an optimistic hint (non-optimistic caller)', async () => {
     mockPatch.mockResolvedValue(serverQuote(1234));
     const { qc, wrapper } = setup();
