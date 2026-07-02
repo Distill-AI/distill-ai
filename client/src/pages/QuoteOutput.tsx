@@ -38,7 +38,6 @@ export function QuoteOutput() {
   } = useApproveQuote(id ?? '');
   const { status: copyStatus, copy } = useClipboardCopy();
   const bodyRef = useRef<HTMLTextAreaElement>(null);
-  const copyFallbackRef = useRef<HTMLTextAreaElement>(null);
   const { setTitle, setActions } = usePageHeader();
   const [downloadError, setDownloadError] = useState('');
 
@@ -165,7 +164,7 @@ export function QuoteOutput() {
                 trailingActions={
                   <button
                     type="button"
-                    onClick={() => void copy(emailClipboardText, copyFallbackRef)}
+                    onClick={() => void copy(emailClipboardText, bodyRef)}
                     className="h-9 rounded-button border border-border px-3 text-sm font-medium text-body-text hover:bg-canvas"
                   >
                     {copyStatus === 'copied'
@@ -175,14 +174,6 @@ export function QuoteOutput() {
                         : 'Copy to Clipboard'}
                   </button>
                 }
-              />
-              <textarea
-                ref={copyFallbackRef}
-                value={emailClipboardText}
-                readOnly
-                tabIndex={-1}
-                aria-hidden="true"
-                className="sr-only"
               />
             </div>
           </div>
