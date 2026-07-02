@@ -1,11 +1,22 @@
 import 'reflect-metadata';
 import type { CallHandler, ExecutionContext, MessageEvent } from '@nestjs/common';
-import { HttpStatus } from '@nestjs/common';
+import { Controller, HttpStatus, Sse } from '@nestjs/common';
 import { SSE_METADATA } from '@nestjs/common/constants';
 import { firstValueFrom, of, lastValueFrom, toArray } from 'rxjs';
 import { TransformInterceptor } from '../transform.interceptor';
 
 type Handler = (...args: unknown[]) => unknown;
+
+// A controller decorated with the REAL @Sse() so the regression test exercises the actual decorator
+// rather than a hand-set metadata key. If a Nest upgrade changes how @Sse() marks handlers, the
+// interceptor's detection breaks and the regression test below fails loudly (issue #85 review).
+@Controller('regression')
+class RealSseController {
+  @Sse('events')
+  events() {
+    return of<MessageEvent>({ type: 'node.entered', data: { node: 'parse' } });
+  }
+}
 
 function makeContext(handler: Handler, statusCode = HttpStatus.OK): ExecutionContext {
   return {
@@ -53,6 +64,18 @@ describe('TransformInterceptor', () => {
       expect(result).toEqual(event);
       expect(result).not.toHaveProperty('success');
       expect(result).not.toHaveProperty('statusCode');
+    });
+
+    it('detects a handler decorated with the real @Sse() (regression guard for Nest upgrades)', async () => {
+      // Uses the actual @Sse() decorator, not a hand-set key: if Nest changes how it marks SSE
+      // handlers, this passthrough assertion fails and the wrapping regression is caught early.
+      const context = makeContext(RealSseController.prototype.events as Handler);
+      const event: MessageEvent = { type: 'node.entered', data: { node: 'parse' } };
+
+      const result = await firstValueFrom(interceptor.intercept(context, makeCallHandler(event)));
+
+      expect(result).toEqual(event);
+      expect(result).not.toHaveProperty('success');
     });
 
     it('preserves every emitted event in order for a multi-event stream', async () => {
