@@ -76,6 +76,27 @@ describe('reconcile', () => {
     expect(parsed.company).toBeNull();
     expect(parsed.contact).toBeNull();
   });
+
+  it('accepts a present sender_address string', () => {
+    const parsed = ExtractionV1Schema.parse({
+      ...validExtraction,
+      sender_address: '123 Main St, Springfield, IL 62701',
+    });
+    expect(parsed.sender_address).toBe('123 Main St, Springfield, IL 62701');
+  });
+
+  it('maps UNKNOWN sender_address sentinel to null during schema parse', () => {
+    const parsed = ExtractionV1Schema.parse({
+      ...validExtraction,
+      sender_address: 'UNKNOWN',
+    });
+    expect(parsed.sender_address).toBeNull();
+  });
+
+  it('parses a fixture that omits sender_address as null, unchanged from before the field existed', () => {
+    const parsed = ExtractionV1Schema.parse(validExtraction);
+    expect(parsed.sender_address).toBeNull();
+  });
 });
 
 describe('ExtractNode bounded loop', () => {
@@ -300,6 +321,42 @@ describe('ExtractNode bounded loop', () => {
       }),
     );
     expect(result).toEqual({ kind: 'advance', next: CurrentNode.CLASSIFY });
+  });
+
+  it('persists a non-null sender_address from a successful extraction onto the request row', async () => {
+    const invoke = vi.fn().mockResolvedValue({
+      status: ToolStatus.OK,
+      latency: 100,
+      result: { ...validExtraction, sender_address: '123 Main St, Springfield, IL 62701' },
+    });
+    const { node, requests } = makeDeps({ invoke });
+
+    await node.run({ requestId, orgId });
+
+    expect(requests.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        updatePayload: expect.objectContaining({
+          sender_address: '123 Main St, Springfield, IL 62701',
+        }),
+      }),
+    );
+  });
+
+  it('persists a null sender_address when the extraction found none', async () => {
+    const invoke = vi.fn().mockResolvedValue({
+      status: ToolStatus.OK,
+      latency: 100,
+      result: validExtraction,
+    });
+    const { node, requests } = makeDeps({ invoke });
+
+    await node.run({ requestId, orgId });
+
+    expect(requests.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        updatePayload: expect.objectContaining({ sender_address: null }),
+      }),
+    );
   });
 
   it('a valid extraction on retry records reextract_count=1', async () => {

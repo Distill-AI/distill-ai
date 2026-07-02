@@ -62,6 +62,7 @@ Required shape:
 {
   "company": "string or null",
   "contact": "string or null",
+  "sender_address": "string or null (full postal address if present in the source text, otherwise null)",
   "sender_email": "email or null",
   "delivery_date": "YYYY-MM-DD or null",
   "line_items": [
