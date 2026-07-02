@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LessThan, Not, In, Repository, FindOptionsWhere } from 'typeorm';
+import { Not, In, Repository, FindOptionsWhere } from 'typeorm';
 import { AbstractModelAction } from '@common/model-action/abstract.model-action';
 import { Request } from './entities/request.entity';
 import { CurrentNode } from './enums/current-node.enum';
@@ -75,13 +75,24 @@ export class RequestModelAction extends AbstractModelAction<Request> {
    * Backs the RecoverySweep; matches the `(status, processing_started_at) WHERE status='parsing'`
    * partial index.
    */
+  /**
+   * Requests stuck in `parsing` past the stale window that the recovery sweep should re-enqueue.
+   * Both age checks use the database clock (`NOW()`), never a caller-computed cutoff, so a worker/DB
+   * clock skew can't make the sweep miss a real crash or grab a request still in its intake window
+   * (#96). Two cases: a run that stamped `processing_started_at` then went quiet, or one stranded at
+   * intake (the pipeline enqueue never landed, e.g. a crash between commit and enqueue) where
+   * `processing_started_at` is still null and only `created_at` bounds its age.
+   */
   async findStaleParsing(staleSeconds: number): Promise<Request[]> {
-    const cutoff = new Date(Date.now() - staleSeconds * 1000);
-    return this.requestRepository.find({
-      where: {
-        status: RequestStatus.PARSING,
-        processing_started_at: LessThan(cutoff),
-      },
-    });
+    return this.requestRepository
+      .createQueryBuilder('request')
+      .where('request.status = :status', { status: RequestStatus.PARSING })
+      .andWhere(
+        '(request.processing_started_at < NOW() - make_interval(secs => :secs) OR ' +
+          '(request.processing_started_at IS NULL AND ' +
+          'request.created_at < NOW() - make_interval(secs => :secs)))',
+        { secs: staleSeconds },
+      )
+      .getMany();
   }
 }
