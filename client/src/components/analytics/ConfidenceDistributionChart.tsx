@@ -28,18 +28,13 @@ export function ConfidenceDistributionChart({
     return <p className="text-sm text-muted">No data</p>;
   }
 
-  const maxPct = Math.max(highPct, mediumPct, lowPct, 1);
-
   return (
     <div>
       <div className="flex items-end justify-center gap-8" style={{ height: TRACK_HEIGHT_PX }}>
         {bars.map(({ key, barClass }) => (
           <div key={key} className="flex h-full w-12 flex-col items-center justify-end gap-2">
             <span className="font-mono text-xs text-body-text">{values[key]}%</span>
-            <div
-              className={`w-full rounded-t ${barClass}`}
-              style={{ height: `${(values[key] / maxPct) * 100}%` }}
-            />
+            <div className={`w-full rounded-t ${barClass}`} style={{ height: `${values[key]}%` }} />
           </div>
         ))}
       </div>

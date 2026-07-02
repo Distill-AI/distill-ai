@@ -26,6 +26,16 @@ describe('QuoteFunnelChart', () => {
     expect(screen.getAllByText('100')).toHaveLength(2);
   });
 
+  it('clamps bar width to 100% when a later stage exceeds the first', () => {
+    const stages = [
+      { label: 'Ingested', value: 100 },
+      { label: 'Drafted', value: 150 },
+    ];
+    const { container } = render(<QuoteFunnelChart stages={stages} />);
+    const bars = container.querySelectorAll<HTMLElement>('.bg-indigo-600');
+    expect(bars[1].style.width).toBe('100%');
+  });
+
   it('renders an empty-state message for an empty stage list', () => {
     render(<QuoteFunnelChart stages={[]} />);
     expect(screen.getByText('No quotes processed in this period')).toBeInTheDocument();
