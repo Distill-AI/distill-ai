@@ -355,6 +355,27 @@ describe('useSSEEvents', () => {
     expect(result.current.finalOutput).toEqual({ status: 'needs_review' });
   });
 
+  it('treats a settled "ready" status as fully complete (matches RequestStatus)', () => {
+    // Regression for the approved/PDF-ready state: it must settle the trace like needs_review.
+    const { result } = renderHook(() =>
+      useSSEEvents('req-1', { currentNode: 'done', status: 'ready' }),
+    );
+    for (const node of result.current.nodes) {
+      expect(node.status).toBe('success');
+    }
+    expect(result.current.finalOutput).toEqual({ status: 'ready' });
+  });
+
+  it('does not mark the trace all-success for a failed request', () => {
+    // `failed` is not a settled-success status: the run did not complete every node.
+    const { result } = renderHook(() =>
+      useSSEEvents('req-1', { currentNode: 'classify', status: 'failed' }),
+    );
+    // Only nodes before the current one are backfilled; nothing is force-marked success.
+    expect(result.current.nodes.find((n) => n.name === 'score')?.status).toBe('pending');
+    expect(result.current.finalOutput).toBeNull();
+  });
+
   it('does not backfill for a fresh request still at parse', () => {
     const { result } = renderHook(() =>
       useSSEEvents('req-1', { currentNode: 'parse', status: 'parsing' }),

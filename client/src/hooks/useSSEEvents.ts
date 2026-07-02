@@ -69,8 +69,10 @@ export interface SseConnectionState {
 
 const NODE_ORDER = ['parse', 'extract', 'classify', 'match', 'price', 'policy', 'score'];
 
-/** Statuses that mean the pipeline is no longer running, so the whole trace has already executed. */
-const SETTLED_STATUSES = new Set(['needs_review', 'auto_approved', 'priced', 'sent', 'declined']);
+// Statuses that mean the pipeline ran to completion, so the whole trace has already executed. These
+// match RequestStatus on the server; `failed` and `needs_clarification` are excluded because the
+// trace did not complete successfully (marking every node done would be wrong).
+const SETTLED_STATUSES = new Set(['needs_review', 'priced', 'ready', 'sent', 'declined']);
 
 /**
  * How many leading nodes are already done given the request's persisted `current_node`. Live events
