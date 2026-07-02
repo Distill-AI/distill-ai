@@ -1,8 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { z } from 'zod';
 import { env } from '@config/env';
+import { matchDemoFixture } from '@common/demo/demo-fixtures';
 import { LLMProvider } from '@modules/llm/llm.provider';
 import * as SYS_MSG from '@constants/system-messages';
+
+// Confidence for a deterministic DEMO_MODE fixture match — above CLASSIFY_THRESHOLD so it is not
+// treated as low-confidence and defaulted.
+const DEMO_CLASSIFY_CONFIDENCE = 0.95;
 
 const llmResponseSchema = z.object({
   type: z.enum(['catalog_rfq', 'service_quote']),
@@ -40,6 +45,13 @@ export class ClassifyService {
       return { type: 'service_quote', confidence: 0 };
     }
 
+    // Keys-removed path (NFR-OPS-4): in DEMO_MODE derive the type from the matching seed fixture
+    // instead of calling the LLM (which hard-requires a key), so classification is fixture-accurate
+    // rather than falling back to service_quote.
+    if (env.DEMO_MODE) {
+      return this.classifyFromFixture(description, lineItems);
+    }
+
     const prompt = this.buildPrompt({ ...parsedRequest, description, lineItems });
 
     try {
@@ -48,6 +60,16 @@ export class ClassifyService {
       this.logger.error(SYS_MSG.CLASSIFY_RETRY_FAILED);
       return { type: 'service_quote', confidence: 0 };
     }
+  }
+
+  private classifyFromFixture(
+    description: string,
+    lineItems: NonNullable<ParsedRequestInput['lineItems']>,
+  ): ClassifyResult {
+    const haystack = [description, ...lineItems.map((li) => li.raw_text)].join('\n');
+    const fixture = matchDemoFixture(haystack);
+    const type = fixture?.requestType === 'service_quote' ? 'service_quote' : 'catalog_rfq';
+    return { type, confidence: DEMO_CLASSIFY_CONFIDENCE };
   }
 
   private async invokeWithRetry(prompt: string, attempt = 1): Promise<ClassifyResult> {
