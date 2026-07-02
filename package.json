@@ -33,6 +33,7 @@
     "seed:live": "ts-node scripts/seed-live.ts",
     "seed:embeddings": "ts-node -r tsconfig-paths/register scripts/seed-embeddings.ts",
     "seed:clear": "ts-node -r tsconfig-paths/register scripts/clear-seed.ts",
+    "smoke:keys-removed": "ts-node scripts/keys-removed-smoke.ts",
     "perf": "ts-node scripts/perf-test.ts",
     "prepare": "husky || true"
   },
