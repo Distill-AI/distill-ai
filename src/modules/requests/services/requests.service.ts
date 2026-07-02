@@ -3,14 +3,12 @@ import type { PaginatedResult } from '@common/model-action/abstract.model-action
 import { LineItemModelAction } from '@modules/catalog/line-item.model-action';
 import type { LineItem } from '@modules/catalog/entities/line-item.entity';
 import { QuoteModelAction } from '@modules/quotes/quote.model-action';
-import type { Quote } from '@modules/quotes/entities/quote.entity';
-import type { QuoteLineItem } from '@modules/quotes/entities/quote-line-item.entity';
+import { toQuoteDetail } from '@modules/quotes/mappers/quote-detail.mapper';
 import { RequestModelAction } from '../requests.model-action';
 import type { Request } from '../entities/request.entity';
 import { AttachmentsService } from './attachments.service';
 import type {
   LineItemDetail,
-  QuoteDetail,
   RequestDetail,
   RequestSummary,
 } from '../interfaces/request-response.interface';
@@ -100,25 +98,6 @@ function toLineItemDetail(line: LineItem): LineItemDetail {
         }
       : null,
     flags: Array.isArray(line.flags) ? (line.flags as string[]) : [],
-  };
-}
-
-/** Maps the quote + its line items to the suggested-quote read model. */
-function toQuoteDetail(quote: Quote, lines: QuoteLineItem[]): QuoteDetail {
-  return {
-    subtotal_minor: quote.subtotal_minor,
-    discount_minor: quote.discount_minor,
-    total_minor: quote.total_minor,
-    currency: quote.currency,
-    lead_time_days: quote.lead_time_days,
-    lines: lines.map((l) => ({
-      position: l.position,
-      sku_id: l.sku_id,
-      description: l.description,
-      quantity: l.quantity,
-      unit_price_minor: l.unit_price_minor,
-      amount_minor: l.amount_minor,
-    })),
   };
 }
 

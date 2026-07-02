@@ -117,7 +117,7 @@ export class QuoteModelAction extends AbstractModelAction<Quote> {
    * Lines are ordered by position so the suggested-quote pane is stable across reads.
    */
   async getForRequest(requestId: string): Promise<{ quote: Quote; lines: QuoteLineItem[] } | null> {
-    return this.dataSource.transaction(async (em) => {
+    return this.dataSource.transaction('REPEATABLE READ', async (em) => {
       const quote = await em.findOne(Quote, { where: { request_id: requestId } });
       if (!quote) {
         return null;
@@ -128,5 +128,79 @@ export class QuoteModelAction extends AbstractModelAction<Quote> {
       });
       return { quote, lines };
     });
+  }
+
+  /**
+   * Atomically claims a `DRAFT` quote for approval. Postgres resolves any concurrent claim race at
+   * the row level, so exactly one caller's update affects the row; the loser gets back `false`
+   * rather than a duplicate approval.
+   */
+  async tryClaimForApproval(quoteId: string, approvedBy: string | null): Promise<boolean> {
+    const result = await this.repository.update(
+      { id: quoteId, status: QuoteStatus.DRAFT },
+      { status: QuoteStatus.APPROVED, approved_by: approvedBy },
+    );
+    return (result.affected ?? 0) > 0;
+  }
+
+  /**
+   * Marks a claimed quote as `READY` once its PDF has been written to object storage. Only
+   * transitions from `APPROVED`, so a stale retry can't push a `DRAFT` or already-`READY` quote
+   * to `READY` and overwrite its PDF metadata; returns whether the row actually transitioned.
+   */
+  async markReady(quoteId: string, pdfStorageUrl: string): Promise<boolean> {
+    const result = await this.repository.update(
+      { id: quoteId, status: QuoteStatus.APPROVED },
+      { status: QuoteStatus.READY, pdf_storage_url: pdfStorageUrl, pdf_generated_at: new Date() },
+    );
+    return (result.affected ?? 0) > 0;
+  }
+
+  /**
+   * Compensating action for a failed render_quote_pdf call: undoes the claim so a retry can
+   * re-enter at `tryClaimForApproval`. Only fires from `APPROVED`, so it can never undo a claim
+   * that has already progressed past this quote's own approval attempt.
+   */
+  async revertToDraft(quoteId: string): Promise<void> {
+    await this.repository.update(
+      { id: quoteId, status: QuoteStatus.APPROVED },
+      { status: QuoteStatus.DRAFT, approved_by: null },
+    );
+  }
+
+  /**
+   * Loads a quote and its line items by quote id, in one consistent transaction. Same shape as
+   * `getForRequest`, keyed by quote id instead of request id. Uses `REPEATABLE READ` so the two
+   * reads share a single snapshot: under the default `READ COMMITTED`, a concurrent
+   * `replaceForRequest` between the `findOne` and `find` could otherwise return a quote paired
+   * with another quote's line items.
+   */
+  async getByIdWithLines(
+    quoteId: string,
+  ): Promise<{ quote: Quote; lines: QuoteLineItem[] } | null> {
+    return this.dataSource.transaction('REPEATABLE READ', async (em) => {
+      const quote = await em.findOne(Quote, { where: { id: quoteId } });
+      if (!quote) {
+        return null;
+      }
+      const lines = await em.find(QuoteLineItem, {
+        where: { quote_id: quote.id },
+        relations: { sku: true },
+        order: { position: 'ASC' },
+      });
+      return { quote, lines };
+    });
+  }
+
+  /**
+   * Persists a best-effort follow-up email draft generated after the quote's PDF is ready. Returns
+   * whether the update actually affected a row, so callers can detect a stale or removed quote id.
+   */
+  async saveEmailDraft(quoteId: string, subject: string, body: string): Promise<boolean> {
+    const result = await this.repository.update(
+      { id: quoteId },
+      { email_draft_subject: subject, email_draft_body: body },
+    );
+    return (result.affected ?? 0) > 0;
   }
 }
