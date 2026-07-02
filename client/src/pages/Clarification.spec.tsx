@@ -6,6 +6,10 @@ import { PageHeaderProvider, usePageHeader } from '../context/PageHeaderContext'
 import type { RequestDetail } from '../api/requests';
 import type { Clarification as ClarificationDetail } from '../api/clarification';
 
+interface MockAxiosError {
+  response?: { data?: { message?: string } };
+}
+
 const {
   mockUseRequest,
   mockUseClarification,
@@ -225,6 +229,29 @@ describe('Clarification', () => {
     );
   });
 
+  it('edit flow: disables Mark as sent while editing to avoid discarding in-progress edits', async () => {
+    const user = userEvent.setup();
+    mockUseRequest.mockReturnValue({
+      data: requestFixture,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    mockUseClarification.mockReturnValue({
+      data: clarificationFixture,
+      isLoading: false,
+      isError: false,
+    });
+
+    renderClarification();
+
+    expect(screen.getByRole('button', { name: /mark as sent/i })).not.toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: /^edit$/i }));
+
+    expect(screen.getByRole('button', { name: /mark as sent/i })).toBeDisabled();
+  });
+
   it('edit flow: shows an error and stays in edit mode when saving fails', async () => {
     const user = userEvent.setup();
     mockUseRequest.mockReturnValue({
@@ -238,8 +265,9 @@ describe('Clarification', () => {
       isLoading: false,
       isError: false,
     });
-    mockUpdateMutate.mockImplementation((_payload: unknown, { onError }: { onError: () => void }) =>
-      onError(),
+    mockUpdateMutate.mockImplementation(
+      (_payload: unknown, { onError }: { onError: (err: MockAxiosError) => void }) =>
+        onError({ response: undefined }),
     );
 
     renderClarification();
@@ -250,6 +278,32 @@ describe('Clarification', () => {
     expect(screen.getByText(/could not save the draft/i)).toBeInTheDocument();
     // Stays in edit mode so the user doesn't lose their in-progress edits.
     expect(screen.getByLabelText('Subject')).not.toHaveAttribute('readOnly');
+  });
+
+  it('edit flow: shows the server message on save failure when one is provided', async () => {
+    const user = userEvent.setup();
+    mockUseRequest.mockReturnValue({
+      data: requestFixture,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    mockUseClarification.mockReturnValue({
+      data: clarificationFixture,
+      isLoading: false,
+      isError: false,
+    });
+    mockUpdateMutate.mockImplementation(
+      (_payload: unknown, { onError }: { onError: (err: MockAxiosError) => void }) =>
+        onError({ response: { data: { message: 'Draft was already sent.' } } }),
+    );
+
+    renderClarification();
+
+    await user.click(screen.getByRole('button', { name: /^edit$/i }));
+    await user.click(screen.getByRole('button', { name: /^save$/i }));
+
+    expect(screen.getByText('Draft was already sent.')).toBeInTheDocument();
   });
 
   it('send flow: Mark as sent calls sendClarification with the clarification id', async () => {
@@ -286,8 +340,9 @@ describe('Clarification', () => {
       isLoading: false,
       isError: false,
     });
-    mockSendMutate.mockImplementation((_id: string, { onError }: { onError: () => void }) =>
-      onError(),
+    mockSendMutate.mockImplementation(
+      (_id: string, { onError }: { onError: (err: MockAxiosError) => void }) =>
+        onError({ response: undefined }),
     );
 
     renderClarification();
@@ -295,6 +350,31 @@ describe('Clarification', () => {
     await user.click(screen.getByRole('button', { name: /mark as sent/i }));
 
     expect(screen.getByText(/could not mark this clarification as sent/i)).toBeInTheDocument();
+  });
+
+  it('send flow: shows the server message when marking as sent fails with one', async () => {
+    const user = userEvent.setup();
+    mockUseRequest.mockReturnValue({
+      data: requestFixture,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    mockUseClarification.mockReturnValue({
+      data: clarificationFixture,
+      isLoading: false,
+      isError: false,
+    });
+    mockSendMutate.mockImplementation(
+      (_id: string, { onError }: { onError: (err: MockAxiosError) => void }) =>
+        onError({ response: { data: { message: 'Clarification already sent.' } } }),
+    );
+
+    renderClarification();
+
+    await user.click(screen.getByRole('button', { name: /mark as sent/i }));
+
+    expect(screen.getByText('Clarification already sent.')).toBeInTheDocument();
   });
 
   it('shows a sent notice instead of action buttons once sent_at is set', () => {

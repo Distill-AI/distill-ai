@@ -35,7 +35,11 @@ export function Clarification() {
     error: clarificationError,
     refetch: refetchClarification,
   } = useClarification(id);
-  const generateDraft = useGenerateClarificationDraft();
+  const {
+    mutate: generateMutate,
+    isError: isGenerateError,
+    reset: resetGenerateDraft,
+  } = useGenerateClarificationDraft();
   const { mutate: updateDraftMutate, isPending: isSavingDraft } = useUpdateClarificationDraft();
   const { mutate: sendClarificationMutate, isPending: isSending } = useSendClarification();
   const { setTitle, setActions } = usePageHeader();
@@ -71,8 +75,8 @@ export function Clarification() {
       .filter((a) => a.parse_status === 'unparsed')
       .map((a) => `${a.filename}: ${REASON_LABELS[a.parse_error_reason ?? 'unknown']}`);
 
-    generateDraft.mutate({ requestId: request.id, gaps });
-  }, [request, clarification, isClarificationError, clarificationError, generateDraft]);
+    generateMutate({ requestId: request.id, gaps });
+  }, [request, clarification, isClarificationError, clarificationError, generateMutate]);
 
   useEffect(() => {
     setTitle(
@@ -116,7 +120,10 @@ export function Clarification() {
             setIsEditing(false);
             setActionError(null);
           },
-          onError: () => setActionError('Could not save the draft. Please try again.'),
+          onError: (err) =>
+            setActionError(
+              err.response?.data?.message ?? 'Could not save the draft. Please try again.',
+            ),
         },
       );
       return;
@@ -159,11 +166,14 @@ export function Clarification() {
           onClick={() =>
             sendClarificationMutate(clarification.id, {
               onSuccess: () => setActionError(null),
-              onError: () =>
-                setActionError('Could not mark this clarification as sent. Please try again.'),
+              onError: (err) =>
+                setActionError(
+                  err.response?.data?.message ??
+                    'Could not mark this clarification as sent. Please try again.',
+                ),
             })
           }
-          disabled={isSending}
+          disabled={isSending || isEditing}
           className="h-9 rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSending ? 'Marking as sent…' : PRIMARY_ACTION_LABELS.clarificationSend}
@@ -182,10 +192,7 @@ export function Clarification() {
   ]);
 
   const isGenerating =
-    !clarification &&
-    isClarificationError &&
-    isNotFound(clarificationError) &&
-    !generateDraft.isError;
+    !clarification && isClarificationError && isNotFound(clarificationError) && !isGenerateError;
   const isLoading = isRequestLoading || isClarificationLoading || isGenerating;
 
   return (
@@ -196,12 +203,12 @@ export function Clarification() {
         </div>
       ) : isRequestError || !request ? (
         <ErrorBanner message="Could not load this request." onRetry={() => void refetch()} />
-      ) : generateDraft.isError ? (
+      ) : isGenerateError ? (
         <ErrorBanner
           message="Could not draft a clarification email. Please try again."
           onRetry={() => {
             generateAttemptedRef.current = false;
-            generateDraft.reset();
+            resetGenerateDraft();
           }}
         />
       ) : !clarification ? (
