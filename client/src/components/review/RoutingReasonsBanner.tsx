@@ -46,9 +46,6 @@ export function RoutingReasonsBanner({ routing, routing_reasons }: RoutingReason
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M2 4l4 4 4-4" />
         </svg>
-        <span className="ml-1 rounded bg-indigo-50 px-1.5 py-0.5 text-[11px] font-semibold text-indigo-700">
-          AI explanation
-        </span>
       </button>
 
       <div
