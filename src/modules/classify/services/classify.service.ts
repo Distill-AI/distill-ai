@@ -5,7 +5,7 @@ import { matchDemoFixture } from '@common/demo/demo-fixtures';
 import { LLMProvider } from '@modules/llm/llm.provider';
 import * as SYS_MSG from '@constants/system-messages';
 
-// Confidence for a deterministic DEMO_MODE fixture match — above CLASSIFY_THRESHOLD so it is not
+// Confidence for a deterministic DEMO_MODE fixture match. Above CLASSIFY_THRESHOLD so it is not
 // treated as low-confidence and defaulted.
 const DEMO_CLASSIFY_CONFIDENCE = 0.95;
 

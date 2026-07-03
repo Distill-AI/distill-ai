@@ -15,7 +15,7 @@ before a demo.
 
 - One request goes ingest → priced quote → approved → PDF with **no `LLM_API_KEY` / `EMBEDDINGS_API_KEY`** set (AC-01, SEC-01).
 - A missing fixture surfaces as a failed pipeline status (non-zero exit), never a silent live call (EC-01).
-- It is deterministic — no external call is made, so it does not flake on provider availability (EC-02).
+- It is deterministic: no external call is made, so it does not flake on provider availability (EC-02).
 
 ### Run it locally
 
@@ -33,7 +33,7 @@ before a demo.
    ```
 
 3. Start the worker and API in **keys-removed** mode (a separate terminal for each). Note there is no
-   `LLM_API_KEY` on these commands — that is the point:
+   `LLM_API_KEY` on these commands, and that is the point:
 
    ```bash
    DEMO_MODE=true pnpm worker:prod
@@ -57,7 +57,7 @@ before a demo.
    [keys-removed-smoke] PASS: full ingest -> approved PDF completed on fixtures with no provider keys
    ```
 
-   A non-zero exit means the fixture path is broken — fix it before demoing. `SMOKE_API_URL` and
+   A non-zero exit means the fixture path is broken: fix it before demoing. `SMOKE_API_URL` and
    `SMOKE_TIMEOUT_MS` override the target and the wait budget.
 
 ### In CI
@@ -69,8 +69,8 @@ missing fixture) fails the job instead of passing quietly.
 
 ## Pre-demo sanity checks
 
-- [ ] `docker compose up -d postgres redis` — both containers healthy.
-- [ ] `pnpm migration:run` — no pending migrations; catalog + pricing rules seeded.
+- [ ] `docker compose up -d postgres redis`: both containers healthy.
+- [ ] `pnpm migration:run`: no pending migrations; catalog + pricing rules seeded.
 - [ ] Worker and API start cleanly in `DEMO_MODE` with no provider keys.
 - [ ] `pnpm smoke:keys-removed` passes (ingest → approved PDF on fixtures).
 - [ ] The generated PDF opens and shows the expected line items.

@@ -7,15 +7,21 @@ vi.mock('@config/env', () => ({ env: { DEMO_MODE: true, LLM_MODEL: 'demo' } }));
 import { ExtractRequestToolFactory } from '../tools/extract-request.tool';
 import type { LLMProvider } from '@modules/llm/llm.provider';
 
+// The canonical clean-RFQ message (subject + body of rfq_01_catalog_clean), including the signature so
+// the sender identity is corroborated by the source text. All five line items appear here.
 const CLEAN_RFQ_BODY = [
+  'RFQ - Fastener Restock Order #DR-2025-441',
   'Please quote on the following:',
   '- 500x M8 Hex Bolt, Zinc Plated, Grade 8.8',
   '- 500x M8 Hex Nut, Zinc Plated',
   '- 200x M8 Flat Washer, Zinc Plated',
+  '- 100x M10 Hex Bolt, Zinc Plated, Grade 8.8',
+  '- 100x M10 Hex Nut, Zinc Plated',
+  'Procurement Manager - Delta Ridge Manufacturing',
 ].join('\n');
 
 function makeTool() {
-  // If the LLM is ever called in DEMO_MODE the test fails loudly — the whole point is no provider call.
+  // If the LLM is ever called in DEMO_MODE the test fails loudly: the whole point is no provider call.
   const llm = {
     invoke: vi.fn().mockRejectedValue(new Error('LLM must not be called in DEMO_MODE')),
   };
@@ -34,9 +40,34 @@ describe('ExtractRequestToolFactory (DEMO_MODE fixture fallback)', () => {
     expect(result.line_items.length).toBeGreaterThan(0);
     expect(result.line_items[0].raw_text).toContain('M8 Hex Bolt');
     // Every returned line item must appear in the source so extraction reconciles downstream.
-    for (const item of result.line_items.filter((li) => CLEAN_RFQ_BODY.includes(li.raw_text))) {
+    for (const item of result.line_items) {
       expect(CLEAN_RFQ_BODY).toContain(item.raw_text);
     }
+  });
+
+  it('does not stamp the fixture sender onto a request whose sender is not in the text', async () => {
+    const { contract, llm } = makeTool();
+
+    // Same line items as the clean fixture, but no matching sender: identity fields must stay null so a
+    // live request is never labelled with the fixture's canned company/contact.
+    const result = await contract.execute({
+      text: [
+        'Please quote on the following:',
+        '- 500x M8 Hex Bolt, Zinc Plated, Grade 8.8',
+        '- 500x M8 Hex Nut, Zinc Plated',
+        '- 200x M8 Flat Washer, Zinc Plated',
+        '- 100x M10 Hex Bolt, Zinc Plated, Grade 8.8',
+        '- 100x M10 Hex Nut, Zinc Plated',
+      ].join('\n'),
+      priorFailure: null,
+    });
+
+    expect(llm.invoke).not.toHaveBeenCalled();
+    expect(result.company).toBeNull();
+    expect(result.contact).toBeNull();
+    expect(result.sender_email).toBeNull();
+    // Line items still come from the fixture so pricing can proceed.
+    expect(result.line_items.length).toBeGreaterThan(0);
   });
 
   it('falls back to the clean catalog RFQ when no line item matches the text', async () => {

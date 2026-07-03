@@ -57,19 +57,26 @@ export class ExtractRequestToolFactory {
   }
 
   /** Maps the best-matching seed fixture's `extracted_fields` into the extraction shape so the result
-   * reconciles against the source text; defaults to the clean catalog RFQ. */
+   * reconciles against the source text; defaults to the clean catalog RFQ.
+   *
+   * Line items always come from the fixture (pricing needs them), but the sender identity fields are
+   * only replayed when the submitted text is genuinely this fixture's message. reconcile() checks line
+   * items and totals, not sender identity, so replaying a fixture's canned company/contact against an
+   * improvised request whose items merely happened to match would stamp the wrong details onto the
+   * quote; when the sender is not corroborated the identity fields are left null instead. */
   private extractFromFixture(text: string): ExtractionV1 {
     const fixture = matchDemoFixture(text);
     if (!fixture) throw new Error(SYS_MSG.EXTRACTION_DEMO_FIXTURE_UNAVAILABLE);
 
     const fields = fixture.extractedFields;
     const rawItems = Array.isArray(fields.line_items) ? fields.line_items : [];
+    const senderMatches = this.fixtureSenderMatchesText(fields, text);
     return ExtractionV1Schema.parse({
-      company: fields.sender_company ?? null,
-      contact: fields.sender_contact ?? null,
-      sender_address: fields.sender_address ?? null,
-      sender_email: fields.sender_email ?? null,
-      delivery_date: fields.delivery_date ?? null,
+      company: senderMatches ? (fields.sender_company ?? null) : null,
+      contact: senderMatches ? (fields.sender_contact ?? null) : null,
+      sender_address: senderMatches ? (fields.sender_address ?? null) : null,
+      sender_email: senderMatches ? (fields.sender_email ?? null) : null,
+      delivery_date: senderMatches ? (fields.delivery_date ?? null) : null,
       line_items: rawItems.map((entry, index) => {
         const item = (entry ?? {}) as Record<string, unknown>;
         return {
@@ -80,6 +87,19 @@ export class ExtractRequestToolFactory {
         };
       }),
     });
+  }
+
+  /** True when the submitted text is genuinely this fixture's message, judged by its most specific
+   * sender signals (email or company name) appearing verbatim. Guards against stamping a fixture's
+   * canned sender onto a live request whose line items merely happened to match. */
+  private fixtureSenderMatchesText(fields: Record<string, unknown>, text: string): boolean {
+    const haystack = text.toLowerCase();
+    const email = typeof fields.sender_email === 'string' ? fields.sender_email.toLowerCase() : '';
+    const company =
+      typeof fields.sender_company === 'string' ? fields.sender_company.toLowerCase() : '';
+    return (
+      (email !== '' && haystack.includes(email)) || (company !== '' && haystack.includes(company))
+    );
   }
 
   private buildPrompt(input: ExtractRequestInput): string {
