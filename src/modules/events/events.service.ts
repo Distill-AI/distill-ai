@@ -40,12 +40,17 @@ export class EventsService implements OnModuleInit {
       );
     }
     const definedEventNames = new Set(Object.keys(parsed.$defs ?? {}));
-    const missing = Object.keys(EVENT_PAYLOAD_SCHEMAS).filter(
-      (eventName) => !definedEventNames.has(eventName),
-    );
+    const schemaEventNames = new Set(Object.keys(EVENT_PAYLOAD_SCHEMAS));
+    const missing = [...schemaEventNames].filter((eventName) => !definedEventNames.has(eventName));
     if (missing.length > 0) {
       throw new Error(
         `Failed to load events.schema.json: missing $defs entries for: ${missing.join(', ')}`,
+      );
+    }
+    const extra = [...definedEventNames].filter((eventName) => !schemaEventNames.has(eventName));
+    if (extra.length > 0) {
+      throw new Error(
+        `Failed to load events.schema.json: $defs entries with no matching EVENT_PAYLOAD_SCHEMAS entry: ${extra.join(', ')}`,
       );
     }
   }

@@ -80,6 +80,14 @@ describe('EventsService', () => {
       writeFileSync(SCHEMA_PATH, JSON.stringify({ $defs: { 'stage.error': {} } }), 'utf8');
       expect(() => service.onModuleInit()).toThrow(/missing \$defs entries/);
     });
+
+    it('throws when a $defs entry has no matching EVENT_PAYLOAD_SCHEMAS entry', () => {
+      const staleSchema = JSON.stringify({
+        $defs: { ...JSON.parse(VALID_SCHEMA).$defs, 'quote.renamed': {} },
+      });
+      writeFileSync(SCHEMA_PATH, staleSchema, 'utf8');
+      expect(() => service.onModuleInit()).toThrow(/no matching EVENT_PAYLOAD_SCHEMAS entry/);
+    });
   });
 
   describe('emit - stage.error routing', () => {

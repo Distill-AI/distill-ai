@@ -1,5 +1,11 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$sharedDefs": {
+    "nodeName": {
+      "type": "string",
+      "enum": ["parse", "extract", "classify", "match", "price", "policy", "score", "done", "failed"]
+    }
+  },
   "$defs": {
     "request.received": {
       "title": "request.received",
@@ -21,10 +27,7 @@
       "properties": {
         "type": { "type": "string", "const": "node.entered" },
         "timestamp": { "type": "string", "format": "date-time" },
-        "node": {
-          "type": "string",
-          "enum": ["parse", "extract", "classify", "match", "price", "policy", "score", "done", "failed"]
-        },
+        "node": { "$ref": "#/$sharedDefs/nodeName" },
         "status": { "type": "string", "const": "processing" }
       }
     },
@@ -40,10 +43,7 @@
           "properties": {
             "type": { "type": "string", "const": "node.exited" },
             "timestamp": { "type": "string", "format": "date-time" },
-            "node": {
-              "type": "string",
-              "enum": ["parse", "extract", "classify", "match", "price", "policy", "score", "done", "failed"]
-            },
+            "node": { "$ref": "#/$sharedDefs/nodeName" },
             "status": { "type": "string", "enum": ["success", "failed"] },
             "duration_ms": { "type": "integer", "minimum": 0 },
             "summary": { "type": "string" }
@@ -55,10 +55,7 @@
           "required": ["node", "next"],
           "additionalProperties": false,
           "properties": {
-            "node": {
-              "type": "string",
-              "enum": ["parse", "extract", "classify", "match", "price", "policy", "score", "done", "failed"]
-            },
+            "node": { "$ref": "#/$sharedDefs/nodeName" },
             "next": { "type": "string", "const": "needs_review" }
           }
         },
@@ -75,14 +72,8 @@
           ],
           "additionalProperties": false,
           "properties": {
-            "node": {
-              "type": "string",
-              "enum": ["parse", "extract", "classify", "match", "price", "policy", "score", "done", "failed"]
-            },
-            "next": {
-              "type": "string",
-              "enum": ["parse", "extract", "classify", "match", "price", "policy", "score", "done", "failed"]
-            },
+            "node": { "$ref": "#/$sharedDefs/nodeName" },
+            "next": { "$ref": "#/$sharedDefs/nodeName" },
             "classification_type": { "type": "string", "enum": ["catalog_rfq", "service_quote", "unknown"] },
             "classification_confidence": { "type": "number" },
             "elapsed_ms": { "type": "integer", "minimum": 0 },
@@ -95,14 +86,8 @@
           "required": ["node", "next", "matched_count", "total_count", "degraded", "message"],
           "additionalProperties": false,
           "properties": {
-            "node": {
-              "type": "string",
-              "enum": ["parse", "extract", "classify", "match", "price", "policy", "score", "done", "failed"]
-            },
-            "next": {
-              "type": "string",
-              "enum": ["parse", "extract", "classify", "match", "price", "policy", "score", "done", "failed"]
-            },
+            "node": { "$ref": "#/$sharedDefs/nodeName" },
+            "next": { "$ref": "#/$sharedDefs/nodeName" },
             "matched_count": { "type": "integer", "minimum": 0 },
             "total_count": { "type": "integer", "minimum": 0 },
             "degraded": { "type": "boolean" },
@@ -123,14 +108,8 @@
           ],
           "additionalProperties": false,
           "properties": {
-            "node": {
-              "type": "string",
-              "enum": ["parse", "extract", "classify", "match", "price", "policy", "score", "done", "failed"]
-            },
-            "next": {
-              "type": "string",
-              "enum": ["parse", "extract", "classify", "match", "price", "policy", "score", "done", "failed"]
-            },
+            "node": { "$ref": "#/$sharedDefs/nodeName" },
+            "next": { "$ref": "#/$sharedDefs/nodeName" },
             "routing": { "type": "string", "enum": ["auto_eligible", "needs_review"] },
             "overall_confidence": { "type": "number" },
             "routing_reasons": {
@@ -156,14 +135,8 @@
           "required": ["node", "next", "schema_valid", "reextract_count", "elapsed_ms", "message"],
           "additionalProperties": false,
           "properties": {
-            "node": {
-              "type": "string",
-              "enum": ["parse", "extract", "classify", "match", "price", "policy", "score", "done", "failed"]
-            },
-            "next": {
-              "type": "string",
-              "enum": ["parse", "extract", "classify", "match", "price", "policy", "score", "done", "failed"]
-            },
+            "node": { "$ref": "#/$sharedDefs/nodeName" },
+            "next": { "$ref": "#/$sharedDefs/nodeName" },
             "schema_valid": { "type": "boolean" },
             "reextract_count": { "type": "integer", "minimum": 0 },
             "elapsed_ms": { "type": "integer", "minimum": 0 },
@@ -196,10 +169,7 @@
       "additionalProperties": false,
       "properties": {
         "type": { "type": "string", "const": "request.resumed" },
-        "resumed_from_node": {
-          "type": "string",
-          "enum": ["parse", "extract", "classify", "match", "price", "policy", "score", "done", "failed"]
-        },
+        "resumed_from_node": { "$ref": "#/$sharedDefs/nodeName" },
         "reason": { "type": "string", "enum": ["crash_recovery", "manual"] }
       }
     },
@@ -297,14 +267,8 @@
       "required": ["node", "next", "total_minor", "blocked", "message"],
       "additionalProperties": false,
       "properties": {
-        "node": {
-          "type": "string",
-          "enum": ["parse", "extract", "classify", "match", "price", "policy", "score", "done", "failed"]
-        },
-        "next": {
-          "type": "string",
-          "enum": ["parse", "extract", "classify", "match", "price", "policy", "score", "done", "failed"]
-        },
+        "node": { "$ref": "#/$sharedDefs/nodeName" },
+        "next": { "$ref": "#/$sharedDefs/nodeName" },
         "total_minor": { "type": "integer" },
         "blocked": { "type": "boolean" },
         "message": { "type": "string" }
@@ -317,14 +281,8 @@
       "required": ["node", "next", "breached", "fail_closed", "breach_count", "message"],
       "additionalProperties": false,
       "properties": {
-        "node": {
-          "type": "string",
-          "enum": ["parse", "extract", "classify", "match", "price", "policy", "score", "done", "failed"]
-        },
-        "next": {
-          "type": "string",
-          "enum": ["parse", "extract", "classify", "match", "price", "policy", "score", "done", "failed"]
-        },
+        "node": { "$ref": "#/$sharedDefs/nodeName" },
+        "next": { "$ref": "#/$sharedDefs/nodeName" },
         "breached": { "type": "boolean" },
         "fail_closed": { "type": "boolean" },
         "breach_count": { "type": "integer", "minimum": 0 },
