@@ -1,6 +1,7 @@
-import { UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import { UnauthorizedException, ForbiddenException, HttpStatus } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { DataSource } from 'typeorm';
+import { CustomHttpException } from '@common/exceptions/custom-http.exception';
 
 const mockAuthConfig = vi.hoisted(() => ({
   enabled: true,
@@ -8,10 +9,9 @@ const mockAuthConfig = vi.hoisted(() => ({
   tokenExpiryMs: 3600000,
 }));
 const mockVerify = vi.hoisted(() => vi.fn());
-const mockSign = vi.hoisted(() => vi.fn().mockReturnValue('mock-jwt-token'));
 
 vi.mock('@config/auth.config', () => ({ authConfig: mockAuthConfig }));
-vi.mock('jsonwebtoken', () => ({ verify: mockVerify, sign: mockSign }));
+vi.mock('jsonwebtoken', () => ({ verify: mockVerify }));
 
 import { AuthService } from '../services/auth.service';
 import { AuthGuard } from '../guards/auth.guard';
@@ -343,29 +343,22 @@ describe('Auth — Comprehensive', () => {
   });
 
   describe('AuthService', () => {
-    it('login returns token when auth enabled', async () => {
+    it('login throws NOT_IMPLEMENTED when auth enabled', () => {
       mockAuthConfig.enabled = true;
 
-      const result = await service.login('test@example.com', 'password');
-      expect(result.accessToken).toBe('mock-jwt-token');
-      expect(result.expiresIn).toBe(Math.floor(mockAuthConfig.tokenExpiryMs / 1000));
-      expect(result.tokenType).toBe('Bearer');
-      expect(mockSign).toHaveBeenCalledWith(
-        {
-          userId: 'test_example_com',
-          orgId: '11111111-1111-1111-1111-111111111111',
-          roles: ['admin', 'estimator'],
-          email: 'test@example.com',
-        },
-        'test-secret',
-        expect.objectContaining({ expiresIn: 3600 }),
-      );
+      expect(() => service.login('test@example.com', 'password')).toThrow(CustomHttpException);
+      try {
+        service.login('test@example.com', 'password');
+        throw new Error('expected login to throw');
+      } catch (error) {
+        expect((error as CustomHttpException).getStatus()).toBe(HttpStatus.NOT_IMPLEMENTED);
+      }
     });
 
-    it('login returns demo token when auth disabled', async () => {
+    it('login returns demo token when auth disabled', () => {
       mockAuthConfig.enabled = false;
 
-      const result = await service.login('test@example.com', 'password');
+      const result = service.login('test@example.com', 'password');
       expect(result.accessToken).toBe('demo-token');
       expect(result.tokenType).toBe('Bearer');
     });

@@ -45,6 +45,15 @@ export function LoginDocs() {
       description: SYS_MSG.AUTH_INVALID_CREDENTIALS,
       schema: errorSchema(HttpStatus.UNAUTHORIZED, 'Unauthorized', 'Invalid credentials'),
     }),
+    ApiResponse({
+      status: HttpStatus.NOT_IMPLEMENTED,
+      description: SYS_MSG.AUTH_LOGIN_NOT_IMPLEMENTED,
+      schema: errorSchema(
+        HttpStatus.NOT_IMPLEMENTED,
+        'Not Implemented',
+        SYS_MSG.AUTH_LOGIN_NOT_IMPLEMENTED,
+      ),
+    }),
   );
 }
 
