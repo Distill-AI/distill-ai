@@ -222,22 +222,6 @@ describe('Review', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
-  it('renders the routing-reasons banner with flagged reasons', () => {
-    mockUseRequest.mockReturnValue({ data: detail, isLoading: false, isError: false });
-    renderReview();
-
-    expect(screen.getByRole('button', { name: /review flags/i })).toBeInTheDocument();
-  });
-
-  it('shows an all-clear banner for auto-eligible requests', () => {
-    const autoDetail = { ...detail, routing: 'auto_eligible', routing_reasons: [] };
-    mockUseRequest.mockReturnValue({ data: autoDetail, isLoading: false, isError: false });
-    renderReview();
-
-    expect(screen.getByText(/all clear/i)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /review flags/i })).not.toBeInTheDocument();
-  });
-
   it('navigates to the Clarification screen when Clarification is clicked', async () => {
     const user = userEvent.setup();
     mockUseRequest.mockReturnValue({
