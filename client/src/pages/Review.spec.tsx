@@ -14,6 +14,9 @@ const { mockUseRequest, mockDownload, mockNavigate } = vi.hoisted(() => ({
 vi.mock('../api/requests', () => ({
   useRequest: () => mockUseRequest(),
 }));
+vi.mock('../api/copilotExplanation', () => ({
+  useCopilotExplanation: () => ({ data: undefined, isLoading: false, isError: true }),
+}));
 vi.mock('../api/attachments', () => ({
   downloadAttachment: mockDownload,
 }));
