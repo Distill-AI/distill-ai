@@ -31,6 +31,8 @@ import { LineItemsModule } from '@modules/catalog/line-items.module';
 import { PricingModule } from '@modules/pricing/pricing.module';
 // ── Policy ────────────────────────────────────────────────────────
 import { PolicyModule } from '@modules/policy/policy.module';
+// ── Scoring ──────────────────────────────────────────────────────
+import { ScoringModule } from '@modules/scoring/scoring.module';
 
 // ── Auth ───────────────────────────────────────────────────────
 import { AuthModule } from '@modules/auth';
@@ -67,6 +69,7 @@ import { RlsContextMiddleware } from '@modules/auth/middleware/rls-context.middl
     AuthModule,
     PricingModule,
     PolicyModule,
+    ScoringModule,
     // ── Feature modules , add yours here, remove the reference ones ───────
     JobsModule,
     DlqModule,
