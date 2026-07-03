@@ -33,6 +33,8 @@ import { PricingModule } from '@modules/pricing/pricing.module';
 import { PolicyModule } from '@modules/policy/policy.module';
 // ── Scoring ──────────────────────────────────────────────────────
 import { ScoringModule } from '@modules/scoring/scoring.module';
+// ── Copilot ──────────────────────────────────────────────────────
+import { CopilotModule } from '@modules/copilot/copilot.module';
 
 // ── Auth ───────────────────────────────────────────────────────
 import { AuthModule } from '@modules/auth';
@@ -83,6 +85,7 @@ import { RlsContextMiddleware } from '@modules/auth/middleware/rls-context.middl
     RequestsModule,
     LineItemsModule,
     ClarificationModule,
+    CopilotModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
