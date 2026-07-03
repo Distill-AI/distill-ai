@@ -26,11 +26,11 @@ function ok(message: string): void {
 }
 
 async function main(): Promise<void> {
-  // 1. Confirm the run is genuinely keys-removed (SEC-01) — no embedded/live provider credentials.
+  // 1. Confirm the run is genuinely keys-removed (SEC-01): no embedded/live provider credentials.
   if (process.env.DEMO_MODE !== 'true') fail('DEMO_MODE must be "true" so the pipeline replays fixtures');
   for (const key of ['LLM_API_KEY', 'EMBEDDINGS_API_KEY']) {
     if ((process.env[key] ?? '').trim() !== '') {
-      fail(`${key} is set — this check must run with no provider keys to prove the fixture fallback`);
+      fail(`${key} is set: this check must run with no provider keys to prove the fixture fallback`);
     }
   }
   ok('DEMO_MODE=true and no provider keys present');
@@ -66,7 +66,7 @@ async function main(): Promise<void> {
   ok(`ingested request ${requestId}`);
 
   // 3. Poll until the pipeline has produced a quote. A `failed` status means a fixture was missing or a
-  //    live call was attempted with no key — surface it as a hard failure (EC-01).
+  //    live call was attempted with no key: surface it as a hard failure (EC-01).
   const deadline = Date.now() + TIMEOUT_MS;
   let status = '';
   while (Date.now() < deadline) {
@@ -74,16 +74,27 @@ async function main(): Promise<void> {
     if (res.ok) {
       status = ((await res.json()) as { data?: { status?: string } })?.data?.status ?? '';
       if (QUOTE_STATUSES.includes(status)) break;
-      if (status === 'failed') fail('pipeline reached "failed" — a fixture is missing or a live call was attempted');
+      if (status === 'failed') fail('pipeline reached "failed": a fixture is missing or a live call was attempted');
     }
     await sleep(2_000);
   }
   if (!QUOTE_STATUSES.includes(status)) fail(`timed out waiting for a quote; last status "${status || 'unknown'}"`);
   ok(`pipeline produced a quote (status "${status}")`);
 
-  // 4. Approve the quote and generate its PDF.
+  // 4. Approve the quote and generate its PDF. A 409 here means there is no priced quote to approve:
+  //    in keys-removed mode that usually means trigram catalog matching did not resolve every fixture
+  //    line item to a seeded SKU, so PriceNode dropped the quote. Surface that cause, not the bare code.
   const approve = await fetch(`${BASE}/requests/${requestId}/quote`, { method: 'POST' });
-  if (!approve.ok) fail(`approve returned HTTP ${approve.status}`);
+  if (!approve.ok) {
+    if (approve.status === 409) {
+      fail(
+        'approve returned HTTP 409: no priced quote to approve. In keys-removed mode this usually means ' +
+          'trigram catalog matching did not resolve every fixture line item to a seeded SKU (confirm the ' +
+          'SKU catalog and pricing-rule migrations ran).',
+      );
+    }
+    fail(`approve returned HTTP ${approve.status}`);
+  }
   ok('quote approved and PDF generated');
 
   // 5. Download the PDF and assert it is a real, non-empty PDF.

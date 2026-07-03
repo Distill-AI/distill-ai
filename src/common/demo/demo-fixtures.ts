@@ -50,7 +50,7 @@ export function loadDemoFixtures(): DemoFixture[] {
       }
     }
   } catch {
-    // Seed directory unavailable — leave the list empty; callers surface a clear error.
+    // Seed directory unavailable: leave the list empty; callers surface a clear error.
   }
 
   cache = loaded;
