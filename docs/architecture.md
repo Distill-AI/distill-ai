@@ -87,7 +87,7 @@ flowchart TB
 | `ReviewModule` | E6 | `ReviewController`, `ReviewService` | re-map, approve, decline, **resume** |
 | `ClarificationModule` | E6 | `ClarificationController`, `ClarificationService` | human-gated draft |
 | `QuoteModule` | E6 | `QuoteController`, `QuoteRenderer`, `render_quote_pdf` tool | PDF + draft email |
-| `CopilotModule` *(should)* | E6 | `explain_routing` tool, endpoint | advisory, read-only |
+| `CopilotModule` | E6 | `explain_routing` tool, endpoint | advisory, read-only |
 | `AnalyticsModule` | E7 | `AnalyticsController` | KPI reads from `audit_events` |
 | `LlmModule` | E2/E3 | `LlmClient`, `EmbeddingsClient` (+ fixture fallback) | demo-mode resilience |
 | `AuthModule` | NFR-SEC-5 | `RbacGuard` (config-gated) | inert when `AUTH_ENABLED=false` |
@@ -367,7 +367,7 @@ The 4 V1 tools, registered by their owning modules:
 | `extract_request` | ExtractionModule | LLM structured-output call | none (returns JSON) |
 | `search_catalog` | CatalogModule | `pg_trgm` lexical + embeddings semantic, RRF fused | none |
 | `render_quote_pdf` | QuoteModule | PDF templating → object store | writes a PDF (needs idempotency key — NFR-REL-2) |
-| `explain_routing` *(should)* | CopilotModule | LLM over already-computed `routing_reasons` | none, read-only |
+| `explain_routing` | CopilotModule | LLM over already-computed `routing_reasons` | none, read-only |
 
 `extract_request` must thread `priorFailure` into the prompt so the single re-ask is corrective, and instruct the model to return `"UNKNOWN"` rather than guess.
 
@@ -418,7 +418,7 @@ export class ReviewController {
 
 SSE carries `node.entered`, `node.exited`, `tool.invoked`, `request.resumed` — the FE Processing screen renders nodes in order with a tool tag on `extract`/`match` and none on `price`/`policy`/`score` (US-E2-5). `EventsService.sanitizedStream` strips any reasoning before emit (NFR-OBS-4).
 
-Remaining V1 endpoints, unchanged from TRD §3.2: `GET /requests`, `GET /requests/:id`, `POST /requests/:id/reprocess`, `GET /line-items/:id/candidates`, `POST /requests/:id/quote`, `GET /quotes/:id`, `GET /quotes/:id/pdf`, `POST /requests/:id/clarification`, `GET /requests/:id/copilot-explanation` (should), `GET /catalog/skus`, `GET /analytics/summary`.
+Remaining V1 endpoints, unchanged from TRD §3.2: `GET /requests`, `GET /requests/:id`, `POST /requests/:id/reprocess`, `GET /line-items/:id/candidates`, `POST /requests/:id/quote`, `GET /quotes/:id`, `GET /quotes/:id/pdf`, `POST /requests/:id/clarification`, `GET /requests/:id/copilot-explanation`, `GET /catalog/skus`, `GET /analytics/summary`.
 
 ---
 
@@ -483,7 +483,7 @@ The `graph-resume` and `boundary` suites are the two that prove the headline cla
 1. **M1 (E8):** `CommonModule` → schema migration (incl. `current_node`, `processing_started_at`, `tool_calls`) → `PipelineModule` (engine + runner + sweep, proven on stub nodes) → `ToolsModule` (registry + logging, proven on a stub tool) → app shell. CI, secrets, error tracking ride alongside.
 2. **M2 (E1, E2):** `IngestionModule` + `ParserModule` (real `parse` node) → `ExtractionModule` (`extract` loop + `classify`, first real tool `extract_request`) → SSE trace → wire the sweep to real nodes + `/resume`. Now the engine runs a real partial pipeline end-to-end and survives a kill.
 3. **M3 (E3–E5):** `match` (+ `search_catalog`) → `price`/`policy` (deterministic) → `score`. Full `parse→score` pipeline.
-4. **M4 (E6):** Review workspace, re-map, clarification (human-gated), `render_quote_pdf`, copilot (should).
+4. **M4 (E6):** Review workspace, re-map, clarification (human-gated), `render_quote_pdf`, copilot.
 5. **M5 (E7, E9):** event trail completeness, Analytics reads, demo-mode fixtures, `ARCHITECTURE_V2.md`, demo rehearsal incl. the kill-and-resume beat.
 
 Each layer is independently demoable, and the engine/registry/boundary built in M1 mean every later node and tool slots in consistently rather than being retrofitted.
