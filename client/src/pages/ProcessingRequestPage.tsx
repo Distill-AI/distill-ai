@@ -18,7 +18,7 @@ export function ProcessingRequestPage() {
     id ?? null,
     request ? { currentNode: request.current_node, status: request.status } : null,
   );
-  const lineItems: MatchedLine[] | undefined = request?.line_items.map((line) => ({
+  const lineItems: MatchedLine[] | undefined = request?.line_items?.map((line) => ({
     position: line.position,
     rawText: line.raw_text,
     skuLabel: line.matched_sku?.sku_code ?? null,
