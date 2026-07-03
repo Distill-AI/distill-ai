@@ -1,5 +1,4 @@
 import { HttpStatus } from '@nestjs/common';
-import { CustomHttpException } from '@common/exceptions/custom-http.exception';
 import { RequestRouting } from '@modules/requests/enums/request-routing.enum';
 import type { Request } from '@modules/requests/entities/request.entity';
 import type { LineItemModelAction } from '@modules/catalog/line-item.model-action';
@@ -50,6 +49,8 @@ function createMockRedis(cachedValue: string | null = null): RedisService {
   return {
     get: vi.fn().mockResolvedValue(cachedValue),
     set: vi.fn().mockResolvedValue(undefined),
+    setNx: vi.fn().mockResolvedValue(true),
+    releaseLock: vi.fn().mockResolvedValue(undefined),
   } as unknown as RedisService;
 }
 
@@ -153,13 +154,22 @@ describe('CopilotService', () => {
       const redis = createMockRedis();
       const service = new CopilotService(lineItems, toolRegistry, redis);
 
-      await expect(service.getExplanation(buildRequest())).rejects.toThrow(CustomHttpException);
-      try {
-        await service.getExplanation(buildRequest());
-        expect.unreachable();
-      } catch (err) {
-        expect((err as CustomHttpException).getStatus()).toBe(HttpStatus.FAILED_DEPENDENCY);
-      }
+      await expect(service.getExplanation(buildRequest())).rejects.toMatchObject({
+        status: HttpStatus.FAILED_DEPENDENCY,
+      });
+    });
+
+    it('maps an unexpected toolRegistry.invoke rejection to the same 424, not a raw 500', async () => {
+      const lineItems = createMockLineItems([]);
+      const toolRegistry = {
+        invoke: vi.fn().mockRejectedValue(new Error('db write failed mid-log')),
+      } as unknown as ToolRegistry;
+      const redis = createMockRedis();
+      const service = new CopilotService(lineItems, toolRegistry, redis);
+
+      await expect(service.getExplanation(buildRequest())).rejects.toMatchObject({
+        status: HttpStatus.FAILED_DEPENDENCY,
+      });
     });
   });
 
@@ -215,5 +225,69 @@ describe('CopilotService', () => {
       expect(result).toEqual({ explanation: 'fresh text', degraded: false });
       expect(toolRegistry.invoke).toHaveBeenCalledTimes(1);
     });
+  });
+
+  describe('stampede protection', () => {
+    it('computes and releases the lock when it acquires the lock on a cache miss', async () => {
+      const lineItems = createMockLineItems([]);
+      const toolRegistry = createMockToolRegistry({
+        status: ToolStatus.OK,
+        latency: 1,
+        result: { explanation: 'fresh text', degraded: false },
+      });
+      const redis = createMockRedis(null);
+
+      const service = new CopilotService(lineItems, toolRegistry, redis);
+      await service.getExplanation(buildRequest());
+
+      expect(redis.setNx).toHaveBeenCalledTimes(1);
+      expect(redis.releaseLock).toHaveBeenCalledTimes(1);
+      expect(toolRegistry.invoke).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns the value another caller cached while this caller was waiting on the lock', async () => {
+      const lineItems = createMockLineItems([]);
+      const toolRegistry = createMockToolRegistry({
+        status: ToolStatus.OK,
+        latency: 1,
+        result: { explanation: 'should not be used', degraded: false },
+      });
+      const redis = {
+        get: vi
+          .fn()
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce(JSON.stringify({ explanation: 'winner text', degraded: false })),
+        set: vi.fn().mockResolvedValue(undefined),
+        setNx: vi.fn().mockResolvedValue(false),
+        releaseLock: vi.fn().mockResolvedValue(undefined),
+      } as unknown as RedisService;
+
+      const service = new CopilotService(lineItems, toolRegistry, redis);
+      const result = await service.getExplanation(buildRequest());
+
+      expect(result).toEqual({ explanation: 'winner text', degraded: false });
+      expect(toolRegistry.invoke).not.toHaveBeenCalled();
+    }, 10000);
+
+    it('computes anyway if the lock holder never populates the cache within the wait window', async () => {
+      const lineItems = createMockLineItems([]);
+      const toolRegistry = createMockToolRegistry({
+        status: ToolStatus.OK,
+        latency: 1,
+        result: { explanation: 'fallback text', degraded: false },
+      });
+      const redis = {
+        get: vi.fn().mockResolvedValue(null),
+        set: vi.fn().mockResolvedValue(undefined),
+        setNx: vi.fn().mockResolvedValue(false),
+        releaseLock: vi.fn().mockResolvedValue(undefined),
+      } as unknown as RedisService;
+
+      const service = new CopilotService(lineItems, toolRegistry, redis);
+      const result = await service.getExplanation(buildRequest());
+
+      expect(result).toEqual({ explanation: 'fallback text', degraded: false });
+      expect(toolRegistry.invoke).toHaveBeenCalledTimes(1);
+    }, 10000);
   });
 });

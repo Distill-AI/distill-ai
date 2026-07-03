@@ -7,6 +7,7 @@ import { RoutingReasonCode } from './enums/routing-reason-code.enum';
 import { ExtractionModelAction } from '@modules/extraction/extraction.model-action';
 import { LineItemModelAction } from '@modules/catalog/line-item.model-action';
 import type { LineItem } from '@modules/catalog/entities/line-item.entity';
+import { CLOSE_TIE_FLAG } from '@modules/catalog/line-item-flags.constants';
 import { EventsService } from '@modules/events/events.service';
 import { NodeRegistry } from '@modules/pipeline/node-registry';
 import type { NodeContext, NodeResult, PipelineNode } from '@modules/pipeline/types';
@@ -84,7 +85,8 @@ export class ScoreNode implements PipelineNode {
         matchConfidence: li.match_confidence,
         unitPriceMinor: li.unit_price_minor,
         quantity: li.quantity,
-        hasFlags: Array.isArray(li.flags) && (li.flags as string[]).some((f) => f !== 'close_tie'),
+        hasFlags:
+          Array.isArray(li.flags) && (li.flags as string[]).some((f) => f !== CLOSE_TIE_FLAG),
       })),
       thresholds,
     );
