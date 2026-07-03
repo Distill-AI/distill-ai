@@ -23,6 +23,11 @@ const emptySummary: AnalyticsSummary = {
   quote_funnel: { ingested: 0, drafted: 0, approved: 0, sent: 0 },
 };
 
+const smallSampleSummary: AnalyticsSummary = {
+  ...summary,
+  quote_funnel: { ingested: 5, drafted: 4, approved: 2, sent: 1 },
+};
+
 const meta: Meta<typeof AnalyticsView> = {
   component: AnalyticsView,
   title: 'Pages/Analytics',
@@ -42,6 +47,10 @@ export const Error: Story = {
 
 export const Empty: Story = {
   args: { data: emptySummary, isLoading: false, isError: false },
+};
+
+export const SmallSample: Story = {
+  args: { data: smallSampleSummary, isLoading: false, isError: false },
 };
 
 export const Populated: Story = {
