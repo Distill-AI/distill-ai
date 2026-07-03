@@ -16,9 +16,9 @@ let started = false;
  * Registers a global, always-on OpenTelemetry tracer provider and the W3C trace-context propagator
  * for this process (US-E7-1-OTEL). Runs unconditionally so a request's node/tool spans and log lines
  * share a real trace id for correlation even with no telemetry backend wired. When `OTEL_TRACE_CONSOLE`
- * is set the spans are also printed to stdout for local inspection; production export is layered on
- * externally via the standard OpenTelemetry SDK/collector, which consumes these same spans. Idempotent:
- * both `main.ts` and `worker.ts` import `instrument`.
+ * is set the spans are also printed to stdout for local inspection. No network span exporter is wired
+ * here (keeps the runtime dependency-free); to ship spans to a backend, register an OTLP span processor
+ * on this provider. Idempotent: both `main.ts` and `worker.ts` import `instrument`.
  */
 export function initTracing(): void {
   if (started) return;
