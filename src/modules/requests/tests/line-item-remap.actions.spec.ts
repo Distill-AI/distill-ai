@@ -67,16 +67,18 @@ function setup(
     }),
   };
   const dataSource = { transaction: vi.fn((cb: (em: unknown) => Promise<unknown>) => cb(em)) };
+  const redis = { del: vi.fn().mockResolvedValue(undefined) };
 
   const action = new LineItemRemapActions(
     lineItems as never,
     skus as never,
     recompute as never,
     dataSource as never,
+    redis as never,
   );
   const lineUpdate = () => emUpdates.find((u) => u.entity === LineItem)?.payload;
   const requestUpdate = () => emUpdates.find((u) => u.entity === Request)?.payload;
-  return { action, lineItems, skus, recompute, em, lineUpdate, requestUpdate };
+  return { action, lineItems, skus, recompute, em, redis, lineUpdate, requestUpdate };
 }
 
 describe('LineItemRemapActions', () => {
@@ -163,5 +165,18 @@ describe('LineItemRemapActions', () => {
     });
     await action.remap(REQUEST, 'li-1', { override: false });
     expect(lineUpdate()?.flags).not.toContain(MANUAL_OVERRIDE_FLAG);
+  });
+
+  it('invalidates the copilot explanation cache after a successful remap', async () => {
+    const { action, redis } = setup();
+    await action.remap(REQUEST, 'li-1', { sku_id: 'sku-new' });
+    expect(redis.del).toHaveBeenCalledTimes(1);
+    expect(redis.del).toHaveBeenCalledWith('copilot_explanation:req-1');
+  });
+
+  it('does not fail the remap when cache invalidation rejects', async () => {
+    const { action, redis } = setup();
+    redis.del.mockRejectedValueOnce(new Error('redis down'));
+    await expect(action.remap(REQUEST, 'li-1', { sku_id: 'sku-new' })).resolves.toBeDefined();
   });
 });
