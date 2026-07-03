@@ -7,7 +7,6 @@ import { OriginalRequestPane } from '../components/review/OriginalRequestPane';
 import { ParsedStructurePane } from '../components/review/ParsedStructurePane';
 import { SuggestedQuotePane } from '../components/review/SuggestedQuotePane';
 import { DeclineModal } from '../components/review/DeclineModal';
-import { RoutingReasonsBanner } from '../components/review/RoutingReasonsBanner';
 import { CopilotExplanationBlock } from '../components/review/CopilotExplanationBlock';
 import { useCopilotExplanation } from '../api/copilotExplanation';
 import { ErrorBanner } from '../components/inbox/ErrorBanner';
@@ -195,10 +194,6 @@ export function Review() {
             )}
           </div>
 
-          <RoutingReasonsBanner
-            routing={request.routing}
-            routing_reasons={request.routing_reasons}
-          />
           <CopilotExplanationBlock
             explanation={copilotExplanation.data?.explanation}
             isLoading={copilotExplanation.isLoading}
