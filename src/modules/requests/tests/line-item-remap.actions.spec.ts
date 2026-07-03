@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CustomHttpException } from '@common/exceptions/custom-http.exception';
 import { LineItem } from '@modules/catalog/entities/line-item.entity';
-import { MANUAL_OVERRIDE_FLAG } from '@modules/pricing/quote-recompute.service';
+import { MANUAL_OVERRIDE_FLAG } from '@modules/catalog/line-item-flags.constants';
 import { LineItemRemapActions } from '../actions/line-item-remap.actions';
 import { Request } from '../entities/request.entity';
 import { RequestStatus } from '../enums/request-status.enum';

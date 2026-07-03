@@ -17,9 +17,10 @@ export function CopilotExplanationDocs(): MethodDecorator {
     ApiOperation({
       summary: 'Get the advisory routing explanation for a request',
       description:
-        'Returns a plain-English explanation of why a quote was routed to auto-eligible or ' +
-        'needs-review, sourced from the explain_routing tool (or its template fallback, flagged ' +
-        'via degraded: true). Returns an empty explanation for requests that are not needs_review. ' +
+        'Returns a plain-English explanation of why a needs_review quote requires manual review, ' +
+        'sourced from the explain_routing tool (or its template fallback, flagged via degraded: ' +
+        'true). Requests that are not needs_review (auto-eligible, or not yet scored) return an ' +
+        'empty explanation without calling the tool. ' +
         'A missing or cross-org request returns 404 so existence is not leaked across tenants.',
     }),
     ApiParam({
