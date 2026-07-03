@@ -9,7 +9,9 @@ import type { Request } from '@modules/requests/entities/request.entity';
 import { ToolRegistry } from '@modules/tools/registry';
 import { ToolStatus } from '@modules/tools/enums/tools.enums';
 import { toToolName } from '@modules/pipeline/types';
+import { RedisService } from '@modules/redis/redis.service';
 import type { ExplainRoutingOutput } from '@modules/scoring/tools/explain-routing.tool';
+import { COPILOT_EXPLANATION_CACHE_TTL_S, copilotExplanationCacheKey } from './copilot.constants';
 
 // Excluded per HARD_REVIEW_FLAGS precedent in ScoreNode: neither flag forces the hard review gate,
 // so neither belongs in the estimator-facing policy-flags explanation.
@@ -20,12 +22,19 @@ export class CopilotService {
   constructor(
     private readonly lineItems: LineItemModelAction,
     private readonly toolRegistry: ToolRegistry,
+    private readonly redis: RedisService,
   ) {}
 
   /** Returns the advisory routing explanation for a request; short-circuits to empty for non-needs_review requests. */
   async getExplanation(request: Request): Promise<ExplainRoutingOutput> {
     if (request.routing !== RequestRouting.NEEDS_REVIEW) {
       return { explanation: '', degraded: false };
+    }
+
+    const cacheKey = copilotExplanationCacheKey(request.id);
+    const cached = await this.readCache(cacheKey);
+    if (cached) {
+      return cached;
     }
 
     const policyFlags = await this.aggregatePolicyFlags(request.id);
@@ -48,7 +57,21 @@ export class CopilotService {
       );
     }
 
-    return result.result as ExplainRoutingOutput;
+    const explanation = result.result as ExplainRoutingOutput;
+    await this.redis.set(cacheKey, JSON.stringify(explanation), COPILOT_EXPLANATION_CACHE_TTL_S);
+    return explanation;
+  }
+
+  private async readCache(cacheKey: string): Promise<ExplainRoutingOutput | null> {
+    const cached = await this.redis.get(cacheKey);
+    if (!cached) {
+      return null;
+    }
+    try {
+      return JSON.parse(cached) as ExplainRoutingOutput;
+    } catch {
+      return null;
+    }
   }
 
   private async aggregatePolicyFlags(requestId: string): Promise<string[]> {
