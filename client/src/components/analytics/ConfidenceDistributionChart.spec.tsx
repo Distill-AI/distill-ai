@@ -33,6 +33,18 @@ describe('ConfidenceDistributionChart', () => {
     expect(screen.queryByText('High')).not.toBeInTheDocument();
   });
 
+  it('renders an uneven backend split (34/33/33) with no client-side re-derivation', () => {
+    const { container } = render(
+      <ConfidenceDistributionChart highPct={34} mediumPct={33} lowPct={33} />,
+    );
+    expect(screen.getByText('34%')).toBeInTheDocument();
+    expect(screen.getAllByText('33%')).toHaveLength(2);
+    const bars = container.querySelectorAll<HTMLElement>('.rounded-t');
+    expect(bars[0].style.height).toBe('34%');
+    expect(bars[1].style.height).toBe('33%');
+    expect(bars[2].style.height).toBe('33%');
+  });
+
   it('clamps an out-of-range value to 100 instead of overflowing the track', () => {
     const { container } = render(
       <ConfidenceDistributionChart highPct={120} mediumPct={0} lowPct={0} />,
