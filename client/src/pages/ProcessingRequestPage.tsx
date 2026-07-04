@@ -5,6 +5,8 @@ import { usePageHeader } from '../context/PageHeaderContext';
 import { ChevronLeftIcon } from '../components/ui/ChevronLeftIcon';
 import { useSSEEvents } from '../hooks/useSSEEvents';
 import { useRequest } from '../api/requests';
+import type { MatchedLine } from '../api/interface/line-item';
+import { DEFAULT_THRESHOLDS } from '../config/thresholds';
 
 export function ProcessingRequestPage() {
   const { id } = useParams<{ id?: string }>();
@@ -16,6 +18,12 @@ export function ProcessingRequestPage() {
     id ?? null,
     request ? { currentNode: request.current_node, status: request.status } : null,
   );
+  const lineItems: MatchedLine[] | undefined = request?.line_items?.map((line) => ({
+    position: line.position,
+    rawText: line.raw_text,
+    skuLabel: line.matched_sku?.sku_code ?? null,
+    confidence: line.match_confidence,
+  }));
 
   useEffect(() => {
     setTitle(
@@ -82,6 +90,8 @@ export function ProcessingRequestPage() {
           connection={connection}
           finalOutput={finalOutput}
           reconnect={reconnect}
+          lineItems={lineItems}
+          thresholds={DEFAULT_THRESHOLDS}
         />
       </div>
     </>
