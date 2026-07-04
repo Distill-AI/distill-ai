@@ -9,6 +9,7 @@ import { QuoteFunnelChart } from '../components/analytics/QuoteFunnelChart';
 import { AgentEvidenceTile } from '../components/analytics/AgentEvidenceTile';
 import { ErrorBanner } from '../components/inbox/ErrorBanner';
 import { formatDuration } from '../lib/formatDuration';
+import { num } from '../lib/num';
 
 interface ChartCardProps {
   title: string;
@@ -54,13 +55,6 @@ function lowerIsBetter(value: number): Sentiment {
 /** Metrics where a rising value is the good outcome (e.g. more approvals, more quotes). */
 function higherIsBetter(value: number): Sentiment {
   return value >= 0 ? 'positive' : 'negative';
-}
-
-/** Numeric field guard: the response is trusted to the TS interface at compile time only, so a
- * malformed or partial payload (e.g. a missing nested object) falls back to 0 instead of throwing
- * a render-time TypeError that the error banner would never catch. */
-function num(value: number | undefined | null): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
 }
 
 export interface AnalyticsViewProps {

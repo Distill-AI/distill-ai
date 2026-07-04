@@ -242,8 +242,10 @@ const CRASH_SQL = `
 
 // Tool-call volume: every tool invocation logged against the org's requests within the window.
 // Joins through requests to scope by org_id (SEC-01: aggregate only, no raw payloads to the client).
+// NOTE: org_id filter is in the WHERE clause (not JOIN ... ON) to match the convention of every other
+// query in this file — makes it easy to verify every query is org-scoped at a glance.
 const TOOL_CALLS_SQL = `
   SELECT count(*) AS n
   FROM tool_calls tc
-  JOIN requests r ON r.id = tc.request_id AND r.org_id = $1
-  WHERE tc.created_at >= $2 AND tc.created_at < $3`;
+  JOIN requests r ON r.id = tc.request_id
+  WHERE r.org_id = $1 AND tc.created_at >= $2 AND tc.created_at < $3`;
