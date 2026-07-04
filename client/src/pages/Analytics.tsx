@@ -6,6 +6,7 @@ import { usePageHeader } from '../context/PageHeaderContext';
 import { KpiCard } from '../components/ui/KpiCard';
 import { ConfidenceDistributionChart } from '../components/analytics/ConfidenceDistributionChart';
 import { QuoteFunnelChart } from '../components/analytics/QuoteFunnelChart';
+import { AgentEvidenceTile } from '../components/analytics/AgentEvidenceTile';
 import { ErrorBanner } from '../components/inbox/ErrorBanner';
 import { formatDuration } from '../lib/formatDuration';
 
@@ -121,7 +122,10 @@ export function AnalyticsView({ data, isLoading, isError, onRetry }: AnalyticsVi
           delta={formatDelta(num(data.quotes_this_week_delta), '')}
           sentiment={higherIsBetter(num(data.quotes_this_week_delta))}
         />
-        <KpiCard label="Crash recoveries" value={String(num(data.crash_recoveries_this_month))} />
+        <AgentEvidenceTile
+          toolCallsTotal={num(data.tool_calls_total)}
+          crashRecoveries={num(data.crash_recoveries_this_month)}
+        />
       </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard title="Confidence distribution">
