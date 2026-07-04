@@ -111,7 +111,7 @@ describe('AnalyticsService.getSummary', () => {
   it('scopes every query to the org and assembles coerced string counts', async () => {
     const query = vi
       .fn()
-      // Order matches Promise.all: funnel, median, quotes, approved, needsReview, confidence, crash.
+      // Order matches Promise.all: funnel, median, quotes, approved, needsReview, confidence, crash, toolCalls.
       .mockResolvedValueOnce([{ ingested: '10', drafted: '8', approved: '5', sent: '3' }])
       .mockResolvedValueOnce([{ cur: '7010.5', prior: null }])
       .mockResolvedValueOnce([{ cur: '4', prior: '2' }])

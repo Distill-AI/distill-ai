@@ -26,11 +26,12 @@ describe('AgentEvidenceTile', () => {
 
   it('formats large tool-call counts with locale separators', () => {
     render(<AgentEvidenceTile toolCallsTotal={15000} crashRecoveries={1} />);
-    expect(screen.getByText('15,000')).toBeInTheDocument();
+    const expected = (15000).toLocaleString();
+    expect(screen.getByText(expected)).toBeInTheDocument();
   });
 
   it('treats undefined toolCallsTotal as zero', () => {
-    render(<AgentEvidenceTile toolCallsTotal={undefined as never} crashRecoveries={0} />);
+    render(<AgentEvidenceTile toolCallsTotal={undefined} crashRecoveries={0} />);
     expect(screen.getByText('Tool calls')).toBeInTheDocument();
   });
 

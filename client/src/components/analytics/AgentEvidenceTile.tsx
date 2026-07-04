@@ -1,10 +1,8 @@
-interface AgentEvidenceTileProps {
-  toolCallsTotal: number;
-  crashRecoveries: number;
-}
+import { num } from '../../lib/num';
 
-function num(value: number | undefined | null): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+interface AgentEvidenceTileProps {
+  toolCallsTotal: number | undefined | null;
+  crashRecoveries: number | undefined | null;
 }
 
 export function AgentEvidenceTile({ toolCallsTotal, crashRecoveries }: AgentEvidenceTileProps) {
