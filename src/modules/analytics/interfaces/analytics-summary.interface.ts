@@ -27,6 +27,7 @@ export interface AnalyticsSummary {
   quotes_this_week: number;
   quotes_this_week_delta: number;
   crash_recoveries_this_month: number;
+  tool_calls_total: number;
   confidence_distribution: ConfidenceDistribution;
   quote_funnel: QuoteFunnel;
 }
