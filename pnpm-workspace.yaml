@@ -5,6 +5,7 @@ allowBuilds:
   "@nestjs/core": true
   "@scarf/scarf": true
   msgpackr-extract: true
+  esbuild: true
 
 # Force patched versions of vulnerable transitive dependencies.
 # Review on major NestJS / Axios upgrades.
