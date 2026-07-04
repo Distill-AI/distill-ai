@@ -1,4 +1,3 @@
-import { randomUUID } from 'crypto';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import * as SYS_MSG from '@constants/system-messages';
 import { CustomHttpException } from '@common/exceptions/custom-http.exception';
@@ -14,15 +13,9 @@ import { RedisService } from '@modules/redis/redis.service';
 import type { ExplainRoutingOutput } from '@modules/scoring/tools/explain-routing.tool';
 import {
   COPILOT_EXPLANATION_CACHE_TTL_S,
-  COPILOT_EXPLANATION_LOCK_TTL_S,
+  COPILOT_EXPLANATION_DEGRADED_CACHE_TTL_S,
   copilotExplanationCacheKey,
-  copilotExplanationLockKey,
 } from './copilot.constants';
-
-// Bounds how many times a caller that lost the stampede-protection lock polls the cache before
-// giving up and computing anyway; 5 x 200ms is a short wait relative to typical LLM latency.
-const LOCK_WAIT_ATTEMPTS = 5;
-const LOCK_WAIT_INTERVAL_MS = 200;
 
 @Injectable()
 export class CopilotService {
@@ -44,46 +37,7 @@ export class CopilotService {
       return cached;
     }
 
-    return this.computeWithStampedeProtection(request, cacheKey);
-  }
-
-  /**
-   * Acquires a short-lived lock so a burst of concurrent requests for the same id doesn't each
-   * pay for a separate LLM call. The loser polls the cache briefly rather than blocking
-   * indefinitely, so a crashed or slow lock holder can never wedge every other caller.
-   */
-  private async computeWithStampedeProtection(
-    request: Request,
-    cacheKey: string,
-  ): Promise<ExplainRoutingOutput> {
-    const lockKey = copilotExplanationLockKey(request.id);
-    const lockToken = randomUUID();
-    const acquired = await this.redis.setNx(lockKey, lockToken, COPILOT_EXPLANATION_LOCK_TTL_S);
-
-    if (!acquired) {
-      const cached = await this.waitForCache(cacheKey);
-      if (cached) {
-        return cached;
-      }
-      return this.computeExplanation(request, cacheKey);
-    }
-
-    try {
-      return await this.computeExplanation(request, cacheKey);
-    } finally {
-      await this.redis.releaseLock(lockKey, lockToken);
-    }
-  }
-
-  private async waitForCache(cacheKey: string): Promise<ExplainRoutingOutput | null> {
-    for (let attempt = 0; attempt < LOCK_WAIT_ATTEMPTS; attempt++) {
-      await new Promise((resolve) => setTimeout(resolve, LOCK_WAIT_INTERVAL_MS));
-      const cached = await this.readCache(cacheKey);
-      if (cached) {
-        return cached;
-      }
-    }
-    return null;
+    return this.computeExplanation(request, cacheKey);
   }
 
   private async computeExplanation(
@@ -119,7 +73,10 @@ export class CopilotService {
     }
 
     const explanation = result.result as ExplainRoutingOutput;
-    await this.redis.set(cacheKey, JSON.stringify(explanation), COPILOT_EXPLANATION_CACHE_TTL_S);
+    const ttl = explanation.degraded
+      ? COPILOT_EXPLANATION_DEGRADED_CACHE_TTL_S
+      : COPILOT_EXPLANATION_CACHE_TTL_S;
+    await this.redis.set(cacheKey, JSON.stringify(explanation), ttl);
     return explanation;
   }
 

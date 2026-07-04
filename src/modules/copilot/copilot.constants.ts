@@ -5,17 +5,13 @@
  */
 export const COPILOT_EXPLANATION_CACHE_TTL_S = 60 * 15;
 
+/**
+ * Shorter TTL for a degraded (template-fallback) result: the LLM was unavailable when this was
+ * computed, so pin it for less time than a confident result to let a recovered LLM take over
+ * sooner, while still absorbing repeated recomputation during a sustained outage.
+ */
+export const COPILOT_EXPLANATION_DEGRADED_CACHE_TTL_S = 60;
+
 export function copilotExplanationCacheKey(requestId: string): string {
   return `copilot_explanation:${requestId}`;
-}
-
-/**
- * Stampede-protection lock: bounds how long one caller holds the "computing" lock for a given
- * request, covering typical explain_routing latency (single LLM call, no retries) with headroom
- * for a crashed holder to be reaped rather than block every other caller until TTL.
- */
-export const COPILOT_EXPLANATION_LOCK_TTL_S = 30;
-
-export function copilotExplanationLockKey(requestId: string): string {
-  return `copilot_explanation_lock:${requestId}`;
 }

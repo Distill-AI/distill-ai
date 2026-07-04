@@ -1,10 +1,18 @@
-import { Controller, Get, HttpStatus, NotFoundException, Param, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpStatus,
+  NotFoundException,
+  Param,
+  ParseUUIDPipe,
+  Req,
+} from '@nestjs/common';
 import { authConfig } from '@config/auth.config';
 import * as SYS_MSG from '@constants/system-messages';
 import { RequestsService } from '@modules/requests/services/requests.service';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { Role } from '../auth/enums/role.enum';
-import type { AuthUser } from '../auth/interfaces/auth-user.interface';
+import { Roles } from '@modules/auth/decorators/roles.decorator';
+import { Role } from '@modules/auth/enums/role.enum';
+import type { AuthUser } from '@modules/auth/interfaces/auth-user.interface';
 import { CopilotService } from './copilot.service';
 import { CopilotExplanationDocs } from './docs/copilot-swagger.doc';
 
@@ -19,7 +27,10 @@ export class CopilotController {
   @Get(':id/copilot-explanation')
   @Roles(Role.ESTIMATOR, Role.ADMIN)
   @CopilotExplanationDocs()
-  async getExplanation(@Param('id') requestId: string, @Req() req: { user?: AuthUser }) {
+  async getExplanation(
+    @Param('id', ParseUUIDPipe) requestId: string,
+    @Req() req: { user?: AuthUser },
+  ) {
     const request = await this.requestsService.findByIdOrFail(requestId);
 
     if (authConfig.enabled) {
