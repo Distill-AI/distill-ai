@@ -3,6 +3,7 @@ import type { RequestModelAction } from '@modules/requests/requests.model-action
 import type { AttachmentModelAction } from '@modules/requests/attachments.model-action';
 import type { PipelineRunner } from '@modules/pipeline/pipeline.runner';
 import type { ObjectStore } from '@common/object-store/object-store.port';
+import type { EventsService } from '@modules/events/events.service';
 import { RequestChannel } from '@modules/requests/enums/request-channel.enum';
 import { RequestStatus } from '@modules/requests/enums/request-status.enum';
 import { CurrentNode } from '@modules/requests/enums/current-node.enum';
@@ -34,12 +35,14 @@ function setup() {
     get: vi.fn(),
   };
   const runner = { enqueue: vi.fn().mockResolvedValue(undefined) };
+  const events = { emit: vi.fn().mockResolvedValue(undefined) };
   const em = { query: vi.fn().mockResolvedValue([{ org_id: 'org-xyz' }]) };
   const service = new IngestionService(
     requests as unknown as RequestModelAction,
     attachments as unknown as AttachmentModelAction,
     store as unknown as ObjectStore,
     runner as unknown as PipelineRunner,
+    events as unknown as EventsService,
   );
   return {
     service,
@@ -47,6 +50,7 @@ function setup() {
     attachments,
     store,
     runner,
+    events,
     em: em as unknown as EntityManager,
     emMock: em,
   };
@@ -54,7 +58,7 @@ function setup() {
 
 describe('IngestionService', () => {
   it('upload: persists a parsing request, stores each file, records attachments, defers enqueue', async () => {
-    const { service, requests, attachments, store, runner, em } = setup();
+    const { service, requests, attachments, store, runner, events, em } = setup();
     const files = [file('rfq.pdf'), file('items.csv', { mimetype: 'text/csv' })];
     const afterCommit: Array<() => Promise<void>> = [];
 
@@ -71,16 +75,25 @@ describe('IngestionService', () => {
     expect(call.transactionOptions).toEqual({ useTransaction: true, transaction: em });
     expect(store.put).toHaveBeenCalledTimes(2);
     expect(attachments.create).toHaveBeenCalledTimes(2);
-    // The enqueue is deferred, not fired inside the still-open transaction (issue #93).
+    // The enqueue and the request.received emission are both deferred, not fired inside the
+    // still-open transaction (issue #93).
     expect(runner.enqueue).not.toHaveBeenCalled();
-    expect(afterCommit).toHaveLength(1);
+    expect(events.emit).not.toHaveBeenCalled();
+    expect(afterCommit).toHaveLength(2);
     await afterCommit[0]();
+    await afterCommit[1]();
+    expect(events.emit).toHaveBeenCalledWith({
+      eventName: 'request.received',
+      orgId: 'org-xyz',
+      requestId: 'req-1',
+      attributes: { channel: RequestChannel.UPLOAD, attachment_count: 2 },
+    });
     expect(runner.enqueue).toHaveBeenCalledWith('req-1');
     expect(result.id).toBe('req-1');
   });
 
   it('paste: records channel=email with source_body and no attachments', async () => {
-    const { service, requests, store, runner, em } = setup();
+    const { service, requests, store, runner, events, em } = setup();
     const afterCommit: Array<() => Promise<void>> = [];
 
     await service.createRequest({ source_body: 'need 200 M12 bolts' }, [], em, afterCommit);
@@ -90,16 +103,29 @@ describe('IngestionService', () => {
     expect(payload.source_body).toBe('need 200 M12 bolts');
     expect(store.put).not.toHaveBeenCalled();
     expect(runner.enqueue).not.toHaveBeenCalled();
-    expect(afterCommit).toHaveLength(1);
+    expect(afterCommit).toHaveLength(2);
     await afterCommit[0]();
+    await afterCommit[1]();
+    expect(events.emit).toHaveBeenCalledWith({
+      eventName: 'request.received',
+      orgId: 'org-xyz',
+      requestId: 'req-1',
+      attributes: { channel: RequestChannel.EMAIL, attachment_count: 0 },
+    });
     expect(runner.enqueue).toHaveBeenCalledWith('req-1');
   });
 
   it('enqueues inline when there is no after-commit registry (non-HTTP caller)', async () => {
-    const { service, runner, em } = setup();
+    const { service, runner, events, em } = setup();
 
     await service.createRequest({ source_body: 'hi' }, [], em);
 
+    expect(events.emit).toHaveBeenCalledWith({
+      eventName: 'request.received',
+      orgId: 'org-xyz',
+      requestId: 'req-1',
+      attributes: { channel: RequestChannel.EMAIL, attachment_count: 0 },
+    });
     expect(runner.enqueue).toHaveBeenCalledWith('req-1');
   });
 
@@ -112,7 +138,9 @@ describe('IngestionService', () => {
     await service.createRequest({ source_body: 'hi' }, [], em, afterCommit);
     expect(requests.markProcessing).not.toHaveBeenCalled();
 
-    await afterCommit[0]();
+    for (const task of afterCommit) {
+      await task();
+    }
 
     // Enqueue rejected, but the row is not orphaned: markProcessing stamps processing_started_at so
     // the existing RecoverySweep re-enqueues it after the stale window.

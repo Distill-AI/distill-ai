@@ -112,3 +112,73 @@ jobs:
           ignore-unfixed: true
           skip-dirs: node_modules,dist,client/node_modules,client/dist,.git
           format: table
+
+  keys-removed-e2e:
+    name: Keys-removed E2E (fixtures, no provider keys)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: distill_ai
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # No LLM_API_KEY / EMBEDDINGS_API_KEY are set here on purpose (SEC-01): the job proves the pipeline
+      # completes on fixtures with no provider secrets, so a missing fixture fails CI instead of a silent
+      # live call. DEMO_MODE routes the LLM to fixtures; matching falls back to trigram search.
+      DEMO_MODE: 'true'
+      NODE_ENV: production
+      DATABASE_HOST: localhost
+      DATABASE_PORT: '5432'
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+      DATABASE_NAME: distill_ai
+      REDIS_HOST: localhost
+      REDIS_PORT: '6379'
+      OBJECT_STORE_URL: file://./var/object-store
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        run: npm install -g pnpm@11.1.1
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Run migrations (seeds demo org, SKU catalog, pricing rules)
+        run: pnpm migration:run
+
+      - name: Keys-removed ingest to approved PDF on fixtures
+        run: |
+          node dist/worker & WORKER_PID=$!
+          node dist/main & API_PID=$!
+          trap 'kill $WORKER_PID $API_PID 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3000/api/v1/health >/dev/null && break
+            sleep 2
+          done
+          pnpm smoke:keys-removed
