@@ -1,5 +1,6 @@
 import { Controller, Get, HttpCode, HttpStatus, Query, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { authConfig } from '@config/auth.config';
 import { CustomHttpException } from '@common/exceptions/custom-http.exception';
 import { Roles } from '@modules/auth/decorators/roles.decorator';
 import { Role } from '@modules/auth/enums/role.enum';
@@ -27,9 +28,20 @@ export class AnalyticsController {
     @Query() query: AnalyticsQueryDto,
     @Req() req: { user?: AuthUser },
   ): Promise<{ statusCode: number; message: string; data: AnalyticsSummary }> {
-    // Org comes from the authenticated caller, never the request body (SEC-01); the nil UUID is the
-    // demo org used when auth is disabled, matching the rest of the read endpoints.
-    const orgId = req.user?.orgId ?? DEMO_ORG_ID;
+    // Org comes from the authenticated caller, never the request body (SEC-01). Branch explicitly on
+    // auth like the other read endpoints (line-items, clarification): when auth is on, fail closed if
+    // the caller has no org rather than silently falling back to the demo org; when off, use the demo org.
+    let orgId = DEMO_ORG_ID;
+    if (authConfig.enabled) {
+      const user = req.user;
+      if (!user) {
+        throw new CustomHttpException(SYS_MSG.AUTH_UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
+      }
+      if (!user.orgId) {
+        throw new CustomHttpException(SYS_MSG.AUTH_FORBIDDEN, HttpStatus.FORBIDDEN);
+      }
+      orgId = user.orgId;
+    }
 
     const to = query.to ? new Date(query.to) : new Date();
     const from = query.from ? new Date(query.from) : new Date(to.getTime() - SEVEN_DAYS_MS);

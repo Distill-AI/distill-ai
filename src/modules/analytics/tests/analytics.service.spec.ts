@@ -82,6 +82,26 @@ describe('assembleSummary', () => {
     expect(s.median_time_to_draft_delta_pct).toBe(0);
     expect(s.quotes_this_week_delta).toBe(42);
   });
+
+  it('reports a 0-point delta when the prior window has no denominator, not a false improvement', () => {
+    const s = assembleSummary(
+      rawStats({
+        approvedCurTotal: 4,
+        approvedCurZeroEdit: 3, // 75% this window
+        approvedPriorTotal: 0, // no prior approvals to compare against
+        approvedPriorZeroEdit: 0,
+        needsReviewCurTotal: 8,
+        needsReviewCurFalseNeg: 2, // 25% this window
+        needsReviewPriorTotal: 0,
+        needsReviewPriorFalseNeg: 0,
+      }),
+    );
+
+    expect(s.zero_edit_approval_pct).toBe(75);
+    expect(s.zero_edit_approval_delta_pts).toBe(0); // not 75 (would imply improvement from a 0% baseline)
+    expect(s.auto_eligible_false_negative_pct).toBe(25);
+    expect(s.auto_eligible_false_negative_delta_pts).toBe(0);
+  });
 });
 
 describe('AnalyticsService.getSummary', () => {
