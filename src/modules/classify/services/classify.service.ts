@@ -68,7 +68,12 @@ export class ClassifyService {
   ): ClassifyResult {
     const haystack = [description, ...lineItems.map((li) => li.raw_text)].join('\n');
     const fixture = matchDemoFixture(haystack);
-    const type = fixture?.requestType === 'service_quote' ? 'service_quote' : 'catalog_rfq';
+    // Fail loudly on an empty fixture corpus (EC-01), consistent with the extraction tool, rather than
+    // silently defaulting every keys-removed request to catalog_rfq.
+    if (!fixture) {
+      throw new Error(SYS_MSG.CLASSIFY_DEMO_FIXTURE_UNAVAILABLE);
+    }
+    const type = fixture.requestType === 'service_quote' ? 'service_quote' : 'catalog_rfq';
     return { type, confidence: DEMO_CLASSIFY_CONFIDENCE };
   }
 

@@ -87,6 +87,8 @@ export const CLASSIFY_DEFAULTED_LOW_CONFIDENCE = (confidence: number, threshold:
 export const CLASSIFY_RETRY_FAILED = 'Classification retry failed; defaulting to service_quote';
 export const CLASSIFY_MALFORMED_INPUT =
   'Parsed request missing required fields; defaulting to service_quote';
+export const CLASSIFY_DEMO_FIXTURE_UNAVAILABLE =
+  'DEMO_MODE classification fixture unavailable (seed corpus not found)';
 export const LLM_INVOCATION_FAILED = (status: number, body: string) =>
   `LLM invocation failed (${status}): ${body}`;
 
