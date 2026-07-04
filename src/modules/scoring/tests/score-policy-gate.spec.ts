@@ -24,6 +24,7 @@ import { MARGIN_FLOOR_BREACH_FLAG } from '@modules/policy/policy.constants';
 import { ScoreNode } from '../score.node';
 import { ScorerService } from '../scorer.service';
 import type { ScoringConfigService } from '../scoring-config.service';
+import { RoutingReasonCode } from '../enums/routing-reason-code.enum';
 
 function build(flags: string[]) {
   const updatePayloads: Array<Record<string, unknown>> = [];
@@ -77,7 +78,7 @@ describe('ScoreNode policy gate (US-E4-2)', () => {
     expect(updatePayloads[0].routing).toBe(RequestRouting.NEEDS_REVIEW);
     expect(updatePayloads[0].current_node).toBe(CurrentNode.DONE);
     expect(updatePayloads[0].routing_reasons).toContainEqual(
-      expect.objectContaining({ code: 'policy_breach', source: 'policy' }),
+      expect.objectContaining({ code: RoutingReasonCode.POLICY_BREACH, source: 'policy' }),
     );
   });
 });

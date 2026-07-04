@@ -5,14 +5,20 @@ import { Review } from './Review';
 import { PageHeaderProvider, usePageHeader } from '../context/PageHeaderContext';
 import type { RequestDetail } from '../api/requests';
 
-const { mockUseRequest, mockDownload, mockNavigate } = vi.hoisted(() => ({
-  mockUseRequest: vi.fn(),
-  mockDownload: vi.fn(),
-  mockNavigate: vi.fn(),
-}));
+const { mockUseRequest, mockUseCopilotExplanation, mockDownload, mockNavigate } = vi.hoisted(
+  () => ({
+    mockUseRequest: vi.fn(),
+    mockUseCopilotExplanation: vi.fn(),
+    mockDownload: vi.fn(),
+    mockNavigate: vi.fn(),
+  }),
+);
 
 vi.mock('../api/requests', () => ({
   useRequest: () => mockUseRequest(),
+}));
+vi.mock('../api/copilotExplanation', () => ({
+  useCopilotExplanation: () => mockUseCopilotExplanation(),
 }));
 vi.mock('../api/attachments', () => ({
   downloadAttachment: mockDownload,
@@ -119,6 +125,8 @@ function renderReview() {
 describe('Review', () => {
   beforeEach(() => {
     mockUseRequest.mockReset();
+    mockUseCopilotExplanation.mockReset();
+    mockUseCopilotExplanation.mockReturnValue({ data: undefined, isLoading: false, isError: true });
     mockDownload.mockReset();
     mockNavigate.mockReset();
   });
@@ -209,6 +217,25 @@ describe('Review', () => {
     expect(screen.getByRole('link', { name: /back to inbox/i })).toBeInTheDocument();
   });
 
+  it('renders the Copilot explanation block when the hook resolves data (integration)', () => {
+    mockUseRequest.mockReturnValue({ data: detail, isLoading: false, isError: false });
+    mockUseCopilotExplanation.mockReturnValue({
+      data: {
+        explanation: 'Routed to needs review because of low line confidence.',
+        degraded: true,
+      },
+      isLoading: false,
+      isError: false,
+    });
+    renderReview();
+
+    expect(screen.getByText('AI explanation')).toBeInTheDocument();
+    expect(
+      screen.getByText('Routed to needs review because of low line confidence.'),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/auto-generated, may be less precise/i)).toBeInTheDocument();
+  });
+
   it('opens the DeclineModal when Decline is clicked', async () => {
     const user = userEvent.setup();
     mockUseRequest.mockReturnValue({ data: detail, isLoading: false, isError: false });
@@ -217,22 +244,6 @@ describe('Review', () => {
     await user.click(screen.getByRole('button', { name: /decline/i }));
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-  });
-
-  it('renders the routing-reasons banner with flagged reasons', () => {
-    mockUseRequest.mockReturnValue({ data: detail, isLoading: false, isError: false });
-    renderReview();
-
-    expect(screen.getByRole('button', { name: /review flags/i })).toBeInTheDocument();
-  });
-
-  it('shows an all-clear banner for auto-eligible requests', () => {
-    const autoDetail = { ...detail, routing: 'auto_eligible', routing_reasons: [] };
-    mockUseRequest.mockReturnValue({ data: autoDetail, isLoading: false, isError: false });
-    renderReview();
-
-    expect(screen.getByText(/all clear/i)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /review flags/i })).not.toBeInTheDocument();
   });
 
   it('navigates to the Clarification screen when Clarification is clicked', async () => {

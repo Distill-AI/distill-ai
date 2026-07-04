@@ -174,3 +174,22 @@ export class RequestDetailResponseDto extends RequestSummaryResponseDto {
   })
   quote: unknown | null;
 }
+
+/** Swagger schema for one audit_events row in a request's trail (GET /requests/:id/history). */
+export class RequestHistoryEventResponseDto {
+  @ApiProperty({ example: '42' })
+  id: string;
+
+  @ApiProperty({ example: 'node.exited' })
+  event_name: string;
+
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: true,
+    example: { node: 'match', next: 'price', matched_count: 3, total_count: 5, degraded: false },
+  })
+  attributes: Record<string, unknown>;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  created_at: Date;
+}
