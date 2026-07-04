@@ -1,5 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import * as SYS_MSG from '@constants/system-messages';
+import { authConfig } from '@config/auth.config';
 import { CopilotController } from '../copilot.controller';
 import { CopilotService } from '../copilot.service';
 import { RequestsService } from '../../requests/services/requests.service';
@@ -29,6 +30,10 @@ describe('CopilotController', () => {
     );
   });
 
+  afterEach(() => {
+    authConfig.enabled = true;
+  });
+
   it('returns the explanation envelope for a same-org request', async () => {
     const request = { id: 'req-1', org_id: 'org-1' } as RequestEntity;
     (requestsService.findByIdOrFail as ReturnType<typeof vi.fn>).mockResolvedValue(request);
@@ -54,5 +59,33 @@ describe('CopilotController', () => {
       NotFoundException,
     );
     expect(copilotService.getExplanation).not.toHaveBeenCalled();
+  });
+
+  it('404s when auth is enabled and the request has no user', async () => {
+    const request = { id: 'req-1', org_id: 'org-1' } as RequestEntity;
+    (requestsService.findByIdOrFail as ReturnType<typeof vi.fn>).mockResolvedValue(request);
+
+    await expect(controller.getExplanation('req-1', { user: undefined })).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(copilotService.getExplanation).not.toHaveBeenCalled();
+  });
+
+  it('skips the org check entirely when auth is disabled', async () => {
+    authConfig.enabled = false;
+    const request = { id: 'req-1', org_id: 'org-2' } as RequestEntity;
+    (requestsService.findByIdOrFail as ReturnType<typeof vi.fn>).mockResolvedValue(request);
+    (copilotService.getExplanation as ReturnType<typeof vi.fn>).mockResolvedValue({
+      explanation: 'text',
+      degraded: false,
+    });
+
+    const result = await controller.getExplanation('req-1', { user: mockUser });
+
+    expect(result).toEqual({
+      statusCode: 200,
+      message: SYS_MSG.COPILOT_EXPLANATION_RETRIEVED,
+      data: { explanation: 'text', degraded: false },
+    });
   });
 });

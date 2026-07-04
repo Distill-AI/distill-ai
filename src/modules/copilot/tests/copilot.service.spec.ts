@@ -7,7 +7,10 @@ import { ToolRegistry } from '@modules/tools/registry';
 import { ToolStatus } from '@modules/tools/enums/tools.enums';
 import type { RedisService } from '@modules/redis/redis.service';
 import { RoutingReasonCode } from '@modules/scoring/enums/routing-reason-code.enum';
-import { COPILOT_EXPLANATION_CACHE_TTL_S } from '../copilot.constants';
+import {
+  COPILOT_EXPLANATION_CACHE_TTL_S,
+  COPILOT_EXPLANATION_DEGRADED_CACHE_TTL_S,
+} from '../copilot.constants';
 import { CopilotService } from '../copilot.service';
 
 function buildRequest(overrides: Partial<Request> = {}): Request {
@@ -49,8 +52,6 @@ function createMockRedis(cachedValue: string | null = null): RedisService {
   return {
     get: vi.fn().mockResolvedValue(cachedValue),
     set: vi.fn().mockResolvedValue(undefined),
-    setNx: vi.fn().mockResolvedValue(true),
-    releaseLock: vi.fn().mockResolvedValue(undefined),
   } as unknown as RedisService;
 }
 
@@ -225,69 +226,24 @@ describe('CopilotService', () => {
       expect(result).toEqual({ explanation: 'fresh text', degraded: false });
       expect(toolRegistry.invoke).toHaveBeenCalledTimes(1);
     });
-  });
 
-  describe('stampede protection', () => {
-    it('computes and releases the lock when it acquires the lock on a cache miss', async () => {
+    it('caches a degraded result with the shorter degraded TTL, not the full TTL', async () => {
       const lineItems = createMockLineItems([]);
       const toolRegistry = createMockToolRegistry({
         status: ToolStatus.OK,
         latency: 1,
-        result: { explanation: 'fresh text', degraded: false },
+        result: { explanation: 'template fallback text', degraded: true },
       });
       const redis = createMockRedis(null);
-
       const service = new CopilotService(lineItems, toolRegistry, redis);
-      await service.getExplanation(buildRequest());
 
-      expect(redis.setNx).toHaveBeenCalledTimes(1);
-      expect(redis.releaseLock).toHaveBeenCalledTimes(1);
-      expect(toolRegistry.invoke).toHaveBeenCalledTimes(1);
+      await service.getExplanation(buildRequest({ id: 'req-degraded' }));
+
+      expect(redis.set).toHaveBeenCalledWith(
+        'copilot_explanation:req-degraded',
+        JSON.stringify({ explanation: 'template fallback text', degraded: true }),
+        COPILOT_EXPLANATION_DEGRADED_CACHE_TTL_S,
+      );
     });
-
-    it('returns the value another caller cached while this caller was waiting on the lock', async () => {
-      const lineItems = createMockLineItems([]);
-      const toolRegistry = createMockToolRegistry({
-        status: ToolStatus.OK,
-        latency: 1,
-        result: { explanation: 'should not be used', degraded: false },
-      });
-      const redis = {
-        get: vi
-          .fn()
-          .mockResolvedValueOnce(null)
-          .mockResolvedValueOnce(JSON.stringify({ explanation: 'winner text', degraded: false })),
-        set: vi.fn().mockResolvedValue(undefined),
-        setNx: vi.fn().mockResolvedValue(false),
-        releaseLock: vi.fn().mockResolvedValue(undefined),
-      } as unknown as RedisService;
-
-      const service = new CopilotService(lineItems, toolRegistry, redis);
-      const result = await service.getExplanation(buildRequest());
-
-      expect(result).toEqual({ explanation: 'winner text', degraded: false });
-      expect(toolRegistry.invoke).not.toHaveBeenCalled();
-    }, 10000);
-
-    it('computes anyway if the lock holder never populates the cache within the wait window', async () => {
-      const lineItems = createMockLineItems([]);
-      const toolRegistry = createMockToolRegistry({
-        status: ToolStatus.OK,
-        latency: 1,
-        result: { explanation: 'fallback text', degraded: false },
-      });
-      const redis = {
-        get: vi.fn().mockResolvedValue(null),
-        set: vi.fn().mockResolvedValue(undefined),
-        setNx: vi.fn().mockResolvedValue(false),
-        releaseLock: vi.fn().mockResolvedValue(undefined),
-      } as unknown as RedisService;
-
-      const service = new CopilotService(lineItems, toolRegistry, redis);
-      const result = await service.getExplanation(buildRequest());
-
-      expect(result).toEqual({ explanation: 'fallback text', degraded: false });
-      expect(toolRegistry.invoke).toHaveBeenCalledTimes(1);
-    }, 10000);
   });
 });
