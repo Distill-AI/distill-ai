@@ -60,13 +60,19 @@ export function assembleSummary(raw: AnalyticsRawStats): AnalyticsSummary {
   };
   const quote_funnel: QuoteFunnel = { ...raw.funnel };
 
+  // With no prior-window denominator there is no comparable baseline, so report a 0-point delta rather
+  // than `cur - 0`, which would otherwise read as a spurious improvement from a 0% baseline for an org
+  // with no prior activity.
+  const zeroEditDeltaPts = raw.approvedPriorTotal > 0 ? round1(zeroEditCur - zeroEditPrior) : 0;
+  const falseNegDeltaPts = raw.needsReviewPriorTotal > 0 ? round1(falseNegCur - falseNegPrior) : 0;
+
   return {
     median_time_to_draft_seconds: Math.round(raw.medianCurSec ?? 0),
     median_time_to_draft_delta_pct: pctChange(raw.medianCurSec, raw.medianPriorSec),
     zero_edit_approval_pct: zeroEditCur,
-    zero_edit_approval_delta_pts: round1(zeroEditCur - zeroEditPrior),
+    zero_edit_approval_delta_pts: zeroEditDeltaPts,
     auto_eligible_false_negative_pct: falseNegCur,
-    auto_eligible_false_negative_delta_pts: round1(falseNegCur - falseNegPrior),
+    auto_eligible_false_negative_delta_pts: falseNegDeltaPts,
     quotes_this_week: raw.quotesCur,
     quotes_this_week_delta: raw.quotesCur - raw.quotesPrior,
     crash_recoveries_this_month: raw.crashRecoveries,
@@ -87,6 +93,9 @@ export class AnalyticsService {
   async getSummary(orgId: string, window: AnalyticsWindow): Promise<AnalyticsSummary> {
     const { from, to } = window;
     const priorFrom = new Date(from.getTime() - (to.getTime() - from.getTime()));
+    // crash_recoveries_this_month is a standing trailing-30-day tile ending at `to`, intentionally
+    // independent of the caller's `from` (every other KPI respects the window; this one is a fixed
+    // monthly count, not a windowed rate).
     const monthAgo = new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     const [funnel, median, quotes, approved, needsReview, confidence, crash] = await Promise.all([
@@ -140,12 +149,14 @@ const nullableNum = (value: unknown): number | null => (value == null ? null : N
 // Snapshot funnel from the current status of requests created in the window. Each stage is a strict
 // subset of the previous (a quote is required to be approved, approval to be sent), so the counts are
 // monotonically non-increasing by construction (AC-02) and read in one consistent snapshot (EC-02).
+// Every stage counts DISTINCT requests: a request with more than one quote (re-draft/revision) would
+// otherwise fan the LEFT JOIN out and inflate `ingested`/`drafted`, breaking the subset invariant.
 const FUNNEL_SQL = `
   SELECT
-    count(*) AS ingested,
-    count(q.id) AS drafted,
-    count(*) FILTER (WHERE q.status IN ('approved','ready','sent')) AS approved,
-    count(*) FILTER (WHERE q.status = 'sent') AS sent
+    count(DISTINCT r.id) AS ingested,
+    count(DISTINCT r.id) FILTER (WHERE q.id IS NOT NULL) AS drafted,
+    count(DISTINCT r.id) FILTER (WHERE q.status IN ('approved','ready','sent')) AS approved,
+    count(DISTINCT r.id) FILTER (WHERE q.status = 'sent') AS sent
   FROM requests r
   LEFT JOIN quotes q ON q.request_id = r.id AND q.org_id = r.org_id
   WHERE r.org_id = $1 AND r.created_at >= $2 AND r.created_at < $3`;

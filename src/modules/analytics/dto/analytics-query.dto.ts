@@ -5,7 +5,7 @@ import { IsISO8601, IsOptional } from 'class-validator';
  * Query for `GET /api/v1/analytics/summary`. `from`/`to` bound the primary reporting window; deltas
  * compare it against the immediately preceding window of equal length. Both are optional and
  * ISO-8601 validated (SEC-01); omitted, the window defaults to the last 7 days. No org/tenant input
- * is accepted here — the org is taken from the authenticated caller, so there is nothing to enumerate.
+ * is accepted here: the org is taken from the authenticated caller, so there is nothing to enumerate.
  */
 export class AnalyticsQueryDto {
   @ApiPropertyOptional({

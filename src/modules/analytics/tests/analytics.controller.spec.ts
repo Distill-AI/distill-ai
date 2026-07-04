@@ -1,3 +1,9 @@
+import { vi } from 'vitest';
+
+// Mutable so individual tests can flip auth on/off; the controller reads authConfig.enabled at call time.
+const { authState } = vi.hoisted(() => ({ authState: { enabled: true } }));
+vi.mock('@config/auth.config', () => ({ authConfig: authState }));
+
 import { CustomHttpException } from '@common/exceptions/custom-http.exception';
 import { DEMO_ORG_ID } from '@modules/ingestion/ingestion.constants';
 import { AnalyticsController } from '../analytics.controller';
@@ -11,6 +17,10 @@ function setup() {
 }
 
 describe('AnalyticsController.summary', () => {
+  beforeEach(() => {
+    authState.enabled = true;
+  });
+
   it('defaults to the last 7 days and wraps the payload', async () => {
     const { controller, getSummary } = setup();
 
@@ -49,10 +59,27 @@ describe('AnalyticsController.summary', () => {
     expect(getSummary).not.toHaveBeenCalled();
   });
 
-  it('falls back to the demo org when there is no authenticated user', async () => {
+  it('fails closed with no authenticated user when auth is enabled (401)', async () => {
     const { controller, getSummary } = setup();
 
-    await controller.summary({}, {});
+    await expect(controller.summary({}, {})).rejects.toBeInstanceOf(CustomHttpException);
+    expect(getSummary).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when the authenticated user has no org (403)', async () => {
+    const { controller, getSummary } = setup();
+
+    await expect(controller.summary({}, { user: {} as never })).rejects.toBeInstanceOf(
+      CustomHttpException,
+    );
+    expect(getSummary).not.toHaveBeenCalled();
+  });
+
+  it('uses the demo org (ignoring req.user) when auth is disabled', async () => {
+    authState.enabled = false;
+    const { controller, getSummary } = setup();
+
+    await controller.summary({}, { user: { orgId: 'org-1' } as never });
 
     expect(getSummary.mock.calls[0][0]).toBe(DEMO_ORG_ID);
   });
