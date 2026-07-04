@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ObjectStoreModule } from '@common/object-store/object-store.module';
+import { RedisModule } from '@modules/redis/redis.module';
 import { ExtractionModule } from '@modules/extraction/extraction.module';
 import { QuotesModule } from '@modules/quotes/quotes.module';
 import { PricingModule } from '@modules/pricing/pricing.module';
@@ -24,6 +25,7 @@ import { NodeRecoveryActions } from './actions/node-recovery.actions';
     SseModule,
     EventsModule,
     ObjectStoreModule,
+    RedisModule,
     ExtractionModule,
     // QuotesModule provides QuoteModelAction so the Review detail can include the suggested quote.
     QuotesModule,

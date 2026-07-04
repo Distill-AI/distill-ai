@@ -1,16 +1,10 @@
-import { DEFAULT_THRESHOLDS } from '../config/thresholds';
+import { classifyTier, DEFAULT_THRESHOLDS } from '../config/thresholds';
 import type { ConfidenceThresholds } from '../config/thresholds';
 
 interface ConfidenceChipProps {
   value: number | null;
   thresholds?: ConfidenceThresholds;
   skuLabel?: string;
-}
-
-function band(value: number, thresholds: ConfidenceThresholds): 'hi' | 'md' | 'lo' {
-  if (value >= thresholds.autoThreshold) return 'hi';
-  if (value >= thresholds.matchThreshold) return 'md';
-  return 'lo';
 }
 
 const bands = {
@@ -45,7 +39,7 @@ export function ConfidenceChip({
     );
   }
 
-  const b = band(value, thresholds);
+  const b = classifyTier(value, thresholds);
   const { container, dot, needsReview } = bands[b];
   const pct = `${Math.round(value * 100)}%`;
 
