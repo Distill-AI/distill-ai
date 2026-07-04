@@ -33,6 +33,8 @@ import { PricingModule } from '@modules/pricing/pricing.module';
 import { PolicyModule } from '@modules/policy/policy.module';
 // ── Analytics ─────────────────────────────────────────────────────
 import { AnalyticsModule } from '@modules/analytics/analytics.module';
+// ── Scoring ──────────────────────────────────────────────────────
+import { ScoringModule } from '@modules/scoring/scoring.module';
 
 // ── Auth ───────────────────────────────────────────────────────
 import { AuthModule } from '@modules/auth';
@@ -70,6 +72,7 @@ import { RlsContextMiddleware } from '@modules/auth/middleware/rls-context.middl
     PricingModule,
     PolicyModule,
     AnalyticsModule,
+    ScoringModule,
     // ── Feature modules , add yours here, remove the reference ones ───────
     JobsModule,
     DlqModule,
