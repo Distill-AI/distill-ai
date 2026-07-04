@@ -7,4 +7,5 @@ export enum RoutingReasonCode {
   EXTRACTION_FAILED = 'extraction_failed',
   EXTRACTION_EMPTY_SOURCE = 'extraction_empty_source',
   AUTO_ELIGIBLE = 'auto_eligible',
+  POLICY_BREACH = 'policy_breach',
 }

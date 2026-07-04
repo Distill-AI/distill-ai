@@ -249,6 +249,31 @@ describe('ExplainRoutingTool', () => {
       expect(res.status).toBe(ToolStatus.VALIDATION_ERROR);
     });
 
+    it('accepts a policy_breach routing reason (ScoreNode.applyPolicyGate output)', async () => {
+      const llm = createMockLLM('test');
+      const factory = new ExplainRoutingToolFactory(llm);
+      const tool = factory.create();
+
+      const actions = createMockActions();
+      const events = createMockEvents();
+      const registry = new ToolRegistry(actions, events);
+      registry.register(tool);
+
+      const res = await registry.invoke('explain_routing' as ToolName, {
+        routing: RequestRouting.NEEDS_REVIEW,
+        overallConfidence: 0.99,
+        routingReasons: [
+          {
+            code: RoutingReasonCode.POLICY_BREACH,
+            message: 'Policy gate forced review',
+            source: 'policy',
+          },
+        ],
+      });
+
+      expect(res.status).toBe(ToolStatus.OK);
+    });
+
     it('tool has no write path and only returns data', async () => {
       const llm = createMockLLM('Test explanation.');
       const factory = new ExplainRoutingToolFactory(llm);

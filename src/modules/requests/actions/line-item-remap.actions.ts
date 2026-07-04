@@ -1,4 +1,4 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
@@ -6,17 +6,15 @@ import { CustomHttpException } from '@common/exceptions/custom-http.exception';
 import { LineItem } from '@modules/catalog/entities/line-item.entity';
 import { LineItemModelAction } from '@modules/catalog/line-item.model-action';
 import { Sku } from '@modules/catalog/entities/sku.entity';
-import {
-  QuoteRecomputeService,
-  MANUAL_OVERRIDE_FLAG,
-} from '@modules/pricing/quote-recompute.service';
+import { QuoteRecomputeService } from '@modules/pricing/quote-recompute.service';
+import { CLOSE_TIE_FLAG, MANUAL_OVERRIDE_FLAG } from '@modules/catalog/line-item-flags.constants';
+import { RedisService } from '@modules/redis/redis.service';
+import { copilotExplanationCacheKey } from '@modules/copilot/copilot.constants';
 import * as SYS_MSG from '@constants/system-messages';
 import { Request } from '../entities/request.entity';
 import { RequestStatus } from '../enums/request-status.enum';
 import type { PatchLineItemDto } from '../dto/patch-line-item.dto';
 import type { RemapResponsePayload } from '../interfaces/remap.interface';
-
-const CLOSE_TIE_FLAG = 'close_tie';
 
 /**
  * Persists an estimator's re-map of one line and re-prices the request deterministically
@@ -26,11 +24,14 @@ const CLOSE_TIE_FLAG = 'close_tie';
  */
 @Injectable()
 export class LineItemRemapActions {
+  private readonly logger = new Logger(LineItemRemapActions.name);
+
   constructor(
     private readonly lineItems: LineItemModelAction,
     @InjectRepository(Sku) private readonly skus: Repository<Sku>,
     private readonly recompute: QuoteRecomputeService,
     @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly redis: RedisService,
   ) {}
 
   async remap(
@@ -84,6 +85,19 @@ export class LineItemRemapActions {
       }
       return result;
     });
+
+    // Recompute can clear/set line-item flags (e.g. pricing_blocked); invalidate outside the
+    // transaction so a cache-invalidation hiccup never turns a committed remap into a failure.
+    try {
+      await this.redis.del(copilotExplanationCacheKey(request.id));
+    } catch (err) {
+      // Best-effort: the copilot cache TTL (15m) is the backstop if invalidation fails.
+      this.logger.warn(
+        `Failed to invalidate copilot explanation cache for request ${request.id}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
 
     const updated = await this.lineItems.get({ identifierOptions: { id: lineId } });
     return {

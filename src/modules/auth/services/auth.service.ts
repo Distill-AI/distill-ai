@@ -1,33 +1,21 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { verify, sign } from 'jsonwebtoken';
+import { HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
+import { verify } from 'jsonwebtoken';
 import { authConfig } from '@config/auth.config';
 import type { DecodedToken, AuthUser } from '../interfaces/';
 import * as SYS_MSG from '@constants/system-messages';
+import { CustomHttpException } from '@common/exceptions/custom-http.exception';
 
 @Injectable()
 export class AuthService {
   login(
-    email: string,
+    _email: string,
     _password: string,
   ): { accessToken: string; expiresIn: number; tokenType: string } {
-    if (!authConfig.enabled) {
-      return {
-        accessToken: 'demo-token',
-        expiresIn: Math.floor(authConfig.tokenExpiryMs / 1000),
-        tokenType: 'Bearer',
-      };
+    if (authConfig.enabled) {
+      throw new CustomHttpException(SYS_MSG.AUTH_LOGIN_NOT_IMPLEMENTED, HttpStatus.NOT_IMPLEMENTED);
     }
-    const payload = {
-      userId: email.replace(/[^a-z0-9]/gi, '_'),
-      orgId: '11111111-1111-1111-1111-111111111111',
-      roles: ['admin', 'estimator'],
-      email,
-    };
-    const accessToken = sign(payload, authConfig.jwtSecret, {
-      expiresIn: Math.floor(authConfig.tokenExpiryMs / 1000),
-    });
     return {
-      accessToken,
+      accessToken: 'demo-token',
       expiresIn: Math.floor(authConfig.tokenExpiryMs / 1000),
       tokenType: 'Bearer',
     };
