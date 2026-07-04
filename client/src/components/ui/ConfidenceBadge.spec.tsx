@@ -17,17 +17,17 @@ describe('ConfidenceBadge', () => {
     expect(screen.getByText('100%')).toBeInTheDocument();
   });
 
-  it('uses the high tier at or above 85%', () => {
+  it('uses the high tier at or above the 0.95 autoThreshold', () => {
     const { container } = render(<ConfidenceBadge value={0.96} />);
     expect(container.firstChild).toHaveClass('bg-hi-bg', 'text-hi-tx');
   });
 
-  it('uses the medium tier between 65% and 84%', () => {
+  it('uses the medium tier between the 0.70 matchThreshold and the 0.95 autoThreshold', () => {
     const { container } = render(<ConfidenceBadge value={0.78} />);
     expect(container.firstChild).toHaveClass('bg-md-bg', 'text-md-tx');
   });
 
-  it('uses the low tier below 65%', () => {
+  it('uses the low tier below the 0.70 matchThreshold', () => {
     const { container } = render(<ConfidenceBadge value={0.5} />);
     expect(container.firstChild).toHaveClass('bg-lo-bg', 'text-lo-tx');
   });
@@ -45,5 +45,15 @@ describe('ConfidenceBadge', () => {
   it('uses the low tier just under the 0.70 matchThreshold boundary', () => {
     const { container } = render(<ConfidenceBadge value={0.6999} />);
     expect(container.firstChild).toHaveClass('bg-lo-bg', 'text-lo-tx');
+  });
+
+  it('uses the high tier at the 0.95 autoThreshold boundary, inclusive', () => {
+    const { container } = render(<ConfidenceBadge value={0.95} />);
+    expect(container.firstChild).toHaveClass('bg-hi-bg', 'text-hi-tx');
+  });
+
+  it('uses the medium tier just under the 0.95 autoThreshold boundary', () => {
+    const { container } = render(<ConfidenceBadge value={0.9499} />);
+    expect(container.firstChild).toHaveClass('bg-md-bg', 'text-md-tx');
   });
 });
