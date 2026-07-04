@@ -267,3 +267,7 @@ export const EXPLAIN_ROUTING_DEAL_VALUE_INCOMPLETE = 'Some line items have incom
 export const EXPLAIN_ROUTING_NO_LINE_ITEMS = 'No line items were found on this quote.';
 export const EXPLAIN_ROUTING_EXTRACTION_FAILED =
   'The source document could not be fully extracted.';
+
+// Copilot explanation
+export const COPILOT_EXPLANATION_RETRIEVED = 'Copilot explanation retrieved successfully';
+export const COPILOT_EXPLANATION_GENERATION_FAILED = 'Failed to generate copilot explanation';
