@@ -462,7 +462,7 @@ describe('RequestsController', () => {
       expect(auditEvents.list).toHaveBeenCalledWith({
         filterRecordOptions: { request_id: 'req-1' },
         paginationPayload: { page: 1, limit: 50 },
-        order: { created_at: 'ASC' },
+        order: { created_at: 'ASC', id: 'ASC' },
       });
       expect(result.statusCode).toBe(200);
       expect(result.data).toHaveLength(3);
@@ -526,7 +526,7 @@ describe('RequestsController', () => {
       expect(auditEvents.list).toHaveBeenCalledWith({
         filterRecordOptions: { request_id: 'req-1' },
         paginationPayload: { page: 3, limit: 100 },
-        order: { created_at: 'ASC' },
+        order: { created_at: 'ASC', id: 'ASC' },
       });
     });
   });
