@@ -3,9 +3,11 @@ import * as SYS_MSG from '@constants/system-messages';
 import { CurrentNode } from '@modules/requests/enums/current-node.enum';
 import { RequestRouting } from '@modules/requests/enums/request-routing.enum';
 import { RequestModelAction } from '@modules/requests/requests.model-action';
+import { RoutingReasonCode } from './enums/routing-reason-code.enum';
 import { ExtractionModelAction } from '@modules/extraction/extraction.model-action';
 import { LineItemModelAction } from '@modules/catalog/line-item.model-action';
 import type { LineItem } from '@modules/catalog/entities/line-item.entity';
+import { CLOSE_TIE_FLAG } from '@modules/catalog/line-item-flags.constants';
 import { EventsService } from '@modules/events/events.service';
 import { NodeRegistry } from '@modules/pipeline/node-registry';
 import type { NodeContext, NodeResult, PipelineNode } from '@modules/pipeline/types';
@@ -83,7 +85,8 @@ export class ScoreNode implements PipelineNode {
         matchConfidence: li.match_confidence,
         unitPriceMinor: li.unit_price_minor,
         quantity: li.quantity,
-        hasFlags: Array.isArray(li.flags) && (li.flags as string[]).some((f) => f !== 'close_tie'),
+        hasFlags:
+          Array.isArray(li.flags) && (li.flags as string[]).some((f) => f !== CLOSE_TIE_FLAG),
       })),
       thresholds,
     );
@@ -106,7 +109,9 @@ export class ScoreNode implements PipelineNode {
     }
     // Force review and annotate why, even if confidence already routed to review, so the reason
     // is recorded as a deterministic policy breach rather than only a soft confidence flag.
-    const alreadyAnnotated = scored.routingReasons.some((r) => r.code === 'policy_breach');
+    const alreadyAnnotated = scored.routingReasons.some(
+      (r) => r.code === RoutingReasonCode.POLICY_BREACH,
+    );
     return {
       routing: RequestRouting.NEEDS_REVIEW,
       overallConfidence: scored.overallConfidence,
@@ -114,7 +119,11 @@ export class ScoreNode implements PipelineNode {
         ? scored.routingReasons
         : [
             ...scored.routingReasons,
-            { code: 'policy_breach', message: SYS_MSG.POLICY_GATE_REVIEW, source: 'policy' },
+            {
+              code: RoutingReasonCode.POLICY_BREACH,
+              message: SYS_MSG.POLICY_GATE_REVIEW,
+              source: 'policy',
+            },
           ],
     };
   }

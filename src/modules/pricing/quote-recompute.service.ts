@@ -7,10 +7,8 @@ import { QuoteModelAction, type QuoteLineInput } from '@modules/quotes/quote.mod
 import { PricingRuleModelAction } from './pricing-rule.model-action';
 import { QuotePricingService } from './quote-pricing.service';
 import { PRICING_BLOCKED_FLAG } from './pricing.constants';
+import { MANUAL_OVERRIDE_FLAG } from '@modules/catalog/line-item-flags.constants';
 import type { PricedLine, PricingLineInput } from './interfaces/pricing.interfaces';
-
-/** Marks a line whose unit price the estimator set manually; recompute keeps it instead of re-pricing. */
-export const MANUAL_OVERRIDE_FLAG = 'manual_override';
 
 /** Server-confirmed quote totals from a recompute. `blocked` is the EC-04 no-applicable-rule case. */
 export interface RecomputeResult {
