@@ -5,9 +5,10 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 import prettierPlugin from 'eslint-plugin-prettier/recommended'
+import storybook from 'eslint-plugin-storybook'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'storybook-static']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -21,4 +22,5 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  ...storybook.configs['flat/recommended'],
 ])
