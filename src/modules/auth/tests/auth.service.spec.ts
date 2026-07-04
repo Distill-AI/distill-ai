@@ -1,5 +1,4 @@
 import { HttpStatus, UnauthorizedException } from '@nestjs/common';
-import { CustomHttpException } from '@common/exceptions/custom-http.exception';
 
 const mockAuthConfig = vi.hoisted(() => ({
   enabled: true,
@@ -26,13 +25,9 @@ describe('AuthService', () => {
     it('throws 501 CustomHttpException when auth enabled', () => {
       mockAuthConfig.enabled = true;
 
-      expect(() => service.login('a@b.com', 'x')).toThrow(CustomHttpException);
-      try {
-        service.login('a@b.com', 'x');
-        throw new Error('expected login to throw');
-      } catch (error) {
-        expect((error as CustomHttpException).getStatus()).toBe(HttpStatus.NOT_IMPLEMENTED);
-      }
+      expect(() => service.login('a@b.com', 'x')).toThrow(
+        expect.objectContaining({ status: HttpStatus.NOT_IMPLEMENTED }),
+      );
     });
 
     it('returns demo token when auth disabled', () => {

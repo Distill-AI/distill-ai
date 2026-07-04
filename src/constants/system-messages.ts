@@ -134,7 +134,6 @@ export const AUTH_LOGIN_SUCCESS = 'Login successful';
 export const AUTH_UNAUTHORIZED = 'Unauthorized. Valid token required.';
 export const AUTH_FORBIDDEN = 'Forbidden. Insufficient permissions.';
 export const AUTH_INVALID_TOKEN = 'Invalid or expired token.';
-export const AUTH_INVALID_CREDENTIALS = 'Invalid credentials';
 export const AUTH_TOKEN_MISSING_OR_INVALID = 'Missing or invalid token';
 export const AUTH_LOGIN_NOT_IMPLEMENTED =
   'Real user management is not yet implemented. Disable AUTH_ENABLED or connect an identity provider.';
