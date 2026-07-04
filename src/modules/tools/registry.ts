@@ -11,6 +11,14 @@ import { ToolCallsActions, ToolCallLogParams } from './actions/tool-calls.action
 import { ToolName, RESERVED_NAMES } from '../pipeline/types';
 import { getTimestamp } from '@common/utils/timestamp';
 import { StageErrorReason, type StageErrorReasonValue } from '@constants/events.constants';
+import {
+  ATTR_ATTEMPT,
+  ATTR_NODE,
+  ATTR_ORG_ID,
+  ATTR_REQUEST_ID,
+  ATTR_TOOL,
+  withSpan,
+} from '@common/telemetry/telemetry';
 
 type Sanitizer = (data: unknown) => unknown;
 
@@ -130,7 +138,19 @@ export class ToolRegistry implements OnModuleInit {
 
     let execResult: { ok: true; value: unknown } | { ok: false; error: unknown };
     try {
-      const result = await contract.execute(inputParse.data);
+      // Per-tool span nested under the current node span, so a tool call shows up inside its node in
+      // the request's trace and carries the same request_id correlation.
+      const result = await withSpan(
+        `tool.${name}`,
+        {
+          [ATTR_REQUEST_ID]: rid,
+          [ATTR_ORG_ID]: orgId,
+          [ATTR_TOOL]: name,
+          [ATTR_ATTEMPT]: attempt,
+          [ATTR_NODE]: node,
+        },
+        () => contract.execute(inputParse.data),
+      );
       execResult = { ok: true as const, value: result };
     } catch (e) {
       execResult = { ok: false as const, error: e };

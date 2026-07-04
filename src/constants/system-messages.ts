@@ -51,6 +51,8 @@ export const REQUEST_NOT_FOUND = (id: string) => `Request ${id} not found`;
 export const ATTACHMENT_NOT_FOUND = (id: string) => `Attachment ${id} not found`;
 export const REQUESTS_RETRIEVED = 'Requests retrieved successfully';
 export const REQUEST_RETRIEVED = 'Request retrieved successfully';
+export const ANALYTICS_SUMMARY_RETRIEVED = 'Analytics summary retrieved successfully';
+export const ANALYTICS_INVALID_RANGE = 'from must be earlier than to';
 export const PIPELINE_ENQUEUED = 'Request enqueued for pipeline processing';
 export const PIPELINE_RESUMED = 'Request resumed for pipeline processing';
 
@@ -87,6 +89,8 @@ export const CLASSIFY_DEFAULTED_LOW_CONFIDENCE = (confidence: number, threshold:
 export const CLASSIFY_RETRY_FAILED = 'Classification retry failed; defaulting to service_quote';
 export const CLASSIFY_MALFORMED_INPUT =
   'Parsed request missing required fields; defaulting to service_quote';
+export const CLASSIFY_DEMO_FIXTURE_UNAVAILABLE =
+  'DEMO_MODE classification fixture unavailable (seed corpus not found)';
 export const LLM_INVOCATION_FAILED = (status: number, body: string) =>
   `LLM invocation failed (${status}): ${body}`;
 
@@ -95,6 +99,8 @@ export const EXTRACTION_COMPLETE = 'Extraction completed successfully';
 export const EXTRACTION_ESCALATED = 'Extraction failed validation after retry; escalated to review';
 export const EXTRACTION_SOURCE_TEXT_EMPTY = 'No source text available for extraction';
 export const EXTRACTION_TOOL_FAILED = 'extract_request tool invocation failed';
+export const EXTRACTION_DEMO_FIXTURE_UNAVAILABLE =
+  'DEMO_MODE extraction fixture unavailable (seed corpus not found)';
 export const EXTRACTION_RECONCILE_FAILED = (reason: string) =>
   `Extraction reconciliation failed: ${reason}`;
 export const EXTRACTION_UPSERT_FAILED = (requestId: string) =>

@@ -2,6 +2,7 @@ import { Injectable, LoggerService } from '@nestjs/common';
 import { logger, logLevel } from './pino.logger';
 import { LoggerContextService } from './logger-context.service';
 import { maskId, maskEmail } from './pii';
+import { activeTraceIds } from '@common/telemetry/telemetry';
 
 @Injectable()
 export class PinoLoggerService implements LoggerService {
@@ -59,10 +60,19 @@ export class PinoLoggerService implements LoggerService {
   }
 
   private getContextFields(): Record<string, unknown> {
-    const context = this.contextService.getContext();
-    if (!context) return {};
-
     const fields: Record<string, unknown> = {};
+
+    // Correlate every line with its trace when a span is active, independent of request context, so
+    // a log can be pivoted to the full request trace (US-E7-1-OTEL AC-02).
+    const traceIds = activeTraceIds();
+    if (traceIds) {
+      fields.trace_id = traceIds.trace_id;
+      fields.span_id = traceIds.span_id;
+    }
+
+    const context = this.contextService.getContext();
+    if (!context) return fields;
+
     if (context.requestId !== undefined) fields.requestId = context.requestId;
     if (context.jobId !== undefined) fields.jobId = context.jobId;
     if (context.queue) fields.queue = context.queue;

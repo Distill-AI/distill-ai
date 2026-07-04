@@ -10,6 +10,7 @@ import { isInfraError, CircuitBreakerOpenError } from './pipeline.errors';
 import type { NodeResult } from './types';
 import { getTimestamp } from '@common/utils/timestamp';
 import { StageErrorReason } from '@constants/events.constants';
+import { ATTR_NODE, ATTR_ORG_ID, ATTR_REQUEST_ID, withSpan } from '@common/telemetry/telemetry';
 
 const MAX_NODE_TRANSITIONS = 50;
 
@@ -40,7 +41,23 @@ export class PipelineGraphEngine {
     private readonly events: EventsService,
   ) {}
 
+  /**
+   * Root of a request's trace: every node and tool span nests under this one, so a request's whole
+   * run reads as one continuous trace (AC-01). The active context here is whatever the worker
+   * extracted from the Bull job, so this span links to the API-side enqueue span across processes
+   * (EC-01); with no inbound context it still traces, just as a fresh root carrying request_id (EC-02).
+   */
   async run(requestId: string, reason?: string, skipExtract?: boolean): Promise<void> {
+    await withSpan('pipeline.run', { [ATTR_REQUEST_ID]: requestId }, () =>
+      this.runInternal(requestId, reason, skipExtract),
+    );
+  }
+
+  private async runInternal(
+    requestId: string,
+    reason?: string,
+    skipExtract?: boolean,
+  ): Promise<void> {
     const startedAt = performance.now();
     const req = await this.requests.get({ identifierOptions: { id: requestId } });
     if (!req) {
@@ -107,7 +124,11 @@ export class PipelineGraphEngine {
 
       let result: NodeResult;
       try {
-        result = await impl.run({ requestId, orgId });
+        result = await withSpan(
+          `node.${node}`,
+          { [ATTR_REQUEST_ID]: requestId, [ATTR_ORG_ID]: orgId, [ATTR_NODE]: node },
+          () => impl.run({ requestId, orgId }),
+        );
       } catch (err) {
         // Circuit breaker open (FR-5, SEC-02): LlmClientService emits stage.error before
         // throwing, so no duplicate event is needed here. Wired ahead of ClassifyNode
