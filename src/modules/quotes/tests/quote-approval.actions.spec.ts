@@ -103,6 +103,7 @@ describe('QuoteApprovalActions.approveAndGenerate', () => {
         eventName: 'quote.approved',
         requestId: 'req-1',
         quoteId: 'quote-1',
+        attributes: {},
       }),
     );
     expect(toolRegistry.invoke).toHaveBeenCalledWith(
@@ -114,7 +115,12 @@ describe('QuoteApprovalActions.approveAndGenerate', () => {
     );
     expect(quotes.markReady).toHaveBeenCalledWith('quote-1', 'quotes/org-1/quote-1.pdf');
     expect(events.emit).toHaveBeenCalledWith(
-      expect.objectContaining({ eventName: 'quote.ready', requestId: 'req-1', quoteId: 'quote-1' }),
+      expect.objectContaining({
+        eventName: 'quote.ready',
+        requestId: 'req-1',
+        quoteId: 'quote-1',
+        attributes: {},
+      }),
     );
     expect(result.quote.status).toBe(QuoteStatus.READY);
   });

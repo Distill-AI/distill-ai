@@ -2,8 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { LineItem } from '@modules/catalog/entities/line-item.entity';
 import { Quote } from '@modules/quotes/entities/quote.entity';
 import { QuotePricingService } from '../quote-pricing.service';
-import { QuoteRecomputeService, MANUAL_OVERRIDE_FLAG } from '../quote-recompute.service';
+import { QuoteRecomputeService } from '../quote-recompute.service';
 import { PRICING_BLOCKED_FLAG } from '../pricing.constants';
+import { MANUAL_OVERRIDE_FLAG } from '@modules/catalog/line-item-flags.constants';
 import type { PricingRuleSet } from '../interfaces/pricing.interfaces';
 
 interface FakeLine {
