@@ -5,17 +5,20 @@ import { Review } from './Review';
 import { PageHeaderProvider, usePageHeader } from '../context/PageHeaderContext';
 import type { RequestDetail } from '../api/requests';
 
-const { mockUseRequest, mockDownload, mockNavigate } = vi.hoisted(() => ({
-  mockUseRequest: vi.fn(),
-  mockDownload: vi.fn(),
-  mockNavigate: vi.fn(),
-}));
+const { mockUseRequest, mockUseCopilotExplanation, mockDownload, mockNavigate } = vi.hoisted(
+  () => ({
+    mockUseRequest: vi.fn(),
+    mockUseCopilotExplanation: vi.fn(),
+    mockDownload: vi.fn(),
+    mockNavigate: vi.fn(),
+  }),
+);
 
 vi.mock('../api/requests', () => ({
   useRequest: () => mockUseRequest(),
 }));
 vi.mock('../api/copilotExplanation', () => ({
-  useCopilotExplanation: () => ({ data: undefined, isLoading: false, isError: true }),
+  useCopilotExplanation: () => mockUseCopilotExplanation(),
 }));
 vi.mock('../api/attachments', () => ({
   downloadAttachment: mockDownload,
@@ -122,6 +125,8 @@ function renderReview() {
 describe('Review', () => {
   beforeEach(() => {
     mockUseRequest.mockReset();
+    mockUseCopilotExplanation.mockReset();
+    mockUseCopilotExplanation.mockReturnValue({ data: undefined, isLoading: false, isError: true });
     mockDownload.mockReset();
     mockNavigate.mockReset();
   });
@@ -210,6 +215,25 @@ describe('Review', () => {
     renderReview();
 
     expect(screen.getByRole('link', { name: /back to inbox/i })).toBeInTheDocument();
+  });
+
+  it('renders the Copilot explanation block when the hook resolves data (integration)', () => {
+    mockUseRequest.mockReturnValue({ data: detail, isLoading: false, isError: false });
+    mockUseCopilotExplanation.mockReturnValue({
+      data: {
+        explanation: 'Routed to needs review because of low line confidence.',
+        degraded: true,
+      },
+      isLoading: false,
+      isError: false,
+    });
+    renderReview();
+
+    expect(screen.getByText('AI explanation')).toBeInTheDocument();
+    expect(
+      screen.getByText('Routed to needs review because of low line confidence.'),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/auto-generated, may be less precise/i)).toBeInTheDocument();
   });
 
   it('opens the DeclineModal when Decline is clicked', async () => {
