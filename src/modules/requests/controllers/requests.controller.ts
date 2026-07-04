@@ -147,7 +147,7 @@ export class RequestsController {
     const result = await this.auditEvents.list({
       filterRecordOptions: { request_id: requestId },
       paginationPayload: { page, limit },
-      order: { created_at: 'ASC' },
+      order: { created_at: 'ASC', id: 'ASC' },
     });
 
     return {

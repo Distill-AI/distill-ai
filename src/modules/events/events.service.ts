@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { trace } from '@opentelemetry/api';
 import { SseService } from '../../sse/sse.service';
 import { AuditEventModelAction } from './audit-event.model-action';
 import { EVENT_PAYLOAD_SCHEMAS, StageErrorPayloadSchema } from '@constants/events.constants';
@@ -29,6 +30,12 @@ export class EventsService implements OnModuleInit {
     private readonly sse: SseService,
   ) {}
 
+  /**
+   * Cross-checks event *names* only: every EVENT_PAYLOAD_SCHEMAS key has a $defs entry and vice
+   * versa. It does not compare field-level shape, so events.schema.json and the Zod schemas can
+   * still diverge on required fields or types without this check catching it; only the Zod
+   * schemas are enforced against payloads at runtime, so the JSON file remains documentation-grade.
+   */
   onModuleInit(): void {
     const schemaPath = join(process.cwd(), 'events.schema.json');
     let parsed: { $defs?: Record<string, unknown> };
@@ -63,7 +70,10 @@ export class EventsService implements OnModuleInit {
 
     const schema = EVENT_PAYLOAD_SCHEMAS[params.eventName];
     if (!schema) {
-      this.logger.warn({
+      trace.getActiveSpan()?.addEvent('event_emit_unschema_rejected', {
+        event_name: params.eventName,
+      });
+      this.logger.error({
         event: 'event_emit_unschema_rejected',
         event_name: params.eventName,
       });
@@ -73,10 +83,13 @@ export class EventsService implements OnModuleInit {
     const attributes = params.attributes ?? {};
     const result = schema.safeParse(attributes);
     if (!result.success) {
-      this.logger.warn({
+      trace.getActiveSpan()?.addEvent('event_emit_validation_failed', {
+        event_name: params.eventName,
+      });
+      this.logger.error({
         event: 'event_emit_validation_failed',
         event_name: params.eventName,
-        errors: result.error.flatten(),
+        errors: JSON.stringify(result.error.flatten()),
       });
       return;
     }
@@ -111,10 +124,13 @@ export class EventsService implements OnModuleInit {
 
     const result = StageErrorPayloadSchema.safeParse(payload);
     if (!result.success) {
-      this.logger.warn({
+      trace.getActiveSpan()?.addEvent('event_emit_validation_failed', {
+        event_name: 'stage.error',
+      });
+      this.logger.error({
         event: 'event_emit_validation_failed',
         event_name: 'stage.error',
-        errors: result.error.flatten(),
+        errors: JSON.stringify(result.error.flatten()),
       });
       return;
     }
