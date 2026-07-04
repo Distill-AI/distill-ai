@@ -7,7 +7,8 @@ import { OriginalRequestPane } from '../components/review/OriginalRequestPane';
 import { ParsedStructurePane } from '../components/review/ParsedStructurePane';
 import { SuggestedQuotePane } from '../components/review/SuggestedQuotePane';
 import { DeclineModal } from '../components/review/DeclineModal';
-import { RoutingReasonsBanner } from '../components/review/RoutingReasonsBanner';
+import { CopilotExplanationBlock } from '../components/review/CopilotExplanationBlock';
+import { useCopilotExplanation } from '../api/copilotExplanation';
 import { ErrorBanner } from '../components/inbox/ErrorBanner';
 import { usePageHeader } from '../context/PageHeaderContext';
 import { QuestionMarkCircleIcon } from '../components/ui/QuestionMarkCircleIcon';
@@ -75,6 +76,7 @@ export function Review() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: request, isLoading, isError, refetch } = useRequest(id);
+  const copilotExplanation = useCopilotExplanation(id);
   const [downloadError, setDownloadError] = useState('');
   const [declineOpen, setDeclineOpen] = useState(false);
   const declineBtnRef = useRef<HTMLButtonElement>(null);
@@ -192,9 +194,11 @@ export function Review() {
             )}
           </div>
 
-          <RoutingReasonsBanner
-            routing={request.routing}
-            routing_reasons={request.routing_reasons}
+          <CopilotExplanationBlock
+            explanation={copilotExplanation.data?.explanation}
+            isLoading={copilotExplanation.isLoading}
+            isError={copilotExplanation.isError}
+            degraded={copilotExplanation.data?.degraded}
           />
           <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
             <Pane>

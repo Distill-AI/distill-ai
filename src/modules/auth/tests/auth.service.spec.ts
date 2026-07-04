@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { HttpStatus, UnauthorizedException } from '@nestjs/common';
 
 const mockAuthConfig = vi.hoisted(() => ({
   enabled: true,
@@ -19,6 +19,27 @@ describe('AuthService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     service = new AuthService();
+  });
+
+  describe('login', () => {
+    it('throws 501 CustomHttpException when auth enabled', () => {
+      mockAuthConfig.enabled = true;
+
+      expect(() => service.login('a@b.com', 'x')).toThrow(
+        expect.objectContaining({ status: HttpStatus.NOT_IMPLEMENTED }),
+      );
+    });
+
+    it('returns demo token when auth disabled', () => {
+      mockAuthConfig.enabled = false;
+
+      const result = service.login('a@b.com', 'x');
+      expect(result).toEqual({
+        accessToken: 'demo-token',
+        expiresIn: Math.floor(mockAuthConfig.tokenExpiryMs / 1000),
+        tokenType: 'Bearer',
+      });
+    });
   });
 
   describe('extractToken', () => {
