@@ -13,6 +13,6 @@ import { EventsService } from './events.service';
   // resolve those relations and the app fails to boot. (Organization/Request come from RequestsModule.)
   imports: [TypeOrmModule.forFeature([AuditEvent, Quote, User]), SseModule],
   providers: [AuditEventModelAction, EventsService],
-  exports: [EventsService],
+  exports: [EventsService, AuditEventModelAction],
 })
 export class EventsModule {}

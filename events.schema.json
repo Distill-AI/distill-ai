@@ -1,65 +1,329 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "stage.error",
-  "title": "stage.error",
-  "description": "Emitted on every handled pipeline failure that escalates to human review",
-  "type": "object",
-  "required": [
-    "event_type",
-    "request_id",
-    "stage",
-    "reason",
-    "escalated_to_human",
-    "occurred_at"
-  ],
-  "additionalProperties": false,
-  "properties": {
-    "event_type": {
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$sharedDefs": {
+    "nodeName": {
       "type": "string",
-      "const": "stage.error"
+      "enum": ["parse", "extract", "classify", "match", "price", "policy", "score", "done", "failed"]
+    }
+  },
+  "$defs": {
+    "request.received": {
+      "title": "request.received",
+      "description": "Emitted once a new request and its attachments have been durably persisted",
+      "type": "object",
+      "required": ["channel", "attachment_count"],
+      "additionalProperties": false,
+      "properties": {
+        "channel": { "type": "string", "enum": ["email", "upload", "form"] },
+        "attachment_count": { "type": "integer", "minimum": 0 }
+      }
     },
-    "request_id": {
-      "type": "string",
-      "format": "uuid"
+    "node.entered": {
+      "title": "node.entered",
+      "description": "Emitted when the pipeline engine begins running a node",
+      "type": "object",
+      "required": ["type", "timestamp", "node", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "type": "string", "const": "node.entered" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "node": { "$ref": "#/$sharedDefs/nodeName" },
+        "status": { "type": "string", "const": "processing" }
+      }
     },
-    "stage": {
-      "type": "string",
-      "enum": [
-        "parse",
-        "extract",
-        "classify",
-        "match",
-        "price",
-        "policy",
-        "score"
+    "node.exited": {
+      "title": "node.exited",
+      "description": "Emitted when a node finishes. Written from two independent call sites for the same node transition (the node's own rich attributes, and the engine's generic wrapper), plus a minimal circuit-breaker-open variant - all three shapes are real and valid.",
+      "oneOf": [
+        {
+          "title": "node.exited (generic engine wrapper)",
+          "type": "object",
+          "required": ["type", "timestamp", "node", "status", "duration_ms", "summary"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "type": "string", "const": "node.exited" },
+            "timestamp": { "type": "string", "format": "date-time" },
+            "node": { "$ref": "#/$sharedDefs/nodeName" },
+            "status": { "type": "string", "enum": ["success", "failed"] },
+            "duration_ms": { "type": "integer", "minimum": 0 },
+            "summary": { "type": "string" }
+          }
+        },
+        {
+          "title": "node.exited (circuit breaker open)",
+          "type": "object",
+          "required": ["node", "next"],
+          "additionalProperties": false,
+          "properties": {
+            "node": { "$ref": "#/$sharedDefs/nodeName" },
+            "next": { "type": "string", "const": "needs_review" }
+          }
+        },
+        {
+          "title": "node.exited (classify node)",
+          "type": "object",
+          "required": [
+            "node",
+            "next",
+            "classification_type",
+            "classification_confidence",
+            "elapsed_ms",
+            "message"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "node": { "$ref": "#/$sharedDefs/nodeName" },
+            "next": { "$ref": "#/$sharedDefs/nodeName" },
+            "classification_type": { "type": "string", "enum": ["catalog_rfq", "service_quote", "unknown"] },
+            "classification_confidence": { "type": "number" },
+            "elapsed_ms": { "type": "integer", "minimum": 0 },
+            "message": { "type": "string" }
+          }
+        },
+        {
+          "title": "node.exited (match node)",
+          "type": "object",
+          "required": ["node", "next", "matched_count", "total_count", "degraded", "message"],
+          "additionalProperties": false,
+          "properties": {
+            "node": { "$ref": "#/$sharedDefs/nodeName" },
+            "next": { "$ref": "#/$sharedDefs/nodeName" },
+            "matched_count": { "type": "integer", "minimum": 0 },
+            "total_count": { "type": "integer", "minimum": 0 },
+            "degraded": { "type": "boolean" },
+            "message": { "type": "string" }
+          }
+        },
+        {
+          "title": "node.exited (score node)",
+          "type": "object",
+          "required": [
+            "node",
+            "next",
+            "routing",
+            "overall_confidence",
+            "routing_reasons",
+            "elapsed_ms",
+            "message"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "node": { "$ref": "#/$sharedDefs/nodeName" },
+            "next": { "$ref": "#/$sharedDefs/nodeName" },
+            "routing": { "type": "string", "enum": ["auto_eligible", "needs_review"] },
+            "overall_confidence": { "type": "number" },
+            "routing_reasons": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["code", "message", "source"],
+                "additionalProperties": false,
+                "properties": {
+                  "code": { "type": "string" },
+                  "message": { "type": "string" },
+                  "source": { "type": "string", "enum": ["extraction", "confidence", "policy"] }
+                }
+              }
+            },
+            "elapsed_ms": { "type": "integer", "minimum": 0 },
+            "message": { "type": "string" }
+          }
+        },
+        {
+          "title": "node.exited (extract node)",
+          "type": "object",
+          "required": ["node", "next", "schema_valid", "reextract_count", "elapsed_ms", "message"],
+          "additionalProperties": false,
+          "properties": {
+            "node": { "$ref": "#/$sharedDefs/nodeName" },
+            "next": { "$ref": "#/$sharedDefs/nodeName" },
+            "schema_valid": { "type": "boolean" },
+            "reextract_count": { "type": "integer", "minimum": 0 },
+            "elapsed_ms": { "type": "integer", "minimum": 0 },
+            "message": { "type": "string" }
+          }
+        }
       ]
     },
-    "reason": {
-      "type": "string",
-      "enum": [
-        "corrupt",
-        "no_text_layer",
-        "unsupported_format",
-        "size_limit_exceeded",
-        "tool_not_found",
-        "tool_input_invalid",
-        "tool_execution_failed",
-        "tool_output_invalid",
-        "llm_circuit_open",
-        "llm_timeout",
-        "llm_error",
-        "vector_store_unavailable",
-        "pricing_rule_missing",
-        "unknown"
-      ]
+    "tool.invoked": {
+      "title": "tool.invoked",
+      "description": "Emitted at each phase of a tool call (running / success / failed)",
+      "type": "object",
+      "required": ["type", "timestamp", "tool_name", "status", "attempt", "result_summary"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "type": "string", "const": "tool.invoked" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "node": { "type": "string", "enum": ["parse", "extract", "match", "score", "price", "policy"] },
+        "tool_name": { "type": "string" },
+        "status": { "type": "string", "enum": ["running", "success", "failed"] },
+        "attempt": { "type": "integer", "minimum": 1 },
+        "result_summary": { "type": "string" }
+      }
     },
-    "escalated_to_human": {
-      "type": "boolean",
-      "const": true
+    "request.resumed": {
+      "title": "request.resumed",
+      "description": "Emitted when a request resumes from a non-initial node (crash recovery or manual)",
+      "type": "object",
+      "required": ["type", "resumed_from_node", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "type": "string", "const": "request.resumed" },
+        "resumed_from_node": { "$ref": "#/$sharedDefs/nodeName" },
+        "reason": { "type": "string", "enum": ["crash_recovery", "manual"] }
+      }
     },
-    "occurred_at": {
-      "type": "string",
-      "format": "date-time"
+    "stage.error": {
+      "title": "stage.error",
+      "description": "Emitted on every handled pipeline failure that escalates to human review",
+      "type": "object",
+      "required": [
+        "event_type",
+        "request_id",
+        "stage",
+        "reason",
+        "escalated_to_human",
+        "occurred_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "event_type": {
+          "type": "string",
+          "const": "stage.error"
+        },
+        "request_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "parse",
+            "extract",
+            "classify",
+            "match",
+            "price",
+            "policy",
+            "score"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "corrupt",
+            "no_text_layer",
+            "unsupported_format",
+            "size_limit_exceeded",
+            "tool_not_found",
+            "tool_input_invalid",
+            "tool_execution_failed",
+            "tool_output_invalid",
+            "llm_circuit_open",
+            "llm_timeout",
+            "llm_error",
+            "vector_store_unavailable",
+            "pricing_rule_missing",
+            "unknown"
+          ]
+        },
+        "escalated_to_human": {
+          "type": "boolean",
+          "const": true
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "quote.approved": {
+      "title": "quote.approved",
+      "description": "Emitted when a quote transitions to approved. No attributes beyond the row columns - an explicit empty-object contract.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "quote.ready": {
+      "title": "quote.ready",
+      "description": "Emitted when a quote's PDF has rendered and it transitions to ready. No attributes beyond the row columns - an explicit empty-object contract.",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "request.declined": {
+      "title": "request.declined",
+      "description": "Emitted when a request is declined",
+      "type": "object",
+      "required": ["reason"],
+      "additionalProperties": false,
+      "properties": {
+        "reason": { "type": "string" }
+      }
+    },
+    "pricing.completed": {
+      "title": "pricing.completed",
+      "description": "Emitted when the pricing node finishes",
+      "type": "object",
+      "required": ["node", "next", "total_minor", "blocked", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "node": { "$ref": "#/$sharedDefs/nodeName" },
+        "next": { "$ref": "#/$sharedDefs/nodeName" },
+        "total_minor": { "type": "integer" },
+        "blocked": { "type": "boolean" },
+        "message": { "type": "string" }
+      }
+    },
+    "policy.completed": {
+      "title": "policy.completed",
+      "description": "Emitted when the policy node finishes",
+      "type": "object",
+      "required": ["node", "next", "breached", "fail_closed", "breach_count", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "node": { "$ref": "#/$sharedDefs/nodeName" },
+        "next": { "$ref": "#/$sharedDefs/nodeName" },
+        "breached": { "type": "boolean" },
+        "fail_closed": { "type": "boolean" },
+        "breach_count": { "type": "integer", "minimum": 0 },
+        "message": { "type": "string" }
+      }
+    },
+    "processing.complete": {
+      "title": "processing.complete",
+      "description": "Emitted once when the pipeline run finalizes, success or failure",
+      "type": "object",
+      "required": ["type", "timestamp", "status", "total_duration_ms"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "type": "string", "const": "processing.complete" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["success", "failed"] },
+        "total_duration_ms": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "request.finalized": {
+      "title": "request.finalized",
+      "description": "Emitted once when the request reaches its terminal status",
+      "type": "object",
+      "required": ["status"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "received",
+            "parsing",
+            "needs_review",
+            "priced",
+            "ready",
+            "sent",
+            "declined",
+            "needs_clarification",
+            "failed"
+          ]
+        }
+      }
     }
   }
 }
