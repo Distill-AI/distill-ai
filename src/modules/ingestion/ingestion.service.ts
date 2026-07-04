@@ -13,6 +13,7 @@ import { RequestChannel } from '@modules/requests/enums/request-channel.enum';
 import { RequestStatus } from '@modules/requests/enums/request-status.enum';
 import { CurrentNode } from '@modules/requests/enums/current-node.enum';
 import { PipelineRunner } from '@modules/pipeline/pipeline.runner';
+import { EventsService } from '@modules/events/events.service';
 import * as SYS_MSG from '@constants/system-messages';
 import {
   ALLOWED_TYPES,
@@ -34,6 +35,7 @@ export class IngestionService {
     private readonly attachments: AttachmentModelAction,
     @Inject(OBJECT_STORE) private readonly store: ObjectStore,
     private readonly runner: PipelineRunner,
+    private readonly events: EventsService,
   ) {}
 
   /**
@@ -90,12 +92,21 @@ export class IngestionService {
     }
 
     // Defer to after the caller's transaction commits so the worker cannot dequeue and read the
-    // request before its row is visible (issue #93). Without a transactional context (non-HTTP
-    // callers/tests) there is nothing to wait on, so enqueue inline.
+    // request before its row is visible (issue #93), and so a request.received row is never
+    // written for a request whose creating transaction rolls back. Without a transactional
+    // context (non-HTTP callers/tests) there is nothing to wait on, so run both inline.
+    const emitReceived = () =>
+      this.events.emit({
+        eventName: 'request.received',
+        orgId,
+        requestId: request.id,
+        attributes: { channel, attachment_count: files.length },
+      });
     const enqueue = () => this.enqueueOrRecover(request.id);
     if (afterCommit) {
-      afterCommit.push(enqueue);
+      afterCommit.push(emitReceived, enqueue);
     } else {
+      await emitReceived();
       await enqueue();
     }
     this.logger.log({
