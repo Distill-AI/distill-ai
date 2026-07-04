@@ -1,18 +1,10 @@
-import { DEFAULT_THRESHOLDS } from '../../config/thresholds';
+import { classifyTier, type ConfidenceTier } from '../../config/thresholds';
 
-type Tier = 'hi' | 'md' | 'lo';
-
-const tierClasses: Record<Tier, { badge: string; dot: string }> = {
+const tierClasses: Record<ConfidenceTier, { badge: string; dot: string }> = {
   hi: { badge: 'bg-hi-bg text-hi-tx', dot: 'bg-hi-dot' },
   md: { badge: 'bg-md-bg text-md-tx', dot: 'bg-md-dot' },
   lo: { badge: 'bg-lo-bg text-lo-tx', dot: 'bg-lo-dot' },
 };
-
-function tierFor(value: number): Tier {
-  if (value >= DEFAULT_THRESHOLDS.autoThreshold) return 'hi';
-  if (value >= DEFAULT_THRESHOLDS.matchThreshold) return 'md';
-  return 'lo';
-}
 
 interface ConfidenceBadgeProps {
   value: number | null;
@@ -31,7 +23,7 @@ export function ConfidenceBadge({ value }: ConfidenceBadgeProps) {
   // unexpected response can never render a misleading percentage.
   const clamped = Math.min(Math.max(value, 0), 1);
   const pct = Math.round(clamped * 100);
-  const { badge, dot } = tierClasses[tierFor(clamped)];
+  const { badge, dot } = tierClasses[classifyTier(clamped)];
 
   return (
     <span
