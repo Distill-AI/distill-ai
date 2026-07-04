@@ -14,6 +14,7 @@ import { PatchLineItemDto } from '../dto/patch-line-item.dto';
 import { AttachmentsService } from '../services/attachments.service';
 import type { Request as RequestEntity } from '../entities/request.entity';
 import type { AuthUser } from '../../auth/interfaces/auth-user.interface';
+import type { AuditEventModelAction } from '../../events/audit-event.model-action';
 
 vi.mock('@config/auth.config', () => ({ authConfig: { enabled: true } }));
 
@@ -24,6 +25,7 @@ describe('RequestsController', () => {
   let requestActions: Partial<RequestActions>;
   let lineItemRemapActions: Partial<LineItemRemapActions>;
   let attachmentsService: Partial<AttachmentsService>;
+  let auditEvents: Partial<AuditEventModelAction>;
 
   const mockUser: AuthUser = {
     userId: 'user-1',
@@ -121,12 +123,26 @@ describe('RequestsController', () => {
         bytes: Buffer.from('PDF-BYTES'),
       }),
     };
+    auditEvents = {
+      list: vi.fn().mockResolvedValue({
+        payload: [],
+        paginationMeta: {
+          total: 0,
+          limit: 50,
+          page: 1,
+          total_pages: 0,
+          has_next: false,
+          has_previous: false,
+        },
+      }),
+    };
     controller = new RequestsController(
       requestsService as RequestsService,
       streamService as StreamService,
       requestActions as RequestActions,
       lineItemRemapActions as LineItemRemapActions,
       attachmentsService as AttachmentsService,
+      auditEvents as AuditEventModelAction,
     );
   });
 
@@ -220,7 +236,9 @@ describe('RequestsController', () => {
         requestsService as RequestsService,
         streamService as StreamService,
         requestActions as RequestActions,
+        lineItemRemapActions as LineItemRemapActions,
         attachmentsService as AttachmentsService,
+        auditEvents as AuditEventModelAction,
       );
 
       const start = Date.now();
@@ -390,6 +408,126 @@ describe('RequestsController', () => {
         controller.getOne('req-1', { user: { userId: 'u', roles: [], email: 'e' } as AuthUser }),
       ).rejects.toThrow(NotFoundException);
       expect(requestsService.getDetail).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('history (GET /requests/:id/history)', () => {
+    const events = [
+      {
+        id: '1',
+        event_name: 'request.received',
+        attributes: { channel: 'upload', attachment_count: 1 },
+        created_at: new Date('2026-06-19T00:00:00.000Z'),
+      },
+      {
+        id: '2',
+        event_name: 'request.resumed',
+        attributes: {
+          type: 'request.resumed',
+          resumed_from_node: 'match',
+          reason: 'crash_recovery',
+        },
+        created_at: new Date('2026-06-19T00:01:00.000Z'),
+      },
+      {
+        id: '3',
+        event_name: 'tool.invoked',
+        attributes: {
+          type: 'tool.invoked',
+          timestamp: '2026-06-19T00:02:00.000Z',
+          tool_name: 'search_catalog',
+          status: 'success',
+          attempt: 1,
+          result_summary: 'Found 3 results',
+        },
+        created_at: new Date('2026-06-19T00:02:00.000Z'),
+      },
+    ];
+
+    it('returns the trail in ascending created_at order (AC-01), including tool.invoked and request.resumed', async () => {
+      vi.spyOn(auditEvents, 'list').mockResolvedValueOnce({
+        payload: events,
+        paginationMeta: {
+          total: 3,
+          limit: 50,
+          page: 1,
+          total_pages: 1,
+          has_next: false,
+          has_previous: false,
+        },
+      } as never);
+
+      const result = await controller.history('req-1', { user: mockUser });
+
+      expect(auditEvents.list).toHaveBeenCalledWith({
+        filterRecordOptions: { request_id: 'req-1' },
+        paginationPayload: { page: 1, limit: 50 },
+        order: { created_at: 'ASC', id: 'ASC' },
+      });
+      expect(result.statusCode).toBe(200);
+      expect(result.data).toHaveLength(3);
+      expect(result.data.map((e: { event_name: string }) => e.event_name)).toEqual([
+        'request.received',
+        'request.resumed',
+        'tool.invoked',
+      ]);
+    });
+
+    it("a resumed request's row shows the correct resumed_from_node (AC-02)", async () => {
+      vi.spyOn(auditEvents, 'list').mockResolvedValueOnce({
+        payload: [events[1]],
+        paginationMeta: {
+          total: 1,
+          limit: 50,
+          page: 1,
+          total_pages: 1,
+          has_next: false,
+          has_previous: false,
+        },
+      } as never);
+
+      const result = await controller.history('req-1', { user: mockUser });
+
+      expect(result.data[0].attributes.resumed_from_node).toBe('match');
+    });
+
+    it('404s for a cross-org request_id and never queries the trail (SEC-01)', async () => {
+      const otherOrg = { ...mockRequest, org_id: 'org-2' } as RequestEntity;
+      vi.spyOn(requestsService, 'findByIdOrFail').mockResolvedValueOnce(otherOrg);
+
+      await expect(controller.history('req-1', { user: mockUser })).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(auditEvents.list).not.toHaveBeenCalled();
+    });
+
+    it('returns an empty array, not an error, for a brand-new request with no events yet', async () => {
+      vi.spyOn(auditEvents, 'list').mockResolvedValueOnce({
+        payload: [],
+        paginationMeta: {
+          total: 0,
+          limit: 50,
+          page: 1,
+          total_pages: 0,
+          has_next: false,
+          has_previous: false,
+        },
+      } as never);
+
+      const result = await controller.history('req-1', { user: mockUser });
+
+      expect(result.statusCode).toBe(200);
+      expect(result.data).toEqual([]);
+    });
+
+    it('clamps page and limit from the query string', async () => {
+      await controller.history('req-1', { user: mockUser }, '3', '500');
+
+      expect(auditEvents.list).toHaveBeenCalledWith({
+        filterRecordOptions: { request_id: 'req-1' },
+        paginationPayload: { page: 3, limit: 100 },
+        order: { created_at: 'ASC', id: 'ASC' },
+      });
     });
   });
 
