@@ -92,6 +92,14 @@ describe('ProcessingRequestPage', () => {
     expect(screen.queryByText(/matched lines/i)).not.toBeInTheDocument();
   });
 
+  it('does not throw and hides Matched Lines when line_items is missing from a partial response', () => {
+    const partialDetail = { ...detail, line_items: undefined } as unknown as RequestDetail;
+    mockUseRequest.mockReturnValue({ data: partialDetail, isLoading: false, isError: false });
+
+    expect(() => renderPage()).not.toThrow();
+    expect(screen.queryByText(/matched lines/i)).not.toBeInTheDocument();
+  });
+
   it('shows the md confidence tier for a 0.91 line, matching DEFAULT_THRESHOLDS', () => {
     mockUseRequest.mockReturnValue({ data: detail, isLoading: false, isError: false });
     renderPage();
