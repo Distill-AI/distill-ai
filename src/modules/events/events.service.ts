@@ -1,9 +1,10 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { trace } from '@opentelemetry/api';
 import { SseService } from '../../sse/sse.service';
 import { AuditEventModelAction } from './audit-event.model-action';
-import { StageErrorPayloadSchema } from '@constants/events.constants';
+import { EVENT_PAYLOAD_SCHEMAS, StageErrorPayloadSchema } from '@constants/events.constants';
 
 /** Parameters for a single audit event. `attributes` must be non-sensitive metadata only. */
 export interface EmitEventParams {
@@ -29,19 +30,34 @@ export class EventsService implements OnModuleInit {
     private readonly sse: SseService,
   ) {}
 
+  /**
+   * Cross-checks event *names* only: every EVENT_PAYLOAD_SCHEMAS key has a $defs entry and vice
+   * versa. It does not compare field-level shape, so events.schema.json and the Zod schemas can
+   * still diverge on required fields or types without this check catching it; only the Zod
+   * schemas are enforced against payloads at runtime, so the JSON file remains documentation-grade.
+   */
   onModuleInit(): void {
     const schemaPath = join(process.cwd(), 'events.schema.json');
-    let parsed: Record<string, unknown>;
+    let parsed: { $defs?: Record<string, unknown> };
     try {
-      parsed = JSON.parse(readFileSync(schemaPath, 'utf8')) as Record<string, unknown>;
+      parsed = JSON.parse(readFileSync(schemaPath, 'utf8')) as { $defs?: Record<string, unknown> };
     } catch (err) {
       throw new Error(
         `Failed to load events.schema.json: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
-    if (parsed.$id !== 'stage.error') {
+    const definedEventNames = new Set(Object.keys(parsed.$defs ?? {}));
+    const schemaEventNames = new Set(Object.keys(EVENT_PAYLOAD_SCHEMAS));
+    const missing = [...schemaEventNames].filter((eventName) => !definedEventNames.has(eventName));
+    if (missing.length > 0) {
       throw new Error(
-        `Failed to load events.schema.json: $id must be "stage.error", got "${String(parsed.$id)}"`,
+        `Failed to load events.schema.json: missing $defs entries for: ${missing.join(', ')}`,
+      );
+    }
+    const extra = [...definedEventNames].filter((eventName) => !schemaEventNames.has(eventName));
+    if (extra.length > 0) {
+      throw new Error(
+        `Failed to load events.schema.json: $defs entries with no matching EVENT_PAYLOAD_SCHEMAS entry: ${extra.join(', ')}`,
       );
     }
   }
@@ -52,7 +68,31 @@ export class EventsService implements OnModuleInit {
       return this.emitStageError(params);
     }
 
+    const schema = EVENT_PAYLOAD_SCHEMAS[params.eventName];
+    if (!schema) {
+      trace.getActiveSpan()?.addEvent('event_emit_unschema_rejected', {
+        event_name: params.eventName,
+      });
+      this.logger.error({
+        event: 'event_emit_unschema_rejected',
+        event_name: params.eventName,
+      });
+      return;
+    }
+
     const attributes = params.attributes ?? {};
+    const result = schema.safeParse(attributes);
+    if (!result.success) {
+      trace.getActiveSpan()?.addEvent('event_emit_validation_failed', {
+        event_name: params.eventName,
+      });
+      this.logger.error({
+        event: 'event_emit_validation_failed',
+        event_name: params.eventName,
+        errors: JSON.stringify(result.error.flatten()),
+      });
+      return;
+    }
 
     if (params.orgId) {
       await this.auditEvents.create({
@@ -84,10 +124,13 @@ export class EventsService implements OnModuleInit {
 
     const result = StageErrorPayloadSchema.safeParse(payload);
     if (!result.success) {
-      this.logger.warn({
+      trace.getActiveSpan()?.addEvent('event_emit_validation_failed', {
+        event_name: 'stage.error',
+      });
+      this.logger.error({
         event: 'event_emit_validation_failed',
         event_name: 'stage.error',
-        errors: result.error.flatten(),
+        errors: JSON.stringify(result.error.flatten()),
       });
       return;
     }
