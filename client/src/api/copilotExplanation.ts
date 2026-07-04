@@ -19,7 +19,12 @@ export async function fetchCopilotExplanation(requestId: string): Promise<Copilo
 export function useCopilotExplanation(requestId: string | undefined) {
   return useQuery({
     queryKey: copilotExplanationKeys.byRequest(requestId ?? ''),
-    queryFn: () => fetchCopilotExplanation(requestId as string),
+    queryFn: () => {
+      if (!requestId) {
+        return Promise.reject(new Error('useCopilotExplanation called without a requestId'));
+      }
+      return fetchCopilotExplanation(requestId);
+    },
     enabled: Boolean(requestId),
     retry: false, // EC-01: a failing advisory call must not retry-loop; resolve to isError quickly
   });
