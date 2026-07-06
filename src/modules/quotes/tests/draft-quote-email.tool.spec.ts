@@ -1,5 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
 import { CustomHttpException } from '@common/exceptions/custom-http.exception';
+import { CircuitBreakerOpenError } from '@modules/pipeline/pipeline.errors';
 import * as SYS_MSG from '@constants/system-messages';
 import { DraftQuoteEmailToolFactory } from '../tools/draft-quote-email.tool';
 
@@ -73,5 +74,13 @@ describe('DraftQuoteEmailToolFactory', () => {
         HttpStatus.UNPROCESSABLE_ENTITY,
       ),
     );
+  });
+
+  it('propagates CircuitBreakerOpenError uncaught instead of a parse-failure exception', async () => {
+    const { factory, llm } = setup();
+    llm.createChatCompletion.mockRejectedValue(new CircuitBreakerOpenError());
+    const contract = factory.create();
+
+    await expect(contract.execute(INPUT)).rejects.toBeInstanceOf(CircuitBreakerOpenError);
   });
 });
