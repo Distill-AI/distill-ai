@@ -1,6 +1,6 @@
 import { LlmClientService } from '../llm-client.service';
 import { CircuitBreakerService } from '../circuit-breaker.service';
-import { CircuitBreakerOpenError } from '../pipeline.errors';
+import { CircuitBreakerOpenError } from '@modules/pipeline/pipeline.errors';
 import { BackoffService } from '@worker/backoff.service';
 import type { EventsService } from '@modules/events/events.service';
 import type { RedisService } from '@modules/redis/redis.service';
