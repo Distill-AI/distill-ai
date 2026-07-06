@@ -1,8 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { z } from 'zod';
+import { env } from '@config/env';
 import * as SYS_MSG from '@constants/system-messages';
-import { LLMProvider } from '@modules/llm/llm.provider';
-import { ToolContract } from '@modules/tools/interfaces/tool-contract.interface';
+import { LlmClientService } from '@modules/llm/llm-client.service';
+import {
+  ToolContract,
+  type ToolCallContext,
+} from '@modules/tools/interfaces/tool-contract.interface';
+import { CircuitBreakerOpenError } from '@modules/pipeline/pipeline.errors';
 import { RequestRouting } from '@modules/requests/enums/request-routing.enum';
 import { RoutingReasonCode } from '../enums/routing-reason-code.enum';
 export const ExplainRoutingInputSchema = z.object({
@@ -38,7 +43,7 @@ const ROUTING_REASON_MAP: Partial<Record<RoutingReasonCode, () => string>> = {
 export class ExplainRoutingToolFactory {
   private readonly logger = new Logger(ExplainRoutingToolFactory.name);
 
-  constructor(private readonly llm: LLMProvider) {}
+  constructor(private readonly llm: LlmClientService) {}
 
   create(): ToolContract<typeof ExplainRoutingInputSchema, typeof ExplainRoutingOutputSchema> {
     return {
@@ -47,19 +52,40 @@ export class ExplainRoutingToolFactory {
         'Generates a plain-English explanation of why a quote was routed to auto-eligible or needs-review, based on its routing reasons and policy flags. Read-only advisory tool.',
       inputSchema: ExplainRoutingInputSchema,
       outputSchema: ExplainRoutingOutputSchema,
-      execute: (input: ExplainRoutingInput): Promise<ExplainRoutingOutput> => this.execute(input),
+      execute: (
+        input: ExplainRoutingInput,
+        context?: ToolCallContext,
+      ): Promise<ExplainRoutingOutput> => this.execute(input, context),
     };
   }
 
-  private async execute(input: ExplainRoutingInput): Promise<ExplainRoutingOutput> {
+  private async execute(
+    input: ExplainRoutingInput,
+    context?: ToolCallContext,
+  ): Promise<ExplainRoutingOutput> {
     try {
       const prompt = this.buildPrompt(input);
-      const response = await this.llm.invoke({ prompt, temperature: 0.3, maxTokens: 300 });
-      const text = response?.text?.trim();
+      const completion = await this.llm.createChatCompletion(
+        {
+          model: env.LLM_MODEL,
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.3,
+          max_tokens: 300,
+        },
+        {
+          orgId: context?.orgId ?? '',
+          requestId: context?.requestId ?? '',
+          node: 'explain_routing',
+        },
+      );
+      const text = completion.choices[0]?.message?.content?.trim();
       if (text && text.length > 0) {
         return { explanation: text, degraded: false };
       }
     } catch (err) {
+      if (err instanceof CircuitBreakerOpenError) {
+        throw err;
+      }
       this.logger.warn(
         `LLM unavailable for explain_routing; using fallback: ${
           err instanceof Error ? err.message : String(err)
