@@ -77,7 +77,7 @@ describe('Analytics', () => {
     expect(screen.queryByText('Quotes this week')).not.toBeInTheDocument();
   });
 
-  it('shows a small-sample message and hides the KPI grid when below the threshold', () => {
+  it('shows a small-sample banner alongside the KPI grid when below the threshold', () => {
     mockUseAnalyticsSummary.mockReturnValue({
       data: { ...summary, quote_funnel: { ...summary.quote_funnel, ingested: 5 } },
       isLoading: false,
@@ -85,13 +85,15 @@ describe('Analytics', () => {
     });
     renderAnalytics();
     expect(
-      screen.getByText('Not enough requests yet to show reliable metrics (5 of 20).'),
+      screen.getByText('Not enough requests yet for reliable rate-based metrics (5 of 20).', {
+        exact: false,
+      }),
     ).toBeInTheDocument();
-    expect(screen.queryByText('Quotes this week')).not.toBeInTheDocument();
+    expect(screen.getByText('Quotes this week')).toBeInTheDocument();
     expect(screen.queryByText('No quotes processed in this period yet.')).not.toBeInTheDocument();
   });
 
-  it('shows the KPI grid, not the small-sample message, at exactly the threshold', () => {
+  it('shows the KPI grid without the small-sample banner at exactly the threshold', () => {
     mockUseAnalyticsSummary.mockReturnValue({
       data: { ...summary, quote_funnel: { ...summary.quote_funnel, ingested: 20 } },
       isLoading: false,
@@ -100,7 +102,9 @@ describe('Analytics', () => {
     renderAnalytics();
     expect(screen.getByText('Quotes this week')).toBeInTheDocument();
     expect(
-      screen.queryByText('Not enough requests yet to show reliable metrics (20 of 20).'),
+      screen.queryByText('Not enough requests yet for reliable rate-based metrics', {
+        exact: false,
+      }),
     ).not.toBeInTheDocument();
   });
 

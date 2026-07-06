@@ -19,6 +19,9 @@ export interface AnalyticsSummary {
   quote_funnel: { ingested: number; drafted: number; approved: number; sent: number };
 }
 
+// Backend owns the full field set for this response. AnalyticsView guards individual fields
+// against a malformed or partial payload, so a shape mismatch degrades to zeroed cards rather
+// than a render-time crash.
 export async function fetchAnalyticsSummary(): Promise<AnalyticsSummary> {
   const res = await client.get<{ data: AnalyticsSummary }>('/analytics/summary');
   return res.data.data;
