@@ -2,7 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { CircuitBreakerService } from './circuit-breaker.service';
 import { BackoffService } from '@worker/backoff.service';
 import { EventsService } from '@modules/events/events.service';
-import { CircuitBreakerOpenError } from './pipeline.errors';
+import { CircuitBreakerOpenError } from '@modules/pipeline/pipeline.errors';
 import { StageErrorReason } from '@constants/events.constants';
 import { env } from '@config/env';
 import OpenAI from 'openai';
