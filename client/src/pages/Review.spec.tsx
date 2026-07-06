@@ -20,6 +20,16 @@ vi.mock('../api/requests', () => ({
 vi.mock('../api/copilotExplanation', () => ({
   useCopilotExplanation: () => mockUseCopilotExplanation(),
 }));
+vi.mock('../api/askCopilot', () => ({
+  useAskCopilot: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+    isError: false,
+    error: null,
+    data: undefined,
+    reset: vi.fn(),
+  }),
+}));
 vi.mock('../api/attachments', () => ({
   downloadAttachment: mockDownload,
 }));
