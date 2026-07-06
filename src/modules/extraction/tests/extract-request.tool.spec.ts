@@ -41,7 +41,7 @@ describe('ExtractRequestToolFactory (LlmClientService migration)', () => {
 
     expect(createChatCompletion).toHaveBeenCalledWith(
       expect.objectContaining({ model: 'qwen-72b', temperature: 0.2, max_tokens: 1500 }),
-      { orgId: 'org-1', requestId: 'req-1', node: 'extract', requestType: 'catalog_rfq' },
+      { orgId: 'org-1', requestId: 'req-1', node: 'extract' },
     );
   });
 
@@ -57,7 +57,6 @@ describe('ExtractRequestToolFactory (LlmClientService migration)', () => {
       orgId: '',
       requestId: '',
       node: 'extract',
-      requestType: 'catalog_rfq',
     });
   });
 
