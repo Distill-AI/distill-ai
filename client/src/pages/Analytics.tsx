@@ -100,18 +100,14 @@ export function AnalyticsView({ data, isLoading, isError, onRetry }: AnalyticsVi
     );
   }
 
-  if (isSmallSample) {
-    return (
-      <div className="px-6 py-6">
-        <p className="text-sm text-muted">
-          Not enough requests yet to show reliable metrics ({ingested} of {SMALL_SAMPLE_THRESHOLD}).
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col gap-6 px-6 py-6">
+      {isSmallSample && (
+        <div className="rounded-card border border-border bg-surface px-3 py-2 text-sm text-muted">
+          Not enough requests yet for reliable rate-based metrics ({ingested} of{' '}
+          {SMALL_SAMPLE_THRESHOLD}). Counts below still reflect the period.
+        </div>
+      )}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <KpiCard
           label="Median time to draft"
