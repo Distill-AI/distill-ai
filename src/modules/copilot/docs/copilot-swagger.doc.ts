@@ -92,7 +92,7 @@ export function AskCopilotDocs(): MethodDecorator {
     }),
     ApiResponse({
       status: HttpStatus.BAD_REQUEST,
-      description: SYS_MSG.AGENTIC_COPILOT_QUESTION_REQUIRED,
+      description: `${SYS_MSG.AGENTIC_COPILOT_QUESTION_REQUIRED} / ${SYS_MSG.AGENTIC_COPILOT_QUESTION_TOO_LONG}`,
     }),
     ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: SYS_MSG.AUTH_UNAUTHORIZED }),
     ApiResponse({ status: HttpStatus.FORBIDDEN, description: SYS_MSG.AUTH_FORBIDDEN }),

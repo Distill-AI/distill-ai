@@ -90,6 +90,7 @@ function toAskResult(messages: BaseMessage[]): AskCopilotResult {
 export class AgenticCopilotService {
   private readonly logger = new Logger(AgenticCopilotService.name);
   private model?: ChatOpenAI;
+  private demoFixture?: AskCopilotResult;
 
   constructor(
     private readonly toolRegistry: ToolRegistry,
@@ -121,12 +122,15 @@ export class AgenticCopilotService {
     try {
       const result = await agent.invoke(
         { messages: [{ role: 'user', content: question }] },
-        { recursionLimit: env.AGENTIC_COPILOT_MAX_STEPS },
+        { recursionLimit: env.AGENTIC_COPILOT_MAX_STEPS, timeout: env.LLM_TIMEOUT_MS },
       );
       return toAskResult(result.messages);
     } catch (err) {
       if (err instanceof GraphRecursionError) {
         return { answer: SYS_MSG.AGENTIC_COPILOT_MAX_STEPS_EXCEEDED, trace: [] };
+      }
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return { answer: SYS_MSG.AGENTIC_COPILOT_TIMED_OUT, trace: [] };
       }
       throw err;
     }
@@ -144,14 +148,17 @@ export class AgenticCopilotService {
   }
 
   private loadDemoFixture(): AskCopilotResult {
+    if (this.demoFixture) return this.demoFixture;
+
     try {
       const raw = fs.readFileSync(DEMO_FIXTURE_PATH, 'utf8');
-      return JSON.parse(raw) as AskCopilotResult;
+      this.demoFixture = JSON.parse(raw) as AskCopilotResult;
     } catch (err) {
       this.logger.error(
         `Failed to load agentic copilot demo fixture: ${err instanceof Error ? err.message : String(err)}`,
       );
-      return { answer: '', trace: [] };
+      this.demoFixture = { answer: '', trace: [] };
     }
+    return this.demoFixture;
   }
 }
