@@ -14,27 +14,34 @@ vi.mock('@common/demo/demo-fixtures', async (importOriginal) => {
 
 import { ClassifyService } from '../services/classify.service';
 import { matchDemoFixture } from '@common/demo/demo-fixtures';
-import type { LLMProvider } from '@modules/llm/llm.provider';
+import type { LlmClientService } from '@modules/llm/llm-client.service';
+
+const CONTEXT = { orgId: 'org-1', requestId: 'req-1' };
 
 function makeService() {
   const llm = {
-    invoke: vi.fn().mockRejectedValue(new Error('LLM must not be called in DEMO_MODE')),
+    createChatCompletion: vi
+      .fn()
+      .mockRejectedValue(new Error('LLM must not be called in DEMO_MODE')),
   };
-  return { service: new ClassifyService(llm as unknown as LLMProvider), llm };
+  return { service: new ClassifyService(llm as unknown as LlmClientService), llm };
 }
 
 describe('ClassifyService (DEMO_MODE fixture fallback)', () => {
   it('classifies from the matching fixture without calling the LLM', async () => {
     const { service, llm } = makeService();
 
-    const result = await service.classify({
-      company: 'Delta Ridge Manufacturing',
-      contact: 'Marcus Webb',
-      description: 'Restock fastener inventory',
-      lineItems: [{ raw_text: 'M8 Hex Bolt, Zinc Plated, Grade 8.8', position: 1 }],
-    });
+    const result = await service.classify(
+      {
+        company: 'Delta Ridge Manufacturing',
+        contact: 'Marcus Webb',
+        description: 'Restock fastener inventory',
+        lineItems: [{ raw_text: 'M8 Hex Bolt, Zinc Plated, Grade 8.8', position: 1 }],
+      },
+      CONTEXT,
+    );
 
-    expect(llm.invoke).not.toHaveBeenCalled();
+    expect(llm.createChatCompletion).not.toHaveBeenCalled();
     expect(result.type).toBe('catalog_rfq');
     // Above CLASSIFY_THRESHOLD, so it is not treated as low-confidence and defaulted.
     expect(result.confidence).toBeGreaterThanOrEqual(0.8);
@@ -43,9 +50,12 @@ describe('ClassifyService (DEMO_MODE fixture fallback)', () => {
   it('still short-circuits malformed (empty) input to service_quote without the LLM', async () => {
     const { service, llm } = makeService();
 
-    const result = await service.classify({ company: '', contact: '', description: '   ' });
+    const result = await service.classify(
+      { company: '', contact: '', description: '   ' },
+      CONTEXT,
+    );
 
-    expect(llm.invoke).not.toHaveBeenCalled();
+    expect(llm.createChatCompletion).not.toHaveBeenCalled();
     expect(result.type).toBe('service_quote');
     expect(result.confidence).toBe(0);
   });
@@ -55,12 +65,15 @@ describe('ClassifyService (DEMO_MODE fixture fallback)', () => {
     (matchDemoFixture as unknown as Mock).mockReturnValueOnce(null);
 
     await expect(
-      service.classify({
-        company: 'Acme',
-        contact: 'Jo',
-        description: 'Restock fasteners',
-        lineItems: [{ raw_text: 'M8 Hex Bolt', position: 1 }],
-      }),
+      service.classify(
+        {
+          company: 'Acme',
+          contact: 'Jo',
+          description: 'Restock fasteners',
+          lineItems: [{ raw_text: 'M8 Hex Bolt', position: 1 }],
+        },
+        CONTEXT,
+      ),
     ).rejects.toThrow(/fixture unavailable/i);
   });
 });
