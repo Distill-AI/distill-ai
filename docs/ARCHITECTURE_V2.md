@@ -33,7 +33,7 @@ missing something it needs right now.
 
 A reader who checks out this branch can independently confirm every "In V1" claim below by running
 `pnpm test`, starting the app with `DEMO_MODE=true` and no provider keys, and hitting the Swagger UI
-at `/api/docs` — nothing in §5's left column depends on a live LLM key or an unmerged idea.
+at `/api/docs` — nothing in §6's left column depends on a live LLM key or an unmerged idea.
 
 ---
 
@@ -112,7 +112,7 @@ single-event-bus shape from `docs/architecture.md` §2/§3 is unchanged.
 
 ---
 
-## 3. State-graph and the advisory side-graph
+## 3. State-graph
 
 ```mermaid
 flowchart LR
@@ -125,21 +125,14 @@ flowchart LR
     S -->|auto_eligible| D[done / priced]
     S -->|needs_review| NR[needs_review]
     E -.->|"schema/reconcile fail,\nretries then fails closed"| C
-    ENGINE_ERR[failed] 
 
     classDef ai fill:#e8eef7,stroke:#2E7EB8;
     class E,C,M ai;
-
-    subgraph ADV["Bolt-on advisory agent — out-of-band, does not participate in current_node"]
-        direction LR
-        R1[Reason] --> A1["Act: search_catalog\nor explain_routing"] --> O1[Observe] --> R1
-    end
 ```
 
-The advisory agent is drawn as a separate, dashed-border side-graph on purpose: it answers a
-free-text question about an already-processed request over HTTP, synchronously, and never writes
-`current_node` or advances the pipeline. It shares `ToolRegistry` with the pipeline (same audit
-logging, same Zod-validated tool contracts) but is a second caller of it, not a new pipeline stage.
+Three nodes are AI-touched — `extract`, `classify`, `match` — each reaching the LLM only through
+`ToolRegistry`. `price`/`policy`/`score` call plain deterministic services with no registry access
+at all (§4).
 
 `extract*`'s agentic mode is the one AI-touched node whose *internal* decision logic changes: instead
 of a hardcoded two-attempt loop, a bounded ReAct loop (`EXTRACT_AGENT_MAX_STEPS`, default `4`)
@@ -165,7 +158,43 @@ restated to cover the two agentic additions rather than a fourth independent mec
 
 ---
 
-## 5. V1-shipped vs. V2-adds
+## 5. Agentic Pattern in V1 (and the Production Target)
+
+**What's agentic in V1 today:**
+
+- Three AI-touched pipeline nodes (`extract`, `classify`, `match`, §3) call the LLM only through
+  `ToolRegistry`, behind the four-layer boundary in §4.
+- One bolt-on ReAct-pattern advisory agent — a real Think→Act→Observe loop, not a diagram —
+  answering free-text questions about an already-processed request over `POST
+  /requests/:id/copilot/ask`, scoped to two existing tools (`search_catalog`, `explain_routing`),
+  gated by `AGENTIC_COPILOT_ENABLED`.
+- One flag-gated agentic upgrade to `extract`: instead of a fixed two-attempt retry, a bounded ReAct
+  loop decides whether to retry `extract_request` or accept a best-effort result, gated by
+  `EXTRACT_AGENTIC_ENABLED`.
+
+```mermaid
+flowchart LR
+    subgraph ADV["Bolt-on advisory agent — out-of-band, does not participate in current_node"]
+        direction LR
+        R1[Reason] --> A1["Act: search_catalog\nor explain_routing"] --> O1[Observe] --> R1
+    end
+```
+
+The advisory agent is drawn as a separate, dashed-border side-graph on purpose: it answers a
+question over HTTP, synchronously, and never writes `current_node` or advances the pipeline. It
+shares `ToolRegistry` with the pipeline — same audit logging, same Zod-validated tool contracts —
+but is a second caller of it, not a new pipeline stage.
+
+**What's still the production target, not V1:** multi-agent orchestration beyond these three
+AI-touched nodes plus the advisory copilot is explicitly out of scope for V1 — a distributed/durable
+graph orchestrator running as its own service (V1 ships an in-process graph engine with node-level
+resumability, not this), a separately deployed agent-runtime process, and sandboxed Code-Act
+execution. The production-grade agentic architecture for these is designed in §6 below, but is
+intentionally not built for V1.
+
+---
+
+## 6. V1-shipped vs. V2-adds
 
 | Area | In V1 (shipped) | Explicitly NOT in V1 (V2 target) |
 | --- | --- | --- |
@@ -173,13 +202,13 @@ restated to cover the two agentic additions rather than a fourth independent mec
 | Tools | 7 named tools behind `ToolRegistry`, every invocation validated and logged | Tiered registry + full middleware chain |
 | Boundary enforcement | Type + wiring + CI-test layers (§4) | Postgres role-separated grants |
 | Events | Written directly to `audit_events`, bridged to SSE | Transactional outbox + relay |
-| AI surfaces | 3 deterministic-loop AI-touched nodes, 1 bolt-on ReAct advisory agent, 1 flag-gated agentic re-ask loop | 6-agent topology, sub-agents, sandboxed Code-Act |
+| AI surfaces | 3 deterministic-loop AI-touched nodes, 1 bolt-on ReAct advisory agent, 1 flag-gated agentic re-ask loop (§5) | 6-agent topology, sub-agents, sandboxed Code-Act |
 | LLM resilience | `LlmClientService`: circuit breaker + retry + demo-fixture replay, never a live call in `DEMO_MODE` | Same resilience pattern generalised to `EmbeddingsClient` behind shared `LlmClient`/`EmbeddingsClient` port interfaces |
 | Resumability | Node-level (between nodes) | Sub-node / per-step checkpointing |
 
 ---
 
-## 6. Migration-phase summary
+## 7. Migration-phase summary
 
 1. **LLM module consolidation (shipped).** `LlmClientService`/`CircuitBreakerService` moved into a
    single `LlmModule`; every LLM-backed tool (`extract_request`, `classify_request`,
@@ -207,7 +236,7 @@ restated to cover the two agentic additions rather than a fourth independent mec
 
 ---
 
-## 7. Config & flags added since V1's initial cut
+## 8. Config & flags added since V1's initial cut
 
 ```env
 AGENTIC_COPILOT_ENABLED=false      AGENTIC_COPILOT_MAX_STEPS=4
@@ -224,7 +253,7 @@ newer, less-exercised code path.
 
 ---
 
-## 8. Testing the new surfaces
+## 9. Testing the new surfaces
 
 | Suite | Covers | Key assertion |
 | --- | --- | --- |
@@ -237,10 +266,10 @@ newer, less-exercised code path.
 
 ---
 
-## 9. Where to look
+## 10. Where to look
 
 | Question | Source |
 | --- | --- |
 | Full V1 implementation detail (types, engine loop, tool registry code) | [architecture.md](architecture.md) |
 | Keys-removed demo guarantee and how to verify it | [demo-checklist.md](demo-checklist.md) |
-| Judge-facing differentiators | [PRD.md](PRD.md) |
+| Judge-facing differentiators and product framing | [PRD.md](PRD.md) |
