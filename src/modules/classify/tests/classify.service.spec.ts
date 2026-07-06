@@ -143,7 +143,47 @@ describe('ClassifyService', () => {
       expect(llm.createChatCompletion).toHaveBeenCalledOnce();
     });
 
-    it('propagates CircuitBreakerOpenError uncaught instead of defaulting', async () => {
+    it('re-asks once when the completion is unparseable, then succeeds', async () => {
+      vi.mocked(llm.createChatCompletion)
+        .mockResolvedValueOnce(makeCompletion('not json at all') as never)
+        .mockResolvedValueOnce(
+          makeCompletion('{"type": "service_quote", "confidence": 0.9}') as never,
+        );
+
+      const result = await service.classify(
+        {
+          company: 'ReaskCo',
+          contact: 'Reask',
+          description: 'Test request',
+        },
+        CONTEXT,
+      );
+
+      expect(result.type).toBe('service_quote');
+      expect(result.confidence).toBe(0.9);
+      expect(llm.createChatCompletion).toHaveBeenCalledTimes(2);
+    });
+
+    it('defaults to service_quote after two unparseable completions in a row', async () => {
+      vi.mocked(llm.createChatCompletion).mockResolvedValue(
+        makeCompletion('not json at all') as never,
+      );
+
+      const result = await service.classify(
+        {
+          company: 'ReaskCo',
+          contact: 'Reask',
+          description: 'Test request',
+        },
+        CONTEXT,
+      );
+
+      expect(result.type).toBe('service_quote');
+      expect(result.confidence).toBe(0);
+      expect(llm.createChatCompletion).toHaveBeenCalledTimes(2);
+    });
+
+    it('propagates CircuitBreakerOpenError uncaught instead of defaulting, without retrying', async () => {
       vi.mocked(llm.createChatCompletion).mockRejectedValue(new CircuitBreakerOpenError());
 
       await expect(
@@ -156,6 +196,7 @@ describe('ClassifyService', () => {
           CONTEXT,
         ),
       ).rejects.toBeInstanceOf(CircuitBreakerOpenError);
+      expect(llm.createChatCompletion).toHaveBeenCalledOnce();
     });
 
     it('defaults to service_quote with malformed input', async () => {

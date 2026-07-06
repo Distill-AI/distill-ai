@@ -59,21 +59,43 @@ export class ClassifyService {
     const prompt = this.buildPrompt({ ...parsedRequest, description, lineItems });
 
     try {
-      const completion = await this.llm.createChatCompletion(
-        {
-          model: env.LLM_MODEL,
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.2,
-          max_tokens: 100,
-        },
-        { ...context, node: 'classify' },
-      );
+      return await this.classifyWithReask(prompt, context);
+    } catch (err) {
+      if (err instanceof CircuitBreakerOpenError) throw err;
+      this.logger.error(SYS_MSG.CLASSIFY_RETRY_FAILED);
+      return { type: 'service_quote', confidence: 0 };
+    }
+  }
 
-      const text = completion.choices[0]?.message?.content ?? '';
-      const cleaned = text
-        .replace(/```(?:json)?\s*/gi, '')
-        .replace(/```\s*$/gm, '')
-        .trim();
+  /**
+   * Re-asks once on a malformed/unparseable completion. LlmClientService already retries
+   * transient HTTP/network failures internally, but it has no visibility into "call succeeded,
+   * response wasn't valid JSON" - that failure mode surfaces only here, so it gets its own
+   * bounded retry. CircuitBreakerOpenError is thrown by createChatCompletion() itself, outside
+   * the parse try/catch below, so it always propagates uncaught on the first attempt.
+   */
+  private async classifyWithReask(
+    prompt: string,
+    context: { orgId: string; requestId: string },
+    attempt = 1,
+  ): Promise<ClassifyResult> {
+    const completion = await this.llm.createChatCompletion(
+      {
+        model: env.LLM_MODEL,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.2,
+        max_tokens: 100,
+      },
+      { ...context, node: 'classify' },
+    );
+
+    const text = completion.choices[0]?.message?.content ?? '';
+    const cleaned = text
+      .replace(/```(?:json)?\s*/gi, '')
+      .replace(/```\s*$/gm, '')
+      .trim();
+
+    try {
       const parsed = JSON.parse(cleaned);
       const result = llmResponseSchema.parse(parsed);
       const threshold = env.CLASSIFY_THRESHOLD;
@@ -85,9 +107,11 @@ export class ClassifyService {
 
       return result;
     } catch (err) {
-      if (err instanceof CircuitBreakerOpenError) throw err;
-      this.logger.error(SYS_MSG.CLASSIFY_RETRY_FAILED);
-      return { type: 'service_quote', confidence: 0 };
+      if (attempt < 2) {
+        this.logger.warn(`Classification response unparseable on attempt ${attempt}; retrying...`);
+        return this.classifyWithReask(prompt, context, attempt + 1);
+      }
+      throw err;
     }
   }
 
