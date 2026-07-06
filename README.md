@@ -34,6 +34,19 @@ Each stage runs as an async job. The React UI receives real-time progress update
 
 ---
 
+## Mocked vs. real
+
+The pipeline, tool registry, pgvector catalog matching, Bull/Redis async processing, and crash
+recovery are real and running today — not a mockup. The distributed V2 target described in
+[docs/ARCHITECTURE_V2.md](docs/ARCHITECTURE_V2.md) (a durable distributed orchestrator, multi-queue
+agent-exec topology, Postgres role-grant enforcement, a transactional outbox) is design-only, except
+for the bolt-on ReAct advisory agent (real, scoped to advisory Q&A about a request) and the agentic
+`extract` re-ask loop (real, flag-gated).
+
+See [docs/ARCHITECTURE_V2.md](docs/ARCHITECTURE_V2.md) for the full production target this V1 is a subset of.
+
+---
+
 ## Tech stack
 
 | Layer | Technology |
@@ -57,14 +70,31 @@ Each stage runs as an async job. The React UI receives real-time progress update
 distill-ai/
 ├── src/                        ← NestJS API
 │   ├── modules/
-│   │   ├── ingestion/          ← email / form / PDF intake
-│   │   ├── extraction/         ← AI parsing + confidence scoring
-│   │   ├── catalog/            ← SKU lookup + semantic matching
-│   │   ├── quotes/             ← rules engine + draft assembly
-│   │   ├── approval/           ← HITL review queue + audit trail
-│   │   ├── jobs/               ← Bull queue producer
-│   │   ├── redis/              ← caching, locks, rate limiting
-│   │   └── health/             ← health check endpoint
+│   │   ├── ingestion/       ← email / form / PDF intake
+│   │   ├── parse/           ← raw text extraction from attachments
+│   │   ├── extraction/      ← AI parsing + confidence scoring
+│   │   ├── classify/        ← catalog_rfq vs. service_quote classification
+│   │   ├── catalog/         ← SKU lookup + semantic matching
+│   │   ├── pricing/         ← margin/pricing rules engine
+│   │   ├── policy/          ← policy gate checks
+│   │   ├── scoring/         ← auto-eligible / needs-review routing
+│   │   ├── quotes/          ← quote drafting + PDF rendering
+│   │   ├── clarification/   ← human-gated clarification drafts
+│   │   ├── requests/        ← review queue, resume, audit trail
+│   │   ├── copilot/         ← advisory explanation + bolt-on ReAct agent
+│   │   ├── llm/             ← LlmClientService, circuit breaker, resilience
+│   │   ├── tools/           ← ToolRegistry - validate, invoke, log
+│   │   ├── pipeline/        ← PipelineGraphEngine, node registry
+│   │   ├── events/          ← audit_events writer + SSE bridge
+│   │   ├── analytics/       ← KPI reads from audit_events
+│   │   ├── auth/            ← RBAC guard (inert when AUTH_ENABLED=false)
+│   │   ├── organizations/   ← multi-tenant org scoping
+│   │   ├── jobs/            ← Bull queue producer
+│   │   ├── scheduler/       ← deferred-enqueue scheduling
+│   │   ├── redis/           ← caching, locks, rate limiting
+│   │   ├── dlq/             ← dead-letter queue for exhausted jobs
+│   │   ├── benchmark/       ← performance benchmark endpoint
+│   │   └── health/          ← health check endpoint
 │   ├── queue/                  ← Bull processor + DLQ handler
 │   └── sse/                    ← SSE bridge for real-time UI updates
 ├── client/                     ← React HITL approval UI
