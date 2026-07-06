@@ -151,6 +151,18 @@ describe('ToolRegistry – Core / Integration', () => {
     });
   });
 
+  function makeCircuitBreakerTool(): ToolContract<z.ZodTypeAny, z.ZodTypeAny> {
+    return {
+      toolName: 'circuit_breaker_tool',
+      description: 'always throws CircuitBreakerOpenError',
+      inputSchema: z.object({}),
+      outputSchema: z.object({}),
+      async execute() {
+        throw new CircuitBreakerOpenError();
+      },
+    };
+  }
+
   describe('ToolCallContext threading', () => {
     it('passes { orgId, requestId } as the second argument to execute()', async () => {
       const executeSpy = vi.fn().mockResolvedValue({ echoed: 'hi' });
@@ -172,16 +184,7 @@ describe('ToolRegistry – Core / Integration', () => {
     });
 
     it('re-throws CircuitBreakerOpenError instead of returning ToolStatus.ERROR', async () => {
-      const CircuitBreakerTool: ToolContract<z.ZodTypeAny, z.ZodTypeAny> = {
-        toolName: 'circuit_breaker_tool',
-        description: 'always throws CircuitBreakerOpenError',
-        inputSchema: z.object({}),
-        outputSchema: z.object({}),
-        async execute() {
-          throw new CircuitBreakerOpenError();
-        },
-      };
-      registry.register(CircuitBreakerTool);
+      registry.register(makeCircuitBreakerTool());
 
       await expect(registry.invoke('circuit_breaker_tool' as ToolName, {})).rejects.toBeInstanceOf(
         CircuitBreakerOpenError,
@@ -189,16 +192,7 @@ describe('ToolRegistry – Core / Integration', () => {
     });
 
     it('still writes an audit log and a failed tool.invoked event before re-throwing', async () => {
-      const CircuitBreakerTool: ToolContract<z.ZodTypeAny, z.ZodTypeAny> = {
-        toolName: 'circuit_breaker_tool',
-        description: 'always throws CircuitBreakerOpenError',
-        inputSchema: z.object({}),
-        outputSchema: z.object({}),
-        async execute() {
-          throw new CircuitBreakerOpenError();
-        },
-      };
-      registry.register(CircuitBreakerTool);
+      registry.register(makeCircuitBreakerTool());
 
       await expect(registry.invoke('circuit_breaker_tool' as ToolName, {})).rejects.toBeInstanceOf(
         CircuitBreakerOpenError,
