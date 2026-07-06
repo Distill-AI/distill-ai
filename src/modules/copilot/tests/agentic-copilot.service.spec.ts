@@ -112,6 +112,33 @@ describe('AgenticCopilotService', () => {
     expect(readFileSyncMock).toHaveBeenCalledTimes(1);
   });
 
+  it('fails loudly (EC-01) instead of returning an empty answer when the demo fixture cannot be read', async () => {
+    env.DEMO_MODE = true;
+    readFileSyncMock.mockImplementationOnce(() => {
+      throw new Error('ENOENT: no such file');
+    });
+    const service = new AgenticCopilotService(makeToolRegistry(), makeLineItems());
+
+    await expect(service.ask(buildRequest(), 'why is this flagged?')).rejects.toMatchObject({
+      status: HttpStatus.FAILED_DEPENDENCY,
+    });
+  });
+
+  it('does not cache a fixture read failure, so a later successful read still works', async () => {
+    env.DEMO_MODE = true;
+    readFileSyncMock.mockImplementationOnce(() => {
+      throw new Error('ENOENT: no such file');
+    });
+    const service = new AgenticCopilotService(makeToolRegistry(), makeLineItems());
+
+    await expect(service.ask(buildRequest(), 'first question')).rejects.toMatchObject({
+      status: HttpStatus.FAILED_DEPENDENCY,
+    });
+
+    const result = await service.ask(buildRequest(), 'second question');
+    expect(result.answer.length).toBeGreaterThan(0);
+  });
+
   it('runs the agent and maps its message list into an answer and a step trace', async () => {
     invokeAgentMock.mockResolvedValue({
       messages: [
@@ -184,7 +211,16 @@ describe('AgenticCopilotService', () => {
     expect(result).toEqual({ answer: SYS_MSG.AGENTIC_COPILOT_MAX_STEPS_EXCEEDED, trace: [] });
   });
 
-  it('returns a graceful timeout message instead of throwing when the invoke call is aborted', async () => {
+  it('returns a graceful timeout message when the LLM_TIMEOUT_MS timeout fires (DOMException TimeoutError)', async () => {
+    invokeAgentMock.mockRejectedValue(new DOMException('The operation timed out', 'TimeoutError'));
+    const service = new AgenticCopilotService(makeToolRegistry(), makeLineItems());
+
+    const result = await service.ask(buildRequest(), 'why is this flagged?');
+
+    expect(result).toEqual({ answer: SYS_MSG.AGENTIC_COPILOT_TIMED_OUT, trace: [] });
+  });
+
+  it('also treats a manually-aborted AbortError as a graceful timeout', async () => {
     invokeAgentMock.mockRejectedValue(new DOMException('The operation was aborted', 'AbortError'));
     const service = new AgenticCopilotService(makeToolRegistry(), makeLineItems());
 

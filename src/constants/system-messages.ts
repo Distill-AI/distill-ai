@@ -280,3 +280,5 @@ export const AGENTIC_COPILOT_MAX_STEPS_EXCEEDED =
 export const AGENTIC_COPILOT_TIMED_OUT = 'Copilot timed out before reaching a final answer';
 export const AGENTIC_COPILOT_QUESTION_REQUIRED = 'Question is required';
 export const AGENTIC_COPILOT_QUESTION_TOO_LONG = 'Question must be 1000 characters or fewer';
+export const AGENTIC_COPILOT_DEMO_FIXTURE_UNAVAILABLE =
+  'Agentic copilot demo fixture is unavailable';

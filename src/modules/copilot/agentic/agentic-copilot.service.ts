@@ -129,13 +129,25 @@ export class AgenticCopilotService {
       if (err instanceof GraphRecursionError) {
         return { answer: SYS_MSG.AGENTIC_COPILOT_MAX_STEPS_EXCEEDED, trace: [] };
       }
-      if (err instanceof DOMException && err.name === 'AbortError') {
+      // `timeout` is normalized by @langchain/core's ensureConfig() into AbortSignal.timeout(ms),
+      // whose abort reason is a DOMException named 'TimeoutError' - distinct from the 'AbortError'
+      // a manually-aborted AbortController would produce.
+      if (
+        err instanceof DOMException &&
+        (err.name === 'TimeoutError' || err.name === 'AbortError')
+      ) {
         return { answer: SYS_MSG.AGENTIC_COPILOT_TIMED_OUT, trace: [] };
       }
       throw err;
     }
   }
 
+  // Builds a raw ChatOpenAI client directly rather than routing through LlmClientService (used by
+  // the deterministic pipeline nodes), since createAgent() needs a LangChain BaseChatModel and
+  // LlmClientService wraps the OpenAI SDK's own completion params - a different shape. This means
+  // the ReAct loop's own reasoning calls (unlike the search_catalog/explain_routing tool calls it
+  // makes, which do go through ToolRegistry) bypass the circuit breaker and stage.error events.
+  // DEMO_MODE still short-circuits before this is ever called, so the keys-removed guarantee holds.
   private getModel(): ChatOpenAI {
     if (!this.model) {
       this.model = new ChatOpenAI({
@@ -153,12 +165,18 @@ export class AgenticCopilotService {
     try {
       const raw = fs.readFileSync(DEMO_FIXTURE_PATH, 'utf8');
       this.demoFixture = JSON.parse(raw) as AskCopilotResult;
+      return this.demoFixture;
     } catch (err) {
       this.logger.error(
         `Failed to load agentic copilot demo fixture: ${err instanceof Error ? err.message : String(err)}`,
       );
-      this.demoFixture = { answer: '', trace: [] };
+      // Fail loudly (EC-01), consistent with the extraction/classification demo fixtures, rather
+      // than silently returning an empty answer that reads as "the copilot had nothing to say".
+      // Not cached: a transient read failure should be retryable on the next request.
+      throw new CustomHttpException(
+        SYS_MSG.AGENTIC_COPILOT_DEMO_FIXTURE_UNAVAILABLE,
+        HttpStatus.FAILED_DEPENDENCY,
+      );
     }
-    return this.demoFixture;
   }
 }
