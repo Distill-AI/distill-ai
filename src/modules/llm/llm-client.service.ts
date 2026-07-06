@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { CircuitBreakerService } from './circuit-breaker.service';
+import { CircuitBreakerService, CircuitBreakerState } from './circuit-breaker.service';
 import { BackoffService } from '@worker/backoff.service';
 import { EventsService } from '@modules/events/events.service';
 import { CircuitBreakerOpenError } from '@modules/pipeline/pipeline.errors';
@@ -48,7 +48,10 @@ export class LlmClientService implements OnModuleInit {
   ): Promise<OpenAI.Chat.ChatCompletion> {
     const { orgId, requestId, node, requestType = 'catalog_rfq' } = context;
 
-    if (await this.circuitBreaker.isOpen()) {
+    // Keys-removed guarantee (NFR-OPS-4): never attempt a live call in DEMO_MODE, even while the
+    // breaker is CLOSED - otherwise a demo deployment without LLM_BASE_URL pointed at a working
+    // endpoint would make a real network call on every request instead of replaying fixtures.
+    if (env.DEMO_MODE || (await this.circuitBreaker.isOpen())) {
       return this.handleOpenBreaker(orgId, requestId, node, requestType, params);
     }
 
@@ -58,7 +61,11 @@ export class LlmClientService implements OnModuleInit {
       return response;
     } catch (error) {
       const isTransient = this.isTransientError(error);
-      if (isTransient) {
+      // A HALF_OPEN probe must resolve the breaker either way: a non-transient failure (e.g. 4xx)
+      // still needs recordFailure() to release the probe lock, or the lock sits until
+      // PROBE_LOCK_TTL_S expires and every other caller is blocked as if the breaker were OPEN.
+      const wasProbing = (await this.circuitBreaker.getState()) === CircuitBreakerState.HALF_OPEN;
+      if (isTransient || wasProbing) {
         await this.circuitBreaker.recordFailure();
       }
 
