@@ -1,5 +1,11 @@
 import { z, ZodTypeAny } from 'zod';
 
+/** Routing context threaded from `ToolRegistry.invoke()` into a tool's `execute()`. */
+export interface ToolCallContext {
+  orgId?: string;
+  requestId?: string;
+}
+
 /**
  * Generic contract that every tool must implement.
  *
@@ -26,5 +32,9 @@ export interface ToolContract<I extends ZodTypeAny, O extends ZodTypeAny> {
    * Core implementation. The method receives the **parsed** input (`I`) and
    * must return a value that satisfies the output Zod schema `O`.
    */
-  execute(input: z.infer<I>, abortSignal?: AbortSignal): Promise<z.infer<O>>;
+  execute(
+    input: z.infer<I>,
+    context?: ToolCallContext,
+    abortSignal?: AbortSignal,
+  ): Promise<z.infer<O>>;
 }
