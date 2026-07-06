@@ -31,6 +31,7 @@ export interface AnalyticsRawStats {
   needsReviewPriorFalseNeg: number;
   confidence: { high: number; medium: number; low: number; total: number };
   crashRecoveries: number;
+  toolCallsTotal: number;
 }
 
 const round1 = (value: number): number => Math.round(value * 10) / 10;
@@ -76,6 +77,7 @@ export function assembleSummary(raw: AnalyticsRawStats): AnalyticsSummary {
     quotes_this_week: raw.quotesCur,
     quotes_this_week_delta: raw.quotesCur - raw.quotesPrior,
     crash_recoveries_this_month: raw.crashRecoveries,
+    tool_calls_total: raw.toolCallsTotal,
     confidence_distribution: confidence,
     quote_funnel,
   };
@@ -98,15 +100,17 @@ export class AnalyticsService {
     // monthly count, not a windowed rate).
     const monthAgo = new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    const [funnel, median, quotes, approved, needsReview, confidence, crash] = await Promise.all([
-      this.query(FUNNEL_SQL, [orgId, from, to]),
-      this.query(MEDIAN_SQL, [orgId, from, to, priorFrom]),
-      this.query(QUOTES_SQL, [orgId, from, to, priorFrom]),
-      this.query(APPROVED_SQL, [orgId, from, to, priorFrom]),
-      this.query(NEEDS_REVIEW_SQL, [orgId, from, to, priorFrom]),
-      this.query(CONFIDENCE_SQL, [orgId, from, to, HIGH_THRESHOLD, MEDIUM_THRESHOLD]),
-      this.query(CRASH_SQL, [orgId, monthAgo, to]),
-    ]);
+    const [funnel, median, quotes, approved, needsReview, confidence, crash, toolCalls] =
+      await Promise.all([
+        this.query(FUNNEL_SQL, [orgId, from, to]),
+        this.query(MEDIAN_SQL, [orgId, from, to, priorFrom]),
+        this.query(QUOTES_SQL, [orgId, from, to, priorFrom]),
+        this.query(APPROVED_SQL, [orgId, from, to, priorFrom]),
+        this.query(NEEDS_REVIEW_SQL, [orgId, from, to, priorFrom]),
+        this.query(CONFIDENCE_SQL, [orgId, from, to, HIGH_THRESHOLD, MEDIUM_THRESHOLD]),
+        this.query(CRASH_SQL, [orgId, monthAgo, to]),
+        this.query(TOOL_CALLS_SQL, [orgId, from, to]),
+      ]);
 
     return assembleSummary({
       funnel: {
@@ -134,6 +138,7 @@ export class AnalyticsService {
         total: num(confidence.total),
       },
       crashRecoveries: num(crash.n),
+      toolCallsTotal: num(toolCalls.n),
     });
   }
 
@@ -234,3 +239,13 @@ const CRASH_SQL = `
   WHERE org_id = $1 AND event_name = 'request.resumed'
     AND attributes->>'reason' = 'crash_recovery'
     AND created_at >= $2 AND created_at < $3`;
+
+// Tool-call volume: every tool invocation logged against the org's requests within the window.
+// Joins through requests to scope by org_id (SEC-01: aggregate only, no raw payloads to the client).
+// NOTE: org_id filter is in the WHERE clause (not JOIN ... ON) to match the convention of every other
+// query in this file — makes it easy to verify every query is org-scoped at a glance.
+const TOOL_CALLS_SQL = `
+  SELECT count(*) AS n
+  FROM tool_calls tc
+  JOIN requests r ON r.id = tc.request_id
+  WHERE r.org_id = $1 AND tc.created_at >= $2 AND tc.created_at < $3`;

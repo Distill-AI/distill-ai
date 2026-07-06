@@ -13,6 +13,7 @@ const summary: AnalyticsSummary = {
   quotes_this_week: 128,
   quotes_this_week_delta: 12,
   crash_recoveries_this_month: 2,
+  tool_calls_total: 847,
   confidence_distribution: { high_pct: 64, medium_pct: 27, low_pct: 9 },
   quote_funnel: { ingested: 410, drafted: 372, approved: 295, sent: 268 },
 };
