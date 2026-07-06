@@ -187,6 +187,35 @@ describe('ToolRegistry – Core / Integration', () => {
         CircuitBreakerOpenError,
       );
     });
+
+    it('still writes an audit log and a failed tool.invoked event before re-throwing', async () => {
+      const CircuitBreakerTool: ToolContract<z.ZodTypeAny, z.ZodTypeAny> = {
+        toolName: 'circuit_breaker_tool',
+        description: 'always throws CircuitBreakerOpenError',
+        inputSchema: z.object({}),
+        outputSchema: z.object({}),
+        async execute() {
+          throw new CircuitBreakerOpenError();
+        },
+      };
+      registry.register(CircuitBreakerTool);
+
+      await expect(registry.invoke('circuit_breaker_tool' as ToolName, {})).rejects.toBeInstanceOf(
+        CircuitBreakerOpenError,
+      );
+
+      expect(mockActions.insertLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          toolName: 'circuit_breaker_tool',
+          status: ToolStatus.ERROR,
+        }),
+      );
+      const failedEvent = (mockEvents.emit as ReturnType<typeof vi.fn>).mock.calls.find(
+        (call: unknown[]) =>
+          (call[0] as { attributes?: { status?: string } }).attributes?.status === 'failed',
+      );
+      expect(failedEvent).toBeDefined();
+    });
   });
 
   describe('stage.error contract', () => {

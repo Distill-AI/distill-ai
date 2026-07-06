@@ -163,6 +163,19 @@ export class ToolRegistry implements OnModuleInit {
       execResult = { ok: true as const, value: result };
     } catch (e) {
       if (e instanceof CircuitBreakerOpenError) {
+        // Audit log + tool-event telemetry still need to record this attempt, same as any other
+        // failure below - only the stage.error emit is skipped, since LlmClientService already
+        // emitted one before throwing (see CircuitBreakerOpenError's class-level invariant).
+        const latency = Math.round(performance.now() - start);
+        await this.log({
+          toolName: name,
+          status: ToolStatus.ERROR,
+          latencyMs: latency,
+          args: this.sanitize(rawArgs),
+          errorDetail: e.message,
+          requestId: rid,
+        });
+        await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Circuit breaker open', orgId);
         throw e;
       }
       execResult = { ok: false as const, error: e };

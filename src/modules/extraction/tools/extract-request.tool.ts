@@ -54,7 +54,9 @@ export class ExtractRequestToolFactory {
         orgId: context?.orgId ?? '',
         requestId: context?.requestId ?? '',
         node: 'extract',
-        requestType: 'catalog_rfq',
+        // requestType intentionally omitted: extraction runs before classification, so the
+        // request's actual type isn't known yet here. Falls back to createChatCompletion's own
+        // default fixture selection, same as explain_routing/draft_clarification/draft_quote_email.
       },
     );
     const text = completion.choices[0]?.message?.content ?? '';
