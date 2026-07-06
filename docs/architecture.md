@@ -13,7 +13,7 @@ The buildable plan for the 3-week MVP. Scoped to exactly what M1–M5 ships: a *
 ## 1. Scope guardrails (read first)
 
 | In V1 | Explicitly NOT in V1 (deferred to V2) |
-|---|---|
+| --- | --- |
 | In-process graph engine (one TS class, runs in worker process) | Distributed/durable orchestrator as a service |
 | Bull / Redis queue + `@Cron` recovery sweep | Multi-queue agent-exec topology |
 | 7 named tools, validate + log on invoke | Tiered tool registry + full middleware chain |
@@ -80,7 +80,7 @@ flowchart TB
 ## 3. Module map (V1)
 
 | Module | Epic | Key providers / controllers | Notes |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `CommonModule` | E8 | `Db` (typed SQL), `ConfigService`, `ZodValidationPipe`, `Clock`, `Ids` | shared infra |
 | `PipelineModule` | E8 | `PipelineGraphEngine`, `PipelineRunner`, `RecoverySweep`, `NodeRegistry` | the engine — built first |
 | `ToolsModule` | E8 | `ToolRegistry`, `ToolInvocationError` | tools register themselves from their owning module |
@@ -378,7 +378,7 @@ The 7 V1 tools, registered by their owning modules — all seven now call `LlmCl
 (circuit breaker + retry + demo-fixture replay), not a direct fetch to the provider:
 
 | Tool | Owner module | Wraps | Side effect |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `extract_request` | ExtractionModule | LLM structured-output call | none (returns JSON) |
 | `classify_request` | ClassifyModule | LLM classification call | none (returns JSON) |
 | `search_catalog` | CatalogModule | `pg_trgm` lexical + embeddings semantic, RRF fused | none |
@@ -496,7 +496,7 @@ This is "nearly as strong as the V2 Postgres-grant guarantee, at zero infra cost
 ## 13. Test strategy (NFR-OPS-1 categories)
 
 | CI suite | Covers | Key assertions |
-|---|---|---|
+| --- | --- | --- |
 | `pricing` | PricingService, PolicyService | identical input → identical output; margin-floor breach flags unconditionally |
 | `matcher` | RRF fusion, margin flagging | exact/semantic match; close-tie flag despite high top-1 |
 | `confidence` | ScorerService | deterministic, reproducible routing; threshold-driven |
