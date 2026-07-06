@@ -1,0 +1,39 @@
+{
+  "answer": "This request needs manual review because the overall confidence (68%) is below the auto-eligible threshold, and one line item has a close pricing tie that requires a human decision. I searched the catalog for a similar SKU and found a strong candidate that may resolve the ambiguity.",
+  "trace": [
+    {
+      "thought": "The user is asking why this quote needs review. I should first check the routing explanation tool.",
+      "tool": "explain_routing",
+      "input": {},
+      "output": {
+        "explanation": "This quote requires manual review because the overall confidence (68%) is below the auto-eligible threshold of 95%, and a line item has a close pricing tie flagged for review.",
+        "degraded": false
+      }
+    },
+    {
+      "thought": "The routing explanation mentions a close pricing tie. Let me search the catalog for alternative SKUs that might disambiguate the match.",
+      "tool": "search_catalog",
+      "input": { "query": "stainless steel hex bolt M8", "limit": 5 },
+      "output": {
+        "candidates": [
+          {
+            "sku_id": "3f1b1e2e-6f2a-4b8b-9c1a-0a1b2c3d4e5f",
+            "sku_code": "HEX-M8-SS-40",
+            "name": "M8 x 40mm Stainless Steel Hex Bolt",
+            "description": "Grade A2 stainless steel hex bolt, DIN 933",
+            "score": 0.91,
+            "rank": 1,
+            "match_method": "fused"
+          }
+        ],
+        "degraded": false
+      }
+    },
+    {
+      "thought": "I have enough information to answer the question about why this quote was routed to needs_review, and I found a strong catalog candidate that supports resolving the flagged line item.",
+      "tool": null,
+      "input": null,
+      "output": null
+    }
+  ]
+}

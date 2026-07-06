@@ -8,6 +8,7 @@ import { ParsedStructurePane } from '../components/review/ParsedStructurePane';
 import { SuggestedQuotePane } from '../components/review/SuggestedQuotePane';
 import { DeclineModal } from '../components/review/DeclineModal';
 import { CopilotExplanationBlock } from '../components/review/CopilotExplanationBlock';
+import { AskCopilotPanel } from '../components/review/AskCopilotPanel';
 import { useCopilotExplanation } from '../api/copilotExplanation';
 import { ErrorBanner } from '../components/inbox/ErrorBanner';
 import { usePageHeader } from '../context/PageHeaderContext';
@@ -200,7 +201,8 @@ export function Review() {
             isError={copilotExplanation.isError}
             degraded={copilotExplanation.data?.degraded}
           />
-          <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
+          <AskCopilotPanel requestId={request.id} />
+          <div className="grid min-h-80 flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
             <Pane>
               <OriginalRequestPane request={request} onError={setDownloadError} />
             </Pane>
