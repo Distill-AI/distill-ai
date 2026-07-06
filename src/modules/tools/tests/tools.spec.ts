@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { ToolContract } from '../interfaces/tool-contract.interface';
 import { EventsService } from '../../events/events.service';
 import { ToolName } from '../../pipeline/types';
+import { CircuitBreakerOpenError } from '../../pipeline/pipeline.errors';
 
 function createMockActions(): ToolCallsActions {
   return {
@@ -147,6 +148,44 @@ describe('ToolRegistry – Core / Integration', () => {
       const res = await registry.invoke('bad_output' as ToolName, {});
       expect(res.status).toBe(ToolStatus.VALIDATION_ERROR);
       expect(res.error).toBe('Output validation failed');
+    });
+  });
+
+  describe('ToolCallContext threading', () => {
+    it('passes { orgId, requestId } as the second argument to execute()', async () => {
+      const executeSpy = vi.fn().mockResolvedValue({ echoed: 'hi' });
+      const ContextTool: ToolContract<z.ZodTypeAny, z.ZodTypeAny> = {
+        toolName: 'context_tool',
+        description: 'records the context it was called with',
+        inputSchema: z.object({ message: z.string() }),
+        outputSchema: z.object({ echoed: z.string() }),
+        execute: executeSpy,
+      };
+      registry.register(ContextTool);
+
+      await registry.invoke('context_tool' as ToolName, { message: 'hi' }, 'req-42', 1, 'org-7');
+
+      expect(executeSpy).toHaveBeenCalledWith(
+        { message: 'hi' },
+        { orgId: 'org-7', requestId: 'req-42' },
+      );
+    });
+
+    it('re-throws CircuitBreakerOpenError instead of returning ToolStatus.ERROR', async () => {
+      const CircuitBreakerTool: ToolContract<z.ZodTypeAny, z.ZodTypeAny> = {
+        toolName: 'circuit_breaker_tool',
+        description: 'always throws CircuitBreakerOpenError',
+        inputSchema: z.object({}),
+        outputSchema: z.object({}),
+        async execute() {
+          throw new CircuitBreakerOpenError();
+        },
+      };
+      registry.register(CircuitBreakerTool);
+
+      await expect(registry.invoke('circuit_breaker_tool' as ToolName, {})).rejects.toBeInstanceOf(
+        CircuitBreakerOpenError,
+      );
     });
   });
 

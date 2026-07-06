@@ -7,6 +7,7 @@ import * as SYS_MSG from '@constants/system-messages';
 import { ToolContract } from './interfaces/tool-contract.interface';
 import { ToolStatus } from './enums/tools.enums';
 import { DuplicateToolError, ReservedToolNameError } from './errors/tools.errors';
+import { CircuitBreakerOpenError } from '@modules/pipeline/pipeline.errors';
 import { ToolCallsActions, ToolCallLogParams } from './actions/tool-calls.actions';
 import { ToolName, RESERVED_NAMES } from '../pipeline/types';
 import { getTimestamp } from '@common/utils/timestamp';
@@ -157,10 +158,13 @@ export class ToolRegistry implements OnModuleInit {
           [ATTR_ATTEMPT]: attempt,
           [ATTR_NODE]: node,
         },
-        () => contract.execute(inputParse.data),
+        () => contract.execute(inputParse.data, { orgId: orgId ?? undefined, requestId: rid }),
       );
       execResult = { ok: true as const, value: result };
     } catch (e) {
+      if (e instanceof CircuitBreakerOpenError) {
+        throw e;
+      }
       execResult = { ok: false as const, error: e };
     }
 
