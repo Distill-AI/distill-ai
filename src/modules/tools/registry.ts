@@ -167,15 +167,17 @@ export class ToolRegistry implements OnModuleInit {
         // failure below - only the stage.error emit is skipped, since LlmClientService already
         // emitted one before throwing (see CircuitBreakerOpenError's class-level invariant).
         const latency = Math.round(performance.now() - start);
-        await this.log({
-          toolName: name,
-          status: ToolStatus.ERROR,
-          latencyMs: latency,
-          args: this.sanitize(rawArgs),
-          errorDetail: e.message,
+        await this.recordToolFailure({
           requestId: rid,
+          node,
+          toolName: name,
+          attempt,
+          orgId,
+          latency,
+          errorDetail: e.message,
+          rawArgs,
+          eventSummary: 'Circuit breaker open',
         });
-        await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Circuit breaker open', orgId);
         throw e;
       }
       execResult = { ok: false as const, error: e };
@@ -186,15 +188,17 @@ export class ToolRegistry implements OnModuleInit {
     if (!execResult.ok) {
       const msg =
         execResult.error instanceof Error ? execResult.error.message : String(execResult.error);
-      await this.log({
-        toolName: name,
-        status: ToolStatus.ERROR,
-        latencyMs: latency,
-        args: this.sanitize(rawArgs),
-        errorDetail: msg,
+      await this.recordToolFailure({
         requestId: rid,
+        node,
+        toolName: name,
+        attempt,
+        orgId,
+        latency,
+        errorDetail: msg,
+        rawArgs,
+        eventSummary: 'Execution failed',
       });
-      await this.emitToolEvent(rid, node, name, 'failed', attempt, 'Execution failed', orgId);
       await this.emitStageError(rid, node, StageErrorReason.TOOL_EXECUTION_FAILED, orgId);
       return { status: ToolStatus.ERROR, latency, error: msg };
     }
@@ -272,6 +276,36 @@ export class ToolRegistry implements OnModuleInit {
         result_summary: resultSummary,
       },
     });
+  }
+
+  private async recordToolFailure(params: {
+    requestId: string;
+    node: string | null;
+    toolName: string;
+    attempt: number;
+    orgId: string | null;
+    latency: number;
+    errorDetail: string;
+    rawArgs: unknown;
+    eventSummary: string;
+  }): Promise<void> {
+    await this.log({
+      toolName: params.toolName,
+      status: ToolStatus.ERROR,
+      latencyMs: params.latency,
+      args: this.sanitize(params.rawArgs),
+      errorDetail: params.errorDetail,
+      requestId: params.requestId,
+    });
+    await this.emitToolEvent(
+      params.requestId,
+      params.node,
+      params.toolName,
+      'failed',
+      params.attempt,
+      params.eventSummary,
+      params.orgId,
+    );
   }
 
   private sanitize(data: unknown): unknown {
