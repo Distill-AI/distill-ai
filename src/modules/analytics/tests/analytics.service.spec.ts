@@ -18,6 +18,7 @@ function rawStats(overrides: Partial<AnalyticsRawStats> = {}): AnalyticsRawStats
     needsReviewPriorFalseNeg: 2,
     confidence: { high: 64, medium: 27, low: 9, total: 100 },
     crashRecoveries: 3,
+    toolCallsTotal: 847,
     ...overrides,
   };
 }
@@ -36,6 +37,7 @@ describe('assembleSummary', () => {
     expect(s.quotes_this_week).toBe(42);
     expect(s.quotes_this_week_delta).toBe(6); // 42 - 36
     expect(s.crash_recoveries_this_month).toBe(3);
+    expect(s.tool_calls_total).toBe(847);
     expect(s.confidence_distribution).toEqual({ high_pct: 64, medium_pct: 27, low_pct: 9 });
     expect(s.quote_funnel).toEqual({ ingested: 120, drafted: 96, approved: 71, sent: 58 });
   });
@@ -58,6 +60,7 @@ describe('assembleSummary', () => {
         needsReviewPriorFalseNeg: 0,
         confidence: { high: 0, medium: 0, low: 0, total: 0 },
         crashRecoveries: 0,
+        toolCallsTotal: 0,
       }),
     );
 
@@ -108,14 +111,15 @@ describe('AnalyticsService.getSummary', () => {
   it('scopes every query to the org and assembles coerced string counts', async () => {
     const query = vi
       .fn()
-      // Order matches Promise.all: funnel, median, quotes, approved, needsReview, confidence, crash.
+      // Order matches Promise.all: funnel, median, quotes, approved, needsReview, confidence, crash, toolCalls.
       .mockResolvedValueOnce([{ ingested: '10', drafted: '8', approved: '5', sent: '3' }])
       .mockResolvedValueOnce([{ cur: '7010.5', prior: null }])
       .mockResolvedValueOnce([{ cur: '4', prior: '2' }])
       .mockResolvedValueOnce([{ cur_total: '3', cur_zero: '3', prior_total: '0', prior_zero: '0' }])
       .mockResolvedValueOnce([{ cur_total: '2', cur_fn: '1', prior_total: '0', prior_fn: '0' }])
       .mockResolvedValueOnce([{ high: '6', medium: '3', low: '1', total: '10' }])
-      .mockResolvedValueOnce([{ n: '2' }]);
+      .mockResolvedValueOnce([{ n: '2' }])
+      .mockResolvedValueOnce([{ n: '42' }]);
     const service = new AnalyticsService({ query } as unknown as DataSource);
 
     const from = new Date('2026-06-25T00:00:00Z');
@@ -131,5 +135,6 @@ describe('AnalyticsService.getSummary', () => {
     expect(result.zero_edit_approval_pct).toBe(100); // 3/3
     expect(result.confidence_distribution).toEqual({ high_pct: 60, medium_pct: 30, low_pct: 10 });
     expect(result.crash_recoveries_this_month).toBe(2);
+    expect(result.tool_calls_total).toBe(42);
   });
 });

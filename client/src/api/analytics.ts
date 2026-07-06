@@ -15,6 +15,7 @@ export interface AnalyticsSummary {
   quotes_this_week: number;
   quotes_this_week_delta: number;
   crash_recoveries_this_month: number;
+  tool_calls_total: number;
   confidence_distribution: { high_pct: number; medium_pct: number; low_pct: number };
   quote_funnel: { ingested: number; drafted: number; approved: number; sent: number };
 }
