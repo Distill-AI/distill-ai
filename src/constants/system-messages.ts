@@ -277,4 +277,6 @@ export const AGENTIC_COPILOT_DISABLED = 'Copilot Q&A is not enabled for this env
 export const AGENTIC_COPILOT_ANSWERED = 'Copilot answered the question successfully';
 export const AGENTIC_COPILOT_MAX_STEPS_EXCEEDED =
   'Copilot could not reach a final answer within its reasoning step budget';
+export const AGENTIC_COPILOT_TIMED_OUT = 'Copilot timed out before reaching a final answer';
 export const AGENTIC_COPILOT_QUESTION_REQUIRED = 'Question is required';
+export const AGENTIC_COPILOT_QUESTION_TOO_LONG = 'Question must be 1000 characters or fewer';

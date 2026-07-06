@@ -16,6 +16,7 @@ vi.mock('@config/env', () => ({
     LLM_API_KEY: 'test-key',
     LLM_BASE_URL: 'http://localhost:11434/v1',
     LLM_MODEL: 'qwen-72b',
+    LLM_TIMEOUT_MS: 30000,
   },
 }));
 
@@ -36,6 +37,13 @@ const buildToolsMock = vi.hoisted(() =>
 vi.mock('../agentic/agentic-copilot.tools', () => ({
   buildAgenticCopilotTools: buildToolsMock,
 }));
+
+const readFileSyncMock = vi.hoisted(() => vi.fn());
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs')>();
+  readFileSyncMock.mockImplementation(actual.readFileSync);
+  return { ...actual, readFileSync: readFileSyncMock };
+});
 
 import { AgenticCopilotService } from '../agentic/agentic-copilot.service';
 import { env } from '@config/env';
@@ -93,6 +101,17 @@ describe('AgenticCopilotService', () => {
     expect(result.trace.length).toBeGreaterThan(0);
   });
 
+  it('reads the demo fixture from disk once and reuses it across repeated asks', async () => {
+    env.DEMO_MODE = true;
+    readFileSyncMock.mockClear();
+    const service = new AgenticCopilotService(makeToolRegistry(), makeLineItems());
+
+    await service.ask(buildRequest(), 'first question');
+    await service.ask(buildRequest(), 'second question');
+
+    expect(readFileSyncMock).toHaveBeenCalledTimes(1);
+  });
+
   it('runs the agent and maps its message list into an answer and a step trace', async () => {
     invokeAgentMock.mockResolvedValue({
       messages: [
@@ -132,7 +151,7 @@ describe('AgenticCopilotService', () => {
     });
     expect(invokeAgentMock).toHaveBeenCalledWith(
       { messages: [{ role: 'user', content: 'why is this flagged?' }] },
-      { recursionLimit: 4 },
+      { recursionLimit: 4, timeout: 30000 },
     );
 
     expect(result.answer).toBe('This needs review because confidence is below threshold.');
@@ -163,6 +182,15 @@ describe('AgenticCopilotService', () => {
     const result = await service.ask(buildRequest(), 'why is this flagged?');
 
     expect(result).toEqual({ answer: SYS_MSG.AGENTIC_COPILOT_MAX_STEPS_EXCEEDED, trace: [] });
+  });
+
+  it('returns a graceful timeout message instead of throwing when the invoke call is aborted', async () => {
+    invokeAgentMock.mockRejectedValue(new DOMException('The operation was aborted', 'AbortError'));
+    const service = new AgenticCopilotService(makeToolRegistry(), makeLineItems());
+
+    const result = await service.ask(buildRequest(), 'why is this flagged?');
+
+    expect(result).toEqual({ answer: SYS_MSG.AGENTIC_COPILOT_TIMED_OUT, trace: [] });
   });
 
   it('rethrows an unexpected agent invocation error rather than swallowing it', async () => {

@@ -114,6 +114,32 @@ describe('AskCopilotPanel', () => {
     expect(screen.getByText('Final answer reached.')).toBeInTheDocument();
   });
 
+  it('resets stale results when editing the question after a successful answer', async () => {
+    state.data = {
+      answer: 'This needs review because confidence is below threshold.',
+      trace: [],
+    };
+    const user = userEvent.setup();
+    render(<AskCopilotPanel requestId="req-1" />);
+    await user.click(screen.getByRole('button', { name: /ask copilot/i }));
+
+    await user.type(screen.getByPlaceholderText(/why is this line item flagged/i), 'x');
+
+    expect(mockReset).toHaveBeenCalled();
+  });
+
+  it('resets a stale error when editing the question after a failed request', async () => {
+    state.isError = true;
+    state.error = { response: { data: { message: 'boom' } } } as AxiosError<{ message?: string }>;
+    const user = userEvent.setup();
+    render(<AskCopilotPanel requestId="req-1" />);
+    await user.click(screen.getByRole('button', { name: /ask copilot/i }));
+
+    await user.type(screen.getByPlaceholderText(/why is this line item flagged/i), 'x');
+
+    expect(mockReset).toHaveBeenCalled();
+  });
+
   it('shows the server error message when the request fails', async () => {
     state.isError = true;
     state.error = {

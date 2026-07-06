@@ -15,6 +15,7 @@ import { RequestsService } from '@modules/requests/services/requests.service';
 import { Roles } from '@modules/auth/decorators/roles.decorator';
 import { Role } from '@modules/auth/enums/role.enum';
 import type { AuthUser } from '@modules/auth/interfaces/auth-user.interface';
+import type { Request } from '@modules/requests/entities/request.entity';
 import { AgenticCopilotService } from './agentic/agentic-copilot.service';
 import { AskCopilotDto } from './dto/ask-copilot.dto';
 import { CopilotService } from './copilot.service';
@@ -37,13 +38,7 @@ export class CopilotController {
     @Req() req: { user?: AuthUser },
   ) {
     const request = await this.requestsService.findByIdOrFail(requestId);
-
-    if (authConfig.enabled) {
-      const user = req.user;
-      if (!user || request.org_id !== user.orgId) {
-        throw new NotFoundException(SYS_MSG.REQUEST_NOT_FOUND(requestId));
-      }
-    }
+    this.assertOwnedByCallerOrg(request, req.user, requestId);
 
     const data = await this.copilotService.getExplanation(request);
 
@@ -64,13 +59,7 @@ export class CopilotController {
     @Req() req: { user?: AuthUser },
   ) {
     const request = await this.requestsService.findByIdOrFail(requestId);
-
-    if (authConfig.enabled) {
-      const user = req.user;
-      if (!user || request.org_id !== user.orgId) {
-        throw new NotFoundException(SYS_MSG.REQUEST_NOT_FOUND(requestId));
-      }
-    }
+    this.assertOwnedByCallerOrg(request, req.user, requestId);
 
     const data = await this.agenticCopilotService.ask(request, dto.question);
 
@@ -79,5 +68,16 @@ export class CopilotController {
       message: SYS_MSG.AGENTIC_COPILOT_ANSWERED,
       data,
     };
+  }
+
+  private assertOwnedByCallerOrg(
+    request: Request,
+    user: AuthUser | undefined,
+    requestId: string,
+  ): void {
+    if (!authConfig.enabled) return;
+    if (!user || request.org_id !== user.orgId) {
+      throw new NotFoundException(SYS_MSG.REQUEST_NOT_FOUND(requestId));
+    }
   }
 }

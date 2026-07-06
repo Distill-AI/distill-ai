@@ -13,6 +13,6 @@ export class AskCopilotDto {
   @IsDefined({ message: SYS_MSG.AGENTIC_COPILOT_QUESTION_REQUIRED })
   @IsString({ message: SYS_MSG.AGENTIC_COPILOT_QUESTION_REQUIRED })
   @MinLength(1, { message: SYS_MSG.AGENTIC_COPILOT_QUESTION_REQUIRED })
-  @MaxLength(1000, { message: SYS_MSG.AGENTIC_COPILOT_QUESTION_REQUIRED })
+  @MaxLength(1000, { message: SYS_MSG.AGENTIC_COPILOT_QUESTION_TOO_LONG })
   question: string;
 }
