@@ -16,6 +16,7 @@ const summaryExample = {
     quotes_this_week: 42,
     quotes_this_week_delta: 6,
     crash_recoveries_this_month: 3,
+    tool_calls_total: 847,
     confidence_distribution: { high_pct: 64, medium_pct: 27, low_pct: 9 },
     quote_funnel: { ingested: 120, drafted: 96, approved: 71, sent: 58 },
   },
@@ -28,7 +29,8 @@ export function AnalyticsSummaryDocs(): MethodDecorator {
       summary: 'Dashboard KPI summary from audit events',
       description:
         'Computes median time-to-draft, zero-edit approval, auto-eligible false-negative rate, the ' +
-        'Ingested→Drafted→Approved→Sent funnel, and the confidence distribution from the calling ' +
+        'Ingested→Drafted→Approved→Sent funnel, tool-call volume, crash-recovery count, and the ' +
+        'confidence distribution from the calling ' +
         "org's real events. Deltas compare the reporting window against the equal-length window " +
         'before it. Funnel counts are a single monotonic snapshot; rates with no denominator in the ' +
         'window return 0 rather than a division error.',

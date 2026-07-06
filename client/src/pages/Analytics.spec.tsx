@@ -22,6 +22,7 @@ const summary: AnalyticsSummary = {
   quotes_this_week: 128,
   quotes_this_week_delta: 12,
   crash_recoveries_this_month: 2,
+  tool_calls_total: 847,
   confidence_distribution: { high_pct: 64, medium_pct: 27, low_pct: 9 },
   quote_funnel: { ingested: 410, drafted: 372, approved: 295, sent: 268 },
 };
@@ -29,6 +30,7 @@ const summary: AnalyticsSummary = {
 const emptySummary: AnalyticsSummary = {
   ...summary,
   quotes_this_week: 0,
+  tool_calls_total: 0,
   confidence_distribution: { high_pct: 0, medium_pct: 0, low_pct: 0 },
   quote_funnel: { ingested: 0, drafted: 0, approved: 0, sent: 0 },
 };
@@ -112,7 +114,7 @@ describe('Analytics', () => {
     });
     renderAnalytics();
     expect(screen.queryByText('No quotes processed in this period yet.')).not.toBeInTheDocument();
-    expect(screen.getByText('Crash recoveries')).toBeInTheDocument();
+    expect(screen.getByText('Agent evidence')).toBeInTheDocument();
   });
 
   it('renders KPI cards and charts when data is present', () => {
@@ -125,7 +127,8 @@ describe('Analytics', () => {
     expect(screen.getByText('Auto-eligible false-neg')).toBeInTheDocument();
     expect(screen.getByText('Quotes this week')).toBeInTheDocument();
     expect(screen.getByText('128')).toBeInTheDocument();
-    expect(screen.getByText('Crash recoveries')).toBeInTheDocument();
+    expect(screen.getByText('Agent evidence')).toBeInTheDocument();
+    expect(screen.getByText('847')).toBeInTheDocument();
     expect(screen.getByText('Confidence distribution')).toBeInTheDocument();
     expect(screen.getByText('Quote funnel')).toBeInTheDocument();
   });
