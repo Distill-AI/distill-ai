@@ -12,8 +12,12 @@ const INPUT = {
   senderCompany: 'Acme',
 };
 
+function makeCompletion(content: string) {
+  return { choices: [{ message: { content } }] };
+}
+
 function setup() {
-  const llm = { invoke: vi.fn() };
+  const llm = { createChatCompletion: vi.fn() };
   const factory = new DraftQuoteEmailToolFactory(llm as never);
   return { factory, llm };
 }
@@ -21,9 +25,9 @@ function setup() {
 describe('DraftQuoteEmailToolFactory', () => {
   it('parses a clean JSON response', async () => {
     const { factory, llm } = setup();
-    llm.invoke.mockResolvedValue({
-      text: JSON.stringify({ draft_subject: 'Quote Q-001', draft_body: 'Hello Jane' }),
-    });
+    llm.createChatCompletion.mockResolvedValue(
+      makeCompletion(JSON.stringify({ draft_subject: 'Quote Q-001', draft_body: 'Hello Jane' })),
+    );
     const contract = factory.create();
 
     const result = await contract.execute(INPUT);
@@ -33,9 +37,9 @@ describe('DraftQuoteEmailToolFactory', () => {
 
   it('strips a markdown code fence before parsing', async () => {
     const { factory, llm } = setup();
-    llm.invoke.mockResolvedValue({
-      text: '```json\n{"draft_subject": "Quote Q-001", "draft_body": "Hello Jane"}\n```',
-    });
+    llm.createChatCompletion.mockResolvedValue(
+      makeCompletion('```json\n{"draft_subject": "Quote Q-001", "draft_body": "Hello Jane"}\n```'),
+    );
     const contract = factory.create();
 
     const result = await contract.execute(INPUT);
@@ -45,7 +49,7 @@ describe('DraftQuoteEmailToolFactory', () => {
 
   it('throws QUOTE_EMAIL_DRAFT_PARSE_FAILED when the response is not valid JSON', async () => {
     const { factory, llm } = setup();
-    llm.invoke.mockResolvedValue({ text: 'not json at all' });
+    llm.createChatCompletion.mockResolvedValue(makeCompletion('not json at all'));
     const contract = factory.create();
 
     await expect(contract.execute(INPUT)).rejects.toEqual(
@@ -58,7 +62,9 @@ describe('DraftQuoteEmailToolFactory', () => {
 
   it('throws QUOTE_EMAIL_DRAFT_PARSE_FAILED when the JSON does not match the output schema', async () => {
     const { factory, llm } = setup();
-    llm.invoke.mockResolvedValue({ text: JSON.stringify({ draft_subject: 'Quote Q-001' }) });
+    llm.createChatCompletion.mockResolvedValue(
+      makeCompletion(JSON.stringify({ draft_subject: 'Quote Q-001' })),
+    );
     const contract = factory.create();
 
     await expect(contract.execute(INPUT)).rejects.toEqual(
