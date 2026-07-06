@@ -2,8 +2,6 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import * as SYS_MSG from '@constants/system-messages';
 import { CustomHttpException } from '@common/exceptions/custom-http.exception';
 import { LineItemModelAction } from '@modules/catalog/line-item.model-action';
-import type { LineItem } from '@modules/catalog/entities/line-item.entity';
-import { CLOSE_TIE_FLAG, MANUAL_OVERRIDE_FLAG } from '@modules/catalog/line-item-flags.constants';
 import { RequestRouting } from '@modules/requests/enums/request-routing.enum';
 import type { Request } from '@modules/requests/entities/request.entity';
 import { ToolRegistry } from '@modules/tools/registry';
@@ -16,6 +14,7 @@ import {
   COPILOT_EXPLANATION_DEGRADED_CACHE_TTL_S,
   copilotExplanationCacheKey,
 } from './copilot.constants';
+import { aggregatePolicyFlags, buildExplainRoutingInput } from './copilot.utils';
 
 @Injectable()
 export class CopilotService {
@@ -44,18 +43,13 @@ export class CopilotService {
     request: Request,
     cacheKey: string,
   ): Promise<ExplainRoutingOutput> {
-    const policyFlags = await this.aggregatePolicyFlags(request.id);
+    const policyFlags = await aggregatePolicyFlags(this.lineItems, request.id);
 
     let result: Awaited<ReturnType<ToolRegistry['invoke']>>;
     try {
       result = await this.toolRegistry.invoke(
         toToolName('explain_routing'),
-        {
-          routing: request.routing,
-          overallConfidence: request.overall_confidence ?? 0,
-          routingReasons: request.routing_reasons,
-          policyFlags,
-        },
+        buildExplainRoutingInput(request, policyFlags),
         request.id,
       );
     } catch {
@@ -90,22 +84,5 @@ export class CopilotService {
     } catch {
       return null;
     }
-  }
-
-  private async aggregatePolicyFlags(requestId: string): Promise<string[]> {
-    const lineRows = await this.lineItems.list({
-      filterRecordOptions: { request_id: requestId },
-    });
-
-    const flags = new Set<string>();
-    for (const line of lineRows.payload as LineItem[]) {
-      if (!Array.isArray(line.flags)) continue;
-      for (const flag of line.flags as string[]) {
-        if (flag === CLOSE_TIE_FLAG || flag === MANUAL_OVERRIDE_FLAG) continue;
-        flags.add(flag);
-      }
-    }
-
-    return [...flags];
   }
 }
