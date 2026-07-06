@@ -55,11 +55,12 @@ export interface PipelineNode {
 }
 
 /**
- * The four V1 tools. `price`/`policy`/`score` are deliberately NOT tool names: the
+ * The five V1 tools. `price`/`policy`/`score` are deliberately NOT tool names: the
  * deterministic/agentic boundary is enforced by this type (US-E4-3 / NFR-SEC-3).
  */
 export const TOOL_NAMES = [
   'extract_request',
+  'classify_request',
   'search_catalog',
   'render_quote_pdf',
   'explain_routing',

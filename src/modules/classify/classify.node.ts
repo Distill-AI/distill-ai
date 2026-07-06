@@ -8,8 +8,10 @@ import { RequestModelAction } from '@modules/requests/requests.model-action';
 import { EventsService } from '@modules/events/events.service';
 import { NodeRegistry } from '@modules/pipeline/node-registry';
 import { LineItem } from '@modules/catalog/entities/line-item.entity';
+import { ToolRegistry } from '@modules/tools/registry';
+import { ToolStatus } from '@modules/tools/enums/tools.enums';
+import { toToolName } from '@modules/pipeline/types';
 import type { PipelineNode, NodeContext, NodeResult } from '@modules/pipeline/types';
-import { ClassifyService } from './services/classify.service';
 
 @Injectable()
 export class ClassifyNode implements PipelineNode {
@@ -19,7 +21,7 @@ export class ClassifyNode implements PipelineNode {
 
   constructor(
     registry: NodeRegistry,
-    private readonly classifyService: ClassifyService,
+    private readonly tools: ToolRegistry,
     private readonly requests: RequestModelAction,
     private readonly events: EventsService,
     @InjectEntityManager() private readonly em: EntityManager,
@@ -42,21 +44,38 @@ export class ClassifyNode implements PipelineNode {
       order: { position: 'ASC' },
     });
 
-    const parsedRequest = {
-      company: req.sender_company ?? '',
-      contact: req.sender_contact ?? '',
-      description: req.source_body ?? req.source_subject ?? '',
-      lineItems,
-    };
-
     const start = Date.now();
-    const { type, confidence } = await this.classifyService.classify(parsedRequest);
+    const invocation = await this.tools.invoke(
+      toToolName('classify_request'),
+      {
+        company: req.sender_company ?? '',
+        contact: req.sender_contact ?? '',
+        description: req.source_body ?? req.source_subject ?? '',
+        lineItems: lineItems.map((li) => ({
+          raw_text: li.raw_text,
+          position: li.position,
+          quantity: li.quantity ?? null,
+          unit: li.unit ?? null,
+        })),
+      },
+      requestId,
+      1,
+      orgId,
+    );
+
+    const classifyResult =
+      invocation.status === ToolStatus.OK && invocation.result
+        ? invocation.result
+        : { type: 'service_quote' as const, confidence: 0 };
+
+    const type = classifyResult.type as RequestType;
+    const confidence = classifyResult.confidence;
     const elapsed = Date.now() - start;
 
     const result = await this.requests.update({
       identifierOptions: { id: requestId, org_id: orgId },
       updatePayload: {
-        request_type: type as RequestType,
+        request_type: type,
         classification_confidence: confidence,
         current_node: this.nextNode,
       },
