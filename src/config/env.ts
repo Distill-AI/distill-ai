@@ -77,6 +77,10 @@ const envSchema = z
     // ── Classify (US-E2-4) ────────────────────────────────────────────────────
     CLASSIFY_THRESHOLD: z.coerce.number().min(0).max(1).default(0.8),
 
+    // ── Agentic copilot (bolt-on ReAct Q&A) ──────────────────────────────────
+    AGENTIC_COPILOT_ENABLED: boolEnv.default(false),
+    AGENTIC_COPILOT_MAX_STEPS: z.coerce.number().int().positive().default(4),
+
     // ── Matching and routing (US-E3-1, US-E5-1, US-E5-3) ─────────────────────
     MATCH_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),
     AUTO_THRESHOLD: z.coerce.number().min(0).max(1).default(0.95),

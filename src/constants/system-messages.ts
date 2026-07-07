@@ -271,3 +271,14 @@ export const EXPLAIN_ROUTING_EXTRACTION_FAILED =
 // Copilot explanation
 export const COPILOT_EXPLANATION_RETRIEVED = 'Copilot explanation retrieved successfully';
 export const COPILOT_EXPLANATION_GENERATION_FAILED = 'Failed to generate copilot explanation';
+
+// Agentic copilot (bolt-on ReAct Q&A)
+export const AGENTIC_COPILOT_DISABLED = 'Copilot Q&A is not enabled for this environment';
+export const AGENTIC_COPILOT_ANSWERED = 'Copilot answered the question successfully';
+export const AGENTIC_COPILOT_MAX_STEPS_EXCEEDED =
+  'Copilot could not reach a final answer within its reasoning step budget';
+export const AGENTIC_COPILOT_TIMED_OUT = 'Copilot timed out before reaching a final answer';
+export const AGENTIC_COPILOT_QUESTION_REQUIRED = 'Question is required';
+export const AGENTIC_COPILOT_QUESTION_TOO_LONG = 'Question must be 1000 characters or fewer';
+export const AGENTIC_COPILOT_DEMO_FIXTURE_UNAVAILABLE =
+  'Agentic copilot demo fixture is unavailable';
