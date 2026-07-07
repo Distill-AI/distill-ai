@@ -1,21 +1,25 @@
 # NestJS Implementation Blueprint — Distill.ai **V1 MVP**
 
-The buildable plan for the 3-week MVP. Scoped to exactly what M1–M5 ships: a **modular monolith** with a Bull/Redis-backed pipeline queue, a 4-tool registry with logged invocations, crash recovery via a cron sweep, deterministic pricing/policy/scoring, and SSE live trace.
+> **See [ARCHITECTURE_V2.md](ARCHITECTURE_V2.md) for the production target this V1 is a subset of.**
+> This document stays the implementation-detail reference for V1; the newer doc is the
+> executive-level comparison of what's shipped against what's still a named design target.
 
-> **This is not the V2 blueprint.** A separate V2 document (not yet in this repo) will describe a durable distributed orchestrator, a multi-queue agent-exec topology, a separate agent-runtime service, a tiered harness with a middleware chain, a transactional outbox, and Postgres role-grant boundary enforcement. **Build none of that for V1.** Where the two differ, this document wins for the MVP. The V1 design is an honest subset — same `NodeName` set, same tool names, same deterministic/agentic boundary — that grows into V2 without rework.
+The buildable plan for the 3-week MVP. Scoped to exactly what M1–M5 ships: a **modular monolith** with a Bull/Redis-backed pipeline queue, a 7-tool registry with logged invocations, crash recovery via a cron sweep, deterministic pricing/policy/scoring, and SSE live trace.
+
+> **This is not the V2 blueprint.** [ARCHITECTURE_V2.md](ARCHITECTURE_V2.md) describes a durable distributed orchestrator, a multi-queue agent-exec topology, a separate agent-runtime service, a tiered harness with a middleware chain, a transactional outbox, and Postgres role-grant boundary enforcement. **Build none of that for V1.** Where the two differ, this document wins for the MVP. The V1 design is an honest subset — same `NodeName` set, same tool names, same deterministic/agentic boundary — that grows into V2 without rework.
 
 ---
 
 ## 1. Scope guardrails (read first)
 
 | In V1 | Explicitly NOT in V1 (deferred to V2) |
-|---|---|
+| --- | --- |
 | In-process graph engine (one TS class, runs in worker process) | Distributed/durable orchestrator as a service |
 | Bull / Redis queue + `@Cron` recovery sweep | Multi-queue agent-exec topology |
-| 4 named tools, validate + log on invoke | Tiered tool registry + full middleware chain |
+| 7 named tools, validate + log on invoke | Tiered tool registry + full middleware chain |
 | Module encapsulation enforces the boundary | Postgres role-separated grants |
 | Events written directly to `audit_events` | Transactional outbox + relay |
-| 2 AI-touched nodes (extract, clarify) + 1 read-only tool (explain_routing) | 6-agent topology, sub-agents, sandboxed Code-Act |
+| 3 AI-touched nodes (extract, classify, match), a bolt-on ReAct advisory agent (`copilot/ask`), and a flag-gated agentic `extract` re-ask loop | 6-agent topology, sub-agents, sandboxed Code-Act |
 | Node-level resumability (between nodes) | Sub-node / per-step checkpointing |
 
 If a ticket asks for anything in the right column, it's mis-scoped — check it against the backlog's "Explicitly rejected" table.
@@ -27,31 +31,35 @@ If a ticket asks for anything in the right column, it's mis-scoped — check it 
 ```mermaid
 flowchart TB
     subgraph API["NestJS API process (src/main.ts)"]
-        CTRL["Controllers: requests · review · clarification · quotes · SSE"]
+        CTRL["Controllers: requests · review · clarification · quotes · copilot · SSE"]
         PROD["PipelineRunner (@InjectQueue — Bull producer)"]
         SWEEP["RecoverySweep (@Cron 30s + OnApplicationBootstrap)"]
+        AGENT["AgenticCopilotService (ReAct loop, POST :id/copilot/ask)"]
     end
     REDIS[("Redis (Bull queue)")]
     subgraph WORKER["NestJS worker process (src/worker.ts)"]
         PROC["PipelineProcessor (@Processor — concurrency-capped)"]
         ENGINE["PipelineGraphEngine (node loop + checkpoint + router)"]
-        REG["ToolRegistry (validate + log) — extract_request · search_catalog · render_quote_pdf · explain_routing"]
+        REG["ToolRegistry (validate + log) — extract_request · classify_request · search_catalog\nrender_quote_pdf · explain_routing · draft_clarification · draft_quote_email"]
         subgraph NODES["Graph nodes (NestJS providers)"]
             N1["parse"] --> N2["extract*"] --> N3["classify*"] --> N4["match*"] --> N5["price"] --> N6["policy"] --> N7["score"]
         end
         DET["Deterministic services: PricingService · PolicyService · ScorerService (NOT in registry)"]
         EV["EventsService → audit_events + SSE bridge"]
     end
+    LLMMOD["LlmModule — LlmClientService + CircuitBreakerService (+ demo fixtures)"]
     PG[("PostgreSQL + pgvector")]
     OBJ[("Object storage")]
-    LLM["LLM / Embeddings adapters (+ demo fixtures)"]
 
     CTRL -->|"202, then"| PROD
     SWEEP --> PROD
     PROD --> REDIS --> PROC --> ENGINE --> NODES
     N2 -.->|"only via"| REG
+    N3 -.->|"only via"| REG
     N4 -.->|"only via"| REG
-    REG --> LLM
+    AGENT -.->|"only via, allowlisted to 2 tools"| REG
+    REG --> LLMMOD
+    AGENT --> LLMMOD
     N5 --> DET
     N6 --> DET
     N7 --> DET
@@ -62,7 +70,7 @@ flowchart TB
     N1 --> OBJ
 
     classDef ai fill:#e8eef7,stroke:#2E7EB8;
-    class N2,N3,N4 ai;
+    class N2,N3,N4,AGENT ai;
 ```
 
 `*` = AI-touched node (reaches the LLM, but **only** through the registry). `price`/`policy`/`score` call plain deterministic services and have **no** registry access.
@@ -72,7 +80,7 @@ flowchart TB
 ## 3. Module map (V1)
 
 | Module | Epic | Key providers / controllers | Notes |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `CommonModule` | E8 | `Db` (typed SQL), `ConfigService`, `ZodValidationPipe`, `Clock`, `Ids` | shared infra |
 | `PipelineModule` | E8 | `PipelineGraphEngine`, `PipelineRunner`, `RecoverySweep`, `NodeRegistry` | the engine — built first |
 | `ToolsModule` | E8 | `ToolRegistry`, `ToolInvocationError` | tools register themselves from their owning module |
@@ -80,16 +88,16 @@ flowchart TB
 | `IngestionModule` | E1 | `RequestsController`, `IngestionService`, `ObjectStore` | `POST /v1/requests`, persistence, `current_node='parse'` |
 | `ParserModule` | E1 | `ParseNode`, `DocumentParser` | parse node → `parsed_text` |
 | `ExtractionModule` | E2 | `ExtractNode`, `extract_request` tool, `ExtractionV1` schema, `reconcile()` | the bounded loop |
-| `ClassifyModule` | E2 | `ClassifyNode`, `ClassifyService` | standalone: classify lives outside ExtractionModule; ClassifyService wraps the LLM call |
+| `ClassifyModule` | E2 | `ClassifyNode`, `classify_request` tool, `ClassifyService` | standalone: classify lives outside ExtractionModule; `ClassifyNode` goes through `ToolRegistry` via the `classify_request` tool, same pattern as `ExtractNode` |
 | `CatalogModule` | E3 | `MatchNode`, `search_catalog` tool, `VectorStore` port, `CatalogController` | hybrid match |
 | `PricingModule` | E4 | `PriceNode`, `PolicyNode`, `PricingService`, `PolicyService` | pure code, no tools |
-| `ScoringModule` | E5 | `ScoreNode`, `ScorerService` | deterministic routing source |
-| `ReviewModule` | E6 | `ReviewController`, `ReviewService` | re-map, approve, decline, **resume** |
-| `ClarificationModule` | E6 | `ClarificationController`, `ClarificationService` | human-gated draft |
-| `QuoteModule` | E6 | `QuoteController`, `QuoteRenderer`, `render_quote_pdf` tool | PDF + draft email |
-| `CopilotModule` | E6 | `explain_routing` tool, endpoint | advisory, read-only |
+| `ScoringModule` | E5 | `ScoreNode`, `ScorerService`, `explain_routing` tool | deterministic routing source; the tool is advisory-only, called after routing is decided |
+| `RequestsModule` | E6 | `RequestsController`, `ReviewService` | re-map, approve, decline, **resume** |
+| `ClarificationModule` | E6 | `ClarificationController`, `ClarificationService`, `draft_clarification` tool | human-gated draft |
+| `QuotesModule` | E6 | `QuotesController`, `QuoteRenderer`, `render_quote_pdf` tool, `draft_quote_email` tool | PDF + follow-up email draft |
+| `CopilotModule` | E6 | `explain_routing` consumer endpoint, `AgenticCopilotService` (bolt-on ReAct Q&A, `POST :id/copilot/ask`) | advisory-explanation endpoint is read-only; the ReAct agent is a second, allowlisted `ToolRegistry` caller behind `AGENTIC_COPILOT_ENABLED` |
 | `AnalyticsModule` | E7 | `AnalyticsController` | KPI reads from `audit_events` |
-| `LlmModule` | E2/E3 | `LlmClient`, `EmbeddingsClient` (+ fixture fallback) | demo-mode resilience |
+| `LlmModule` | E2/E3 | `LlmClientService`, `CircuitBreakerService` (+ demo-fixture replay) | single owner of every LLM call — retry, circuit breaker, keys-removed resilience |
 | `AuthModule` | NFR-SEC-5 | `RbacGuard` (config-gated) | inert when `AUTH_ENABLED=false` |
 
 ---
@@ -129,8 +137,10 @@ export function toToolName(name: string): ToolName {
   return name as ToolName;
 }
 // price / policy / score are deliberately NOT ToolNames — the boundary is the type, not a runtime check.
-export const TOOL_NAMES = ['extract_request', 'search_catalog', 'render_quote_pdf', 'explain_routing'] as const;
+export const TOOL_NAMES = ['extract_request', 'classify_request', 'search_catalog', 'render_quote_pdf', 'explain_routing'] as const;
 ```
+
+`TOOL_NAMES` is a documentation/reference list, not a runtime whitelist — `toToolName()` only rejects the three reserved names above. `draft_clarification` and `draft_quote_email` are two more real, registered tools (owned by `ClarificationModule`/`QuotesModule`) that aren't listed in this particular array; the app has 7 registered tools in total, not the 5 named here.
 
 ---
 
@@ -328,6 +338,10 @@ export class ExtractNode implements PipelineNode {
 
 This single node carries US-E2-1 (extract), US-E2-2 (one re-ask with `priorFailure`), US-E2-3 (fail-closed continue), and US-E2-6-T1 (resume-safe re-entry).
 
+**`classify` (E2) follows the same shape as `extract`** — `ClassifyNode` calls `tools.invoke('classify_request', ...)` instead of holding a direct reference to `ClassifyService`, so it's subject to the exact same audit logging and `CircuitBreakerOpenError` propagation as every other tool call.
+
+**Agentic `extract` (opt-in, flag-gated).** Behind `EXTRACT_AGENTIC_ENABLED` (default `false`, and bypassed whenever `DEMO_MODE=true`), the fixed two-attempt loop above becomes the fallback branch of a bounded ReAct loop: the model, not the engine, decides whether to retry `extract_request` with refined instructions or accept the current best-effort result, observing the same deterministic `reconcile()` check either way. The fail-closed contract is unchanged — `ExtractNode.run()` still never returns `{ kind: 'failed' }` for a schema or reconciliation miss, agentic or not. See [ARCHITECTURE_V2.md](ARCHITECTURE_V2.md) §5 for the diagram.
+
 ---
 
 ## 7. Tool registry (E8 / US-E8-5)
@@ -360,14 +374,22 @@ export class ToolRegistry {
 }
 ```
 
-The 4 V1 tools, registered by their owning modules:
+The 7 V1 tools, registered by their owning modules. Of these, the 5 LLM-backed tools
+(`extract_request`, `classify_request`, `draft_quote_email`, `explain_routing`, `draft_clarification`)
+inject `LLMProvider` directly today; `search_catalog` and `render_quote_pdf` use non-LLM backends.
+`LlmClientService` (circuit breaker + retry + demo-fixture replay) is the planned consolidation
+point for those five — see [ARCHITECTURE_V2.md](ARCHITECTURE_V2.md) §2 — but currently it is only
+used at the pipeline/`graph.engine.ts` layer, not injected into the tools themselves:
 
 | Tool | Owner module | Wraps | Side effect |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `extract_request` | ExtractionModule | LLM structured-output call | none (returns JSON) |
+| `classify_request` | ClassifyModule | LLM classification call | none (returns JSON) |
 | `search_catalog` | CatalogModule | `pg_trgm` lexical + embeddings semantic, RRF fused | none |
-| `render_quote_pdf` | QuoteModule | PDF templating → object store | writes a PDF (needs idempotency key — NFR-REL-2) |
-| `explain_routing` | CopilotModule | LLM over already-computed `routing_reasons` | none, read-only |
+| `render_quote_pdf` | QuotesModule | PDF templating → object store | writes a PDF (needs idempotency key — NFR-REL-2) |
+| `draft_quote_email` | QuotesModule | LLM follow-up email draft | none (returns JSON) |
+| `explain_routing` | ScoringModule | LLM over already-computed `routing_reasons` | none, read-only, advisory |
+| `draft_clarification` | ClarificationModule | LLM clarification email draft | none (returns JSON) |
 
 `extract_request` must thread `priorFailure` into the prompt so the single re-ask is corrective, and instruct the model to return `"UNKNOWN"` rather than guess.
 
@@ -420,44 +442,58 @@ SSE carries `node.entered`, `node.exited`, `tool.invoked`, `request.resumed` —
 
 Remaining V1 endpoints, unchanged from TRD §3.2: `GET /requests`, `GET /requests/:id`, `POST /requests/:id/reprocess`, `GET /line-items/:id/candidates`, `POST /requests/:id/quote`, `GET /quotes/:id`, `GET /quotes/:id/pdf`, `POST /requests/:id/clarification`, `GET /requests/:id/copilot-explanation`, `GET /catalog/skus`, `GET /analytics/summary`.
 
+New in this build: `POST /requests/:id/copilot/ask` — the bolt-on ReAct advisory agent (§12's fourth boundary layer). Free-text question in, `{ answer, trace }` out; behind `AGENTIC_COPILOT_ENABLED`, 404s before any LLM construction when the flag is off.
+
 ---
 
 ## 10. Adapters (ports) + demo-mode resilience
 
-Every external dependency sits behind a port so it's swappable and demo-safe (NFR-REL-3 / NFR-OPS-4):
+`VectorStore` and `ObjectStore` sit behind a port so they're swappable and demo-safe (NFR-REL-3 / NFR-OPS-4):
 
 ```ts
 export interface VectorStore { upsert(id, vec): Promise<void>; search(vec, k): Promise<Hit[]>; } // pgvector (extension installed by migration 0001)
 export interface ObjectStore { put(key, bytes): Promise<string>; get(key): Promise<Buffer>; }
-export interface LlmClient { structured<T>(prompt, schema): Promise<T>; }      // wraps provider structured-output
-export interface EmbeddingsClient { embed(text): Promise<number[]>; }
 ```
 
-`LlmClient`/`EmbeddingsClient` wrap a retry + circuit breaker; when the breaker is open or `LLM_API_KEY` is unset, they serve **replayed fixtures** from `llm/fixtures/`, so the demo runs end-to-end with no live API (M5 DoD). This is the V1 form of NFR-REL-1/3 — a try/catch + breaker around the client, not a distributed dead-letter scheme.
+The LLM client is **not** behind a port interface today — the LLM-backed tools call `LLMProvider`
+directly, not an injected `LlmClient` abstraction with a `structured<T>()` method.
+`LlmClientService.createChatCompletion()` exists as a concrete class, but only `graph.engine.ts`
+depends on it so far; consolidating the tools onto it is the same not-yet-built step called out in
+ARCHITECTURE_V2.md §2. That port-interface layer (plus giving `EmbeddingsClient` the same
+resilience it would share) is a named, not-yet-built V2 target — see
+[ARCHITECTURE_V2.md](ARCHITECTURE_V2.md) §6/§7. What *is* real today: `LlmClientService` wraps a
+retry + circuit breaker; when the breaker is open or `DEMO_MODE=true`, it serves **replayed
+fixtures** from `src/database/seed/`, so the demo runs end to end with no live API call (M5 DoD).
+This is the V1 form of NFR-REL-1/3 — a try/catch + breaker around one concrete client, not a
+distributed dead-letter scheme or a swappable port.
 
 ---
 
 ## 11. Config & flags
 
-```
+```env
 DATABASE_URL=            REDIS_URL=               OBJECT_STORE_URL=        VECTOR_STORE=pgvector
 LLM_PROVIDER=  LLM_API_KEY=        EMBEDDINGS_PROVIDER=  EMBEDDINGS_API_KEY=
 AUTH_ENABLED=false       PIPELINE_CONCURRENCY=3   SWEEP_STALE_SECONDS=60
 MATCH_THRESHOLD=0.70     AUTO_THRESHOLD=0.95      AUTO_SEND_CAP_MINOR=
 DEMO_MODE=false          OTEL_TRACE_CONSOLE=false       SENTRY_DSN=
+CLASSIFY_THRESHOLD=0.80
+AGENTIC_COPILOT_ENABLED=false      AGENTIC_COPILOT_MAX_STEPS=4
+EXTRACT_AGENTIC_ENABLED=false      EXTRACT_AGENT_MAX_STEPS=4
 ```
 
-Thresholds are config, not code (US-E5-3, US-E4-4). `AUTH_ENABLED` gates the RBAC guard, which is a pass-through when false (NFR-SEC-5).
+Thresholds are config, not code (US-E5-3, US-E4-4). `AUTH_ENABLED` gates the RBAC guard, which is a pass-through when false (NFR-SEC-5). The two `*_ENABLED` flags default off deliberately, and `EXTRACT_AGENTIC_ENABLED` is bypassed whenever `DEMO_MODE=true` — see [ARCHITECTURE_V2.md](ARCHITECTURE_V2.md) §8.
 
 ---
 
 ## 12. The deterministic/agentic boundary — how V1 enforces it
 
-Three layers, none requiring V2 infrastructure:
+Four layers, none requiring V2 infrastructure:
 
 1. **Type-level:** `ToolName` excludes `price`/`policy`/`score`, so no code can register or invoke them as tools.
 2. **Wiring-level:** `PriceNode`/`PolicyNode`/`ScoreNode` don't receive `ToolRegistry` in their constructors — they have no handle to reach the LLM.
 3. **Test-level (US-E4-3 / US-E5-4):** a unit test runs a full pipeline and asserts `tool_calls` contains **zero** rows attributed to `price`/`policy`/`score`. CI fails if anyone violates the boundary.
+4. **Consumer-level:** the bolt-on advisory agent and the agentic `extract` loop are additional callers of the same `ToolRegistry`, each scoped to an explicit tool allowlist — neither gains a path to `price`/`policy`/`score`, because those names were never tools to begin with.
 
 This is "nearly as strong as the V2 Postgres-grant guarantee, at zero infra cost" — the line we held in the backlog. The grant-level enforcement is the V2 upgrade, not a V1 gap.
 
@@ -466,13 +502,15 @@ This is "nearly as strong as the V2 Postgres-grant guarantee, at zero infra cost
 ## 13. Test strategy (NFR-OPS-1 categories)
 
 | CI suite | Covers | Key assertions |
-|---|---|---|
+| --- | --- | --- |
 | `pricing` | PricingService, PolicyService | identical input → identical output; margin-floor breach flags unconditionally |
 | `matcher` | RRF fusion, margin flagging | exact/semantic match; close-tie flag despite high top-1 |
 | `confidence` | ScorerService | deterministic, reproducible routing; threshold-driven |
 | `reconciliation` | `reconcile()` + ExtractNode loop | schema-fail and totals-fail both trigger exactly one re-ask, then escalate |
 | `graph-resume` | PipelineGraphEngine | kill after `extract`, resume at `classify`, assert **one** `extract_request` row |
 | `boundary` | price/policy/score | zero `tool_calls` rows from these nodes |
+| `llm-client` / `tools` | `LlmClientService`, `CircuitBreakerService`, `ToolRegistry` | HALF_OPEN probe resolution, `DEMO_MODE` never makes a live call, `CircuitBreakerOpenError` re-thrown (not swallowed) and still audit-logged |
+| `agentic-copilot` | Bolt-on ReAct agent | disabled → 404 before any LLM construction; demo mode → fixture, no live call; step count bounded |
 
 The `graph-resume` and `boundary` suites are the two that prove the headline claims — wire them into CI from M1 even while near-empty (NFR-OPS-1-T3).
 
