@@ -121,7 +121,7 @@ jobs:
             API_PORT=$API_PORT \
             docker compose -p $PROJECT --env-file $ENV_FILE up -d
 
-            docker compose -p $PROJECT exec -T api pnpm migration:run
+            docker compose -p $PROJECT exec -T api node node_modules/typeorm/cli.js migration:run -d dist/database/data-source.js
 
             sleep 10
             curl -sf http://localhost:$API_PORT/api/v1/health \
