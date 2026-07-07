@@ -1,7 +1,7 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ObjectStoreModule } from '@common/object-store/object-store.module';
-import { LLMModule } from '@modules/llm/llm.module';
+import { LlmModule } from '@modules/llm/llm.module';
 import { EventsModule } from '@modules/events/events.module';
 import { ToolsModule } from '@modules/tools/tools.module';
 import { ToolRegistry } from '@modules/tools/registry';
@@ -20,7 +20,7 @@ import { QuotesController } from './quotes.controller';
   imports: [
     TypeOrmModule.forFeature([Quote, QuoteLineItem]),
     ObjectStoreModule,
-    LLMModule,
+    LlmModule,
     EventsModule,
     ToolsModule,
     RequestsDataModule,
