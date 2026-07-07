@@ -4,7 +4,8 @@ import { ToolRegistry } from '@modules/tools/registry';
 import { ToolStatus } from '@modules/tools/enums/tools.enums';
 import { ToolCallsActions } from '@modules/tools/actions/tool-calls.actions';
 import { EventsService } from '@modules/events/events.service';
-import { LLMProvider } from '@modules/llm/llm.provider';
+import { LlmClientService } from '@modules/llm/llm-client.service';
+import { CircuitBreakerOpenError } from '@modules/pipeline/pipeline.errors';
 import { ToolName } from '@modules/pipeline/types';
 import { RequestRouting } from '@modules/requests/enums/request-routing.enum';
 import { RoutingReasonCode } from '../enums/routing-reason-code.enum';
@@ -22,16 +23,20 @@ function createMockEvents(): EventsService {
   } as unknown as EventsService;
 }
 
-function createMockLLM(text: string): LLMProvider {
-  return {
-    invoke: vi.fn().mockResolvedValue({ text }),
-  } as unknown as LLMProvider;
+function makeCompletion(content: string) {
+  return { choices: [{ message: { content } }] };
 }
 
-function createFailingLLM(): LLMProvider {
+function createMockLLM(text: string): LlmClientService {
   return {
-    invoke: vi.fn().mockRejectedValue(new Error('LLM unavailable')),
-  } as unknown as LLMProvider;
+    createChatCompletion: vi.fn().mockResolvedValue(makeCompletion(text)),
+  } as unknown as LlmClientService;
+}
+
+function createFailingLLM(): LlmClientService {
+  return {
+    createChatCompletion: vi.fn().mockRejectedValue(new Error('LLM unavailable')),
+  } as unknown as LlmClientService;
 }
 
 const VALID_INPUT = {
@@ -65,7 +70,7 @@ describe('ExplainRoutingTool', () => {
 
       expect(result.explanation).toBe(llmText);
       expect(result.degraded).toBe(false);
-      expect(llm.invoke).toHaveBeenCalledOnce();
+      expect(llm.createChatCompletion).toHaveBeenCalledOnce();
     });
 
     it('returns explanation covering multiple routing reasons', async () => {
@@ -188,6 +193,16 @@ describe('ExplainRoutingTool', () => {
 
       expect(result.degraded).toBe(true);
       expect(result.explanation).toContain('review');
+    });
+
+    it('propagates CircuitBreakerOpenError uncaught instead of falling back', async () => {
+      const llm = {
+        createChatCompletion: vi.fn().mockRejectedValue(new CircuitBreakerOpenError()),
+      } as unknown as LlmClientService;
+      const factory = new ExplainRoutingToolFactory(llm);
+      const tool = factory.create();
+
+      await expect(tool.execute(VALID_INPUT)).rejects.toBeInstanceOf(CircuitBreakerOpenError);
     });
 
     it('tool registry still succeeds (returns OK) even when LLM fails', async () => {

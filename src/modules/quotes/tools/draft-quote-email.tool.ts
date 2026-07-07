@@ -1,8 +1,12 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { z } from 'zod';
+import { env } from '@config/env';
 import * as SYS_MSG from '@constants/system-messages';
-import { LLMProvider } from '@modules/llm/llm.provider';
-import { ToolContract } from '@modules/tools/interfaces/tool-contract.interface';
+import { LlmClientService } from '@modules/llm/llm-client.service';
+import {
+  ToolContract,
+  type ToolCallContext,
+} from '@modules/tools/interfaces/tool-contract.interface';
 import { CustomHttpException } from '@common/exceptions/custom-http.exception';
 
 export const DraftQuoteEmailInputSchema = z.object({
@@ -23,7 +27,7 @@ export type DraftQuoteEmailOutput = z.infer<typeof DraftQuoteEmailOutputSchema>;
 
 @Injectable()
 export class DraftQuoteEmailToolFactory {
-  constructor(private readonly llm: LLMProvider) {}
+  constructor(private readonly llm: LlmClientService) {}
 
   create(): ToolContract<typeof DraftQuoteEmailInputSchema, typeof DraftQuoteEmailOutputSchema> {
     return {
@@ -31,20 +35,34 @@ export class DraftQuoteEmailToolFactory {
       description: 'Generates a follow-up email draft for a customer whose quote is ready to send.',
       inputSchema: DraftQuoteEmailInputSchema,
       outputSchema: DraftQuoteEmailOutputSchema,
-      execute: (input: DraftQuoteEmailInput): Promise<DraftQuoteEmailOutput> => this.execute(input),
+      execute: (
+        input: DraftQuoteEmailInput,
+        context?: ToolCallContext,
+      ): Promise<DraftQuoteEmailOutput> => this.execute(input, context),
     };
   }
 
-  private async execute(input: DraftQuoteEmailInput): Promise<DraftQuoteEmailOutput> {
+  private async execute(
+    input: DraftQuoteEmailInput,
+    context?: ToolCallContext,
+  ): Promise<DraftQuoteEmailOutput> {
     const prompt = this.buildPrompt(input);
-    const response = await this.llm.invoke({
-      prompt,
-      temperature: 0.3,
-      maxTokens: 500,
-    });
+    const completion = await this.llm.createChatCompletion(
+      {
+        model: env.LLM_MODEL,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3,
+        max_tokens: 500,
+      },
+      {
+        orgId: context?.orgId ?? '',
+        requestId: context?.requestId ?? '',
+        node: 'draft_quote_email',
+      },
+    );
 
     try {
-      const raw = response?.text;
+      const raw = completion.choices[0]?.message?.content;
       const text = typeof raw === 'string' ? raw.trim() : '';
       const wrapped = text.match(/^\s*```(?:json)?\s*([\s\S]*)\s*```\s*$/i);
       const cleaned = (wrapped ? wrapped[1] : text).trim();
