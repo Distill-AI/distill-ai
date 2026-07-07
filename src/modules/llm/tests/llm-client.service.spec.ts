@@ -323,5 +323,33 @@ describe('LlmClientService', () => {
       // which would otherwise block every other caller until PROBE_LOCK_TTL_S expires.
       expect(await circuitBreaker.getState()).toBe(CircuitBreakerState.OPEN);
     });
+
+    it('does not treat a straggler admitted while CLOSED as the probe once the breaker later trips to HALF_OPEN', async () => {
+      // Admitted while CLOSED: isOpen() is called during admission and returns false here.
+      expect(await circuitBreaker.getState()).toBe(CircuitBreakerState.CLOSED);
+
+      // Before this call's own createChatCompletion() resolves, an unrelated caller trips the
+      // breaker and its cooldown elapses, so global state is HALF_OPEN by the time this call's
+      // catch block runs - even though this call never acquired the probe lock.
+      const badRequest = new OpenAI.APIError(
+        400,
+        undefined,
+        'Bad Request',
+        undefined as unknown as Headers,
+      );
+      createSpy.mockImplementationOnce(async () => {
+        await circuitBreaker.recordFailure();
+        await circuitBreaker.recordFailure();
+        vi.advanceTimersByTime(30_000);
+        expect(await circuitBreaker.getState()).toBe(CircuitBreakerState.HALF_OPEN);
+        throw badRequest;
+      });
+
+      await expect(service.createChatCompletion(baseParams, baseContext)).rejects.toThrow();
+
+      // The straggler's non-transient failure must not resolve the real probe: state stays
+      // HALF_OPEN (as the unrelated tripping left it), not reset to OPEN by this call.
+      expect(await circuitBreaker.getState()).toBe(CircuitBreakerState.HALF_OPEN);
+    });
   });
 });
