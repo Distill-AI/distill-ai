@@ -1,8 +1,8 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { CircuitBreakerService } from './circuit-breaker.service';
+import { CircuitBreakerService, CircuitBreakerState } from './circuit-breaker.service';
 import { BackoffService } from '@worker/backoff.service';
 import { EventsService } from '@modules/events/events.service';
-import { CircuitBreakerOpenError } from './pipeline.errors';
+import { CircuitBreakerOpenError } from '@modules/pipeline/pipeline.errors';
 import { StageErrorReason } from '@constants/events.constants';
 import { env } from '@config/env';
 import OpenAI from 'openai';
@@ -48,9 +48,25 @@ export class LlmClientService implements OnModuleInit {
   ): Promise<OpenAI.Chat.ChatCompletion> {
     const { orgId, requestId, node, requestType = 'catalog_rfq' } = context;
 
+    // Keys-removed guarantee (NFR-OPS-4): never attempt a live call in DEMO_MODE, even while the
+    // breaker is CLOSED - otherwise a demo deployment without LLM_BASE_URL pointed at a working
+    // endpoint would make a real network call on every request instead of replaying fixtures.
+    if (env.DEMO_MODE) {
+      return this.handleOpenBreaker(orgId, requestId, node, requestType, params);
+    }
+
+    // Capture admission-time state before the gate call: if this caller is admitted while the
+    // breaker is HALF_OPEN, it is the one call that acquired the probe lock (isOpen() only
+    // returns false in HALF_OPEN for the lock holder). Freezing that here, rather than
+    // re-deriving it from the breaker's live state after the network round trip, avoids
+    // misattributing probe ownership to a straggler call that was admitted while CLOSED but
+    // whose catch block happens to run after some other, unrelated failure has since tripped the
+    // breaker into HALF_OPEN.
+    const stateAtAdmission = await this.circuitBreaker.getState();
     if (await this.circuitBreaker.isOpen()) {
       return this.handleOpenBreaker(orgId, requestId, node, requestType, params);
     }
+    const isProbe = stateAtAdmission === CircuitBreakerState.HALF_OPEN;
 
     try {
       const response = await this.executeWithRetry(params);
@@ -58,7 +74,10 @@ export class LlmClientService implements OnModuleInit {
       return response;
     } catch (error) {
       const isTransient = this.isTransientError(error);
-      if (isTransient) {
+      // A HALF_OPEN probe must resolve the breaker either way: a non-transient failure (e.g. 4xx)
+      // still needs recordFailure() to release the probe lock, or the lock sits until
+      // PROBE_LOCK_TTL_S expires and every other caller is blocked as if the breaker were OPEN.
+      if (isTransient || isProbe) {
         await this.circuitBreaker.recordFailure();
       }
 
