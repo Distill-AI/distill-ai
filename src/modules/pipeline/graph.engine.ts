@@ -131,8 +131,7 @@ export class PipelineGraphEngine {
         );
       } catch (err) {
         // Circuit breaker open (FR-5, SEC-02): LlmClientService emits stage.error before
-        // throwing, so no duplicate event is needed here. Wired ahead of ClassifyNode
-        // switching from LLMProvider to LlmClientService (planned LlmModule milestone).
+        // throwing, so no duplicate event is needed here.
         if (err instanceof CircuitBreakerOpenError) {
           await this.events.emit({
             eventName: 'node.exited',
