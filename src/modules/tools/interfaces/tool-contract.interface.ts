@@ -1,5 +1,11 @@
 import { z, ZodTypeAny } from 'zod';
 
+/** Routing context threaded from `ToolRegistry.invoke()` into a tool's `execute()`. */
+export interface ToolCallContext {
+  orgId?: string;
+  requestId?: string;
+}
+
 /**
  * Generic contract that every tool must implement.
  *
@@ -25,6 +31,14 @@ export interface ToolContract<I extends ZodTypeAny, O extends ZodTypeAny> {
   /**
    * Core implementation. The method receives the **parsed** input (`I`) and
    * must return a value that satisfies the output Zod schema `O`.
+   *
+   * `abortSignal` moved from the 2nd to the 3rd positional argument when
+   * `context` was introduced. Any caller invoking `execute(input, signal)`
+   * positionally would now silently pass `signal` as `context` instead.
    */
-  execute(input: z.infer<I>, abortSignal?: AbortSignal): Promise<z.infer<O>>;
+  execute(
+    input: z.infer<I>,
+    context?: ToolCallContext,
+    abortSignal?: AbortSignal,
+  ): Promise<z.infer<O>>;
 }

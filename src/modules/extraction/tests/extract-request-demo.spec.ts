@@ -5,7 +5,7 @@ import { vi } from 'vitest';
 vi.mock('@config/env', () => ({ env: { DEMO_MODE: true, LLM_MODEL: 'demo' } }));
 
 import { ExtractRequestToolFactory } from '../tools/extract-request.tool';
-import type { LLMProvider } from '@modules/llm/llm.provider';
+import type { LlmClientService } from '@modules/llm/llm-client.service';
 
 // The canonical clean-RFQ message (subject + body of rfq_01_catalog_clean), including the signature so
 // the sender identity is corroborated by the source text. All five line items appear here.
@@ -23,9 +23,11 @@ const CLEAN_RFQ_BODY = [
 function makeTool() {
   // If the LLM is ever called in DEMO_MODE the test fails loudly: the whole point is no provider call.
   const llm = {
-    invoke: vi.fn().mockRejectedValue(new Error('LLM must not be called in DEMO_MODE')),
+    createChatCompletion: vi
+      .fn()
+      .mockRejectedValue(new Error('LLM must not be called in DEMO_MODE')),
   };
-  const factory = new ExtractRequestToolFactory(llm as unknown as LLMProvider);
+  const factory = new ExtractRequestToolFactory(llm as unknown as LlmClientService);
   return { contract: factory.create(), llm };
 }
 
@@ -35,7 +37,7 @@ describe('ExtractRequestToolFactory (DEMO_MODE fixture fallback)', () => {
 
     const result = await contract.execute({ text: CLEAN_RFQ_BODY, priorFailure: null });
 
-    expect(llm.invoke).not.toHaveBeenCalled();
+    expect(llm.createChatCompletion).not.toHaveBeenCalled();
     expect(result.company).toBe('Delta Ridge Manufacturing');
     expect(result.line_items.length).toBeGreaterThan(0);
     expect(result.line_items[0].raw_text).toContain('M8 Hex Bolt');
@@ -62,7 +64,7 @@ describe('ExtractRequestToolFactory (DEMO_MODE fixture fallback)', () => {
       priorFailure: null,
     });
 
-    expect(llm.invoke).not.toHaveBeenCalled();
+    expect(llm.createChatCompletion).not.toHaveBeenCalled();
     expect(result.company).toBeNull();
     expect(result.contact).toBeNull();
     expect(result.sender_email).toBeNull();
@@ -78,7 +80,7 @@ describe('ExtractRequestToolFactory (DEMO_MODE fixture fallback)', () => {
       priorFailure: null,
     });
 
-    expect(llm.invoke).not.toHaveBeenCalled();
+    expect(llm.createChatCompletion).not.toHaveBeenCalled();
     expect(result.line_items.length).toBeGreaterThan(0);
   });
 });

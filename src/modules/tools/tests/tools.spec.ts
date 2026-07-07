@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { ToolContract } from '../interfaces/tool-contract.interface';
 import { EventsService } from '../../events/events.service';
 import { ToolName } from '../../pipeline/types';
+import { CircuitBreakerOpenError } from '../../pipeline/pipeline.errors';
 
 function createMockActions(): ToolCallsActions {
   return {
@@ -147,6 +148,67 @@ describe('ToolRegistry – Core / Integration', () => {
       const res = await registry.invoke('bad_output' as ToolName, {});
       expect(res.status).toBe(ToolStatus.VALIDATION_ERROR);
       expect(res.error).toBe('Output validation failed');
+    });
+  });
+
+  function makeCircuitBreakerTool(): ToolContract<z.ZodTypeAny, z.ZodTypeAny> {
+    return {
+      toolName: 'circuit_breaker_tool',
+      description: 'always throws CircuitBreakerOpenError',
+      inputSchema: z.object({}),
+      outputSchema: z.object({}),
+      async execute() {
+        throw new CircuitBreakerOpenError();
+      },
+    };
+  }
+
+  describe('ToolCallContext threading', () => {
+    it('passes { orgId, requestId } as the second argument to execute()', async () => {
+      const executeSpy = vi.fn().mockResolvedValue({ echoed: 'hi' });
+      const ContextTool: ToolContract<z.ZodTypeAny, z.ZodTypeAny> = {
+        toolName: 'context_tool',
+        description: 'records the context it was called with',
+        inputSchema: z.object({ message: z.string() }),
+        outputSchema: z.object({ echoed: z.string() }),
+        execute: executeSpy,
+      };
+      registry.register(ContextTool);
+
+      await registry.invoke('context_tool' as ToolName, { message: 'hi' }, 'req-42', 1, 'org-7');
+
+      expect(executeSpy).toHaveBeenCalledWith(
+        { message: 'hi' },
+        { orgId: 'org-7', requestId: 'req-42' },
+      );
+    });
+
+    it('re-throws CircuitBreakerOpenError instead of returning ToolStatus.ERROR', async () => {
+      registry.register(makeCircuitBreakerTool());
+
+      await expect(registry.invoke('circuit_breaker_tool' as ToolName, {})).rejects.toBeInstanceOf(
+        CircuitBreakerOpenError,
+      );
+    });
+
+    it('still writes an audit log and a failed tool.invoked event before re-throwing', async () => {
+      registry.register(makeCircuitBreakerTool());
+
+      await expect(registry.invoke('circuit_breaker_tool' as ToolName, {})).rejects.toBeInstanceOf(
+        CircuitBreakerOpenError,
+      );
+
+      expect(mockActions.insertLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          toolName: 'circuit_breaker_tool',
+          status: ToolStatus.ERROR,
+        }),
+      );
+      const failedEvent = (mockEvents.emit as ReturnType<typeof vi.fn>).mock.calls.find(
+        (call: unknown[]) =>
+          (call[0] as { attributes?: { status?: string } }).attributes?.status === 'failed',
+      );
+      expect(failedEvent).toBeDefined();
     });
   });
 
