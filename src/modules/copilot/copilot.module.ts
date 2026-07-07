@@ -4,6 +4,7 @@ import { CatalogModule } from '@modules/catalog/catalog.module';
 import { ToolsModule } from '@modules/tools/tools.module';
 import { RedisModule } from '@modules/redis/redis.module';
 import { LineItemModelAction } from '@modules/catalog/line-item.model-action';
+import { AgenticCopilotService } from './agentic/agentic-copilot.service';
 import { CopilotController } from './copilot.controller';
 import { CopilotService } from './copilot.service';
 
@@ -13,6 +14,6 @@ import { CopilotService } from './copilot.service';
 @Module({
   imports: [RequestsModule, CatalogModule, ToolsModule, RedisModule],
   controllers: [CopilotController],
-  providers: [CopilotService, LineItemModelAction],
+  providers: [CopilotService, AgenticCopilotService, LineItemModelAction],
 })
 export class CopilotModule {}

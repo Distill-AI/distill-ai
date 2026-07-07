@@ -79,6 +79,37 @@ describe('Analytics', () => {
     expect(screen.queryByText('Quotes this week')).not.toBeInTheDocument();
   });
 
+  it('shows a small-sample banner alongside the KPI grid when below the threshold', () => {
+    mockUseAnalyticsSummary.mockReturnValue({
+      data: { ...summary, quote_funnel: { ...summary.quote_funnel, ingested: 5 } },
+      isLoading: false,
+      isError: false,
+    });
+    renderAnalytics();
+    expect(
+      screen.getByText('Not enough requests yet for reliable rate-based metrics (5 of 20).', {
+        exact: false,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Quotes this week')).toBeInTheDocument();
+    expect(screen.queryByText('No quotes processed in this period yet.')).not.toBeInTheDocument();
+  });
+
+  it('shows the KPI grid without the small-sample banner at exactly the threshold', () => {
+    mockUseAnalyticsSummary.mockReturnValue({
+      data: { ...summary, quote_funnel: { ...summary.quote_funnel, ingested: 20 } },
+      isLoading: false,
+      isError: false,
+    });
+    renderAnalytics();
+    expect(screen.getByText('Quotes this week')).toBeInTheDocument();
+    expect(
+      screen.queryByText('Not enough requests yet for reliable rate-based metrics', {
+        exact: false,
+      }),
+    ).not.toBeInTheDocument();
+  });
+
   it('does not hide a non-zero card behind the empty state when only quotes_this_week is zero', () => {
     mockUseAnalyticsSummary.mockReturnValue({
       data: { ...summary, quotes_this_week: 0 },
