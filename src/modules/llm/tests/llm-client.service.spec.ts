@@ -1,6 +1,6 @@
 import { LlmClientService } from '../llm-client.service';
-import { CircuitBreakerService } from '../circuit-breaker.service';
-import { CircuitBreakerOpenError } from '../pipeline.errors';
+import { CircuitBreakerService, CircuitBreakerState } from '../circuit-breaker.service';
+import { CircuitBreakerOpenError } from '@modules/pipeline/pipeline.errors';
 import { BackoffService } from '@worker/backoff.service';
 import type { EventsService } from '@modules/events/events.service';
 import type { RedisService } from '@modules/redis/redis.service';
@@ -249,6 +249,18 @@ describe('LlmClientService', () => {
       expect(createSpy).not.toHaveBeenCalled();
     });
 
+    it('replays the fixture even when the breaker is CLOSED (keys-removed guarantee)', async () => {
+      // No recordFailure() calls here: the breaker starts CLOSED. DEMO_MODE must still never
+      // attempt a live call, or a demo deployment without a reachable LLM_BASE_URL would make a
+      // real network request on every request instead of replaying fixtures.
+      expect(await circuitBreaker.isOpen()).toBe(false);
+
+      const result = await service.createChatCompletion(baseParams, baseContext);
+
+      expect(result.id).toBe('chatcmpl-fixture');
+      expect(createSpy).not.toHaveBeenCalled();
+    });
+
     it('does NOT emit stage.error when fixture replay succeeds', async () => {
       await circuitBreaker.recordFailure();
       await circuitBreaker.recordFailure();
@@ -276,6 +288,68 @@ describe('LlmClientService', () => {
           }),
         }),
       );
+    });
+  });
+
+  describe('HALF_OPEN probe resolution', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('releases the probe lock on a non-transient failure instead of leaving it stuck', async () => {
+      await circuitBreaker.recordFailure();
+      await circuitBreaker.recordFailure();
+      expect(await circuitBreaker.getState()).toBe(CircuitBreakerState.OPEN);
+
+      vi.advanceTimersByTime(30_000);
+      expect(await circuitBreaker.getState()).toBe(CircuitBreakerState.HALF_OPEN);
+
+      const badRequest = new OpenAI.APIError(
+        400,
+        undefined,
+        'Bad Request',
+        undefined as unknown as Headers,
+      );
+      createSpy.mockRejectedValue(badRequest);
+
+      await expect(service.createChatCompletion(baseParams, baseContext)).rejects.toThrow();
+
+      // A non-transient failure during the probe must still resolve the breaker: it re-opens
+      // (and releases the probe lock) rather than leaving state HALF_OPEN with the lock held,
+      // which would otherwise block every other caller until PROBE_LOCK_TTL_S expires.
+      expect(await circuitBreaker.getState()).toBe(CircuitBreakerState.OPEN);
+    });
+
+    it('does not treat a straggler admitted while CLOSED as the probe once the breaker later trips to HALF_OPEN', async () => {
+      // Admitted while CLOSED: isOpen() is called during admission and returns false here.
+      expect(await circuitBreaker.getState()).toBe(CircuitBreakerState.CLOSED);
+
+      // Before this call's own createChatCompletion() resolves, an unrelated caller trips the
+      // breaker and its cooldown elapses, so global state is HALF_OPEN by the time this call's
+      // catch block runs - even though this call never acquired the probe lock.
+      const badRequest = new OpenAI.APIError(
+        400,
+        undefined,
+        'Bad Request',
+        undefined as unknown as Headers,
+      );
+      createSpy.mockImplementationOnce(async () => {
+        await circuitBreaker.recordFailure();
+        await circuitBreaker.recordFailure();
+        vi.advanceTimersByTime(30_000);
+        expect(await circuitBreaker.getState()).toBe(CircuitBreakerState.HALF_OPEN);
+        throw badRequest;
+      });
+
+      await expect(service.createChatCompletion(baseParams, baseContext)).rejects.toThrow();
+
+      // The straggler's non-transient failure must not resolve the real probe: state stays
+      // HALF_OPEN (as the unrelated tripping left it), not reset to OPEN by this call.
+      expect(await circuitBreaker.getState()).toBe(CircuitBreakerState.HALF_OPEN);
     });
   });
 });
