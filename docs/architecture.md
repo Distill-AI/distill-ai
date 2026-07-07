@@ -340,7 +340,7 @@ This single node carries US-E2-1 (extract), US-E2-2 (one re-ask with `priorFailu
 
 **`classify` (E2) follows the same shape as `extract`** — `ClassifyNode` calls `tools.invoke('classify_request', ...)` instead of holding a direct reference to `ClassifyService`, so it's subject to the exact same audit logging and `CircuitBreakerOpenError` propagation as every other tool call.
 
-**Agentic `extract` (opt-in, flag-gated).** Behind `EXTRACT_AGENTIC_ENABLED` (default `false`, and bypassed whenever `DEMO_MODE=true`), the fixed two-attempt loop above becomes the fallback branch of a bounded ReAct loop: the model, not the engine, decides whether to retry `extract_request` with refined instructions or accept the current best-effort result, observing the same `reconcile()` check (now wrapped as a `reconcile_extraction` tool) either way. The fail-closed contract is unchanged — `ExtractNode.run()` still never returns `{ kind: 'failed' }` for a schema or reconciliation miss, agentic or not. See [ARCHITECTURE_V2.md](ARCHITECTURE_V2.md) §5 for the diagram.
+**Agentic `extract` (opt-in, flag-gated).** Behind `EXTRACT_AGENTIC_ENABLED` (default `false`, and bypassed whenever `DEMO_MODE=true`), the fixed two-attempt loop above becomes the fallback branch of a bounded ReAct loop: the model, not the engine, decides whether to retry `extract_request` with refined instructions or accept the current best-effort result, observing the same deterministic `reconcile()` check either way. The fail-closed contract is unchanged — `ExtractNode.run()` still never returns `{ kind: 'failed' }` for a schema or reconciliation miss, agentic or not. See [ARCHITECTURE_V2.md](ARCHITECTURE_V2.md) §5 for the diagram.
 
 ---
 
@@ -374,8 +374,12 @@ export class ToolRegistry {
 }
 ```
 
-The 7 V1 tools, registered by their owning modules — all seven now call `LlmClientService`
-(circuit breaker + retry + demo-fixture replay), not a direct fetch to the provider:
+The 7 V1 tools, registered by their owning modules. Of these, the 5 LLM-backed tools
+(`extract_request`, `classify_request`, `draft_quote_email`, `explain_routing`, `draft_clarification`)
+inject `LLMProvider` directly today; `search_catalog` and `render_quote_pdf` use non-LLM backends.
+`LlmClientService` (circuit breaker + retry + demo-fixture replay) is the planned consolidation
+point for those five — see [ARCHITECTURE_V2.md](ARCHITECTURE_V2.md) §2 — but currently it is only
+used at the pipeline/`graph.engine.ts` layer, not injected into the tools themselves:
 
 | Tool | Owner module | Wraps | Side effect |
 | --- | --- | --- | --- |
@@ -451,9 +455,11 @@ export interface VectorStore { upsert(id, vec): Promise<void>; search(vec, k): P
 export interface ObjectStore { put(key, bytes): Promise<string>; get(key): Promise<Buffer>; }
 ```
 
-The LLM client is **not** behind a port interface today — `LlmClientService.createChatCompletion()`
-is a concrete class every tool depends on directly, not an injected `LlmClient` abstraction with a
-`structured<T>()` method. That port-interface layer (plus giving `EmbeddingsClient` the same
+The LLM client is **not** behind a port interface today — the LLM-backed tools call `LLMProvider`
+directly, not an injected `LlmClient` abstraction with a `structured<T>()` method.
+`LlmClientService.createChatCompletion()` exists as a concrete class, but only `graph.engine.ts`
+depends on it so far; consolidating the tools onto it is the same not-yet-built step called out in
+ARCHITECTURE_V2.md §2. That port-interface layer (plus giving `EmbeddingsClient` the same
 resilience it would share) is a named, not-yet-built V2 target — see
 [ARCHITECTURE_V2.md](ARCHITECTURE_V2.md) §6/§7. What *is* real today: `LlmClientService` wraps a
 retry + circuit breaker; when the breaker is open or `DEMO_MODE=true`, it serves **replayed

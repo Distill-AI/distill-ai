@@ -14,7 +14,8 @@ precisely, not a mockup of a different system.
 
 V1 ships today: an in-process deterministic graph engine driving `parse → extract → classify →
 match → price → policy → score → done/failed`, seven real tools behind a validating, logging
-`ToolRegistry`, hybrid pgvector + trigram catalog matching, Bull/Redis async processing with
+`ToolRegistry` (plus the `reconcile_extraction` helper tool planned for the agentic extract loop,
+not counted in the seven), hybrid pgvector + trigram catalog matching, Bull/Redis async processing with
 crash-recovery resume, and one bolt-on ReAct-pattern advisory agent that answers free-text questions
 about a request without touching the deterministic pipeline. The `extract` node can also hand
 retry/accept decisions to a bounded agentic loop instead of a fixed two-attempt policy, behind a
@@ -101,7 +102,7 @@ not wired to anything above it: it is a named target, not a stub that already ex
 
 | Module / file | Owns |
 | --- | --- |
-| `src/modules/llm/` (`LlmModule`, `LlmClientService`, `CircuitBreakerService`) | Single owner of every LLM call in the app — retry, circuit breaker, demo-fixture replay |
+| `src/modules/llm/` (`LlmModule`, `LlmClientService`, `CircuitBreakerService`) | Planned target: single owner of every LLM call in the app, with retry, circuit breaker, demo-fixture replay. Not yet the live boundary — several tools and services still inject `LLMProvider` directly |
 | `src/modules/classify/tools/classify-request.tool.ts` | `classify_request` tool — `ClassifyNode` now goes through `ToolRegistry` the same way `ExtractNode` does, instead of calling `ClassifyService` directly |
 | `src/modules/copilot/agentic/` (`agentic-copilot.service.ts`, `agentic-copilot.tools.ts`) | The bolt-on ReAct agent — builds the LangChain agent, wraps `search_catalog`/`explain_routing` as agent tools, enforces the step cap |
 | `src/modules/extraction/tools/reconcile-extraction.tool.ts` | Wraps the existing pure `reconcile()` check as a `ToolContract`, so the agentic `extract` loop can call it like any other tool |
