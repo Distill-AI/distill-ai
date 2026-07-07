@@ -84,6 +84,10 @@ export class ExplainRoutingToolFactory {
       }
     } catch (err) {
       if (err instanceof CircuitBreakerOpenError) {
+        // Deliberate exception to this tool's degrade-on-any-failure contract: an open breaker
+        // reflects a systemic LLM outage, not a per-request failure, so it rethrows uncaught
+        // (same as extract_request) instead of returning a degraded explanation that would mask
+        // the breaker state from the caller.
         throw err;
       }
       this.logger.warn(
