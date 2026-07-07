@@ -63,6 +63,15 @@ export class ClassifyNode implements PipelineNode {
       orgId,
     );
 
+    if (
+      invocation.status !== ToolStatus.OK &&
+      invocation.error === SYS_MSG.CLASSIFY_DEMO_FIXTURE_UNAVAILABLE
+    ) {
+      // Fail loud on an empty DEMO_MODE fixture corpus (EC-01): defaulting here would silently
+      // swallow the same signal classifyFromFixture deliberately throws to surface.
+      return { kind: 'failed', error: { message: invocation.error } };
+    }
+
     const classifyResult =
       invocation.status === ToolStatus.OK && invocation.result
         ? invocation.result
