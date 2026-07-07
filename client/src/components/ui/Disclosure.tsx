@@ -7,6 +7,7 @@ interface DisclosureProps {
   headerExtra?: ReactNode; // rendered after the button, outside it (e.g. a badge, a status note)
   defaultOpen?: boolean;
   children: ReactNode;
+  bodyClassName?: string; // overrides the body panel's height/scroll classes for taller content
 }
 
 /** Shared collapsible section: a toggle button with a chevron plus a body panel, wired with
@@ -16,6 +17,7 @@ export function Disclosure({
   headerExtra,
   defaultOpen = true,
   children,
+  bodyClassName = 'max-h-40 overflow-y-auto',
 }: DisclosureProps) {
   const [open, setOpen] = useState(defaultOpen);
   const bodyId = useId();
@@ -39,7 +41,7 @@ export function Disclosure({
       <div
         id={bodyId}
         hidden={!open}
-        className="mt-2 max-h-40 overflow-y-auto rounded-lg bg-canvas p-3.5"
+        className={`mt-2 rounded-lg bg-canvas p-3.5 ${bodyClassName}`}
       >
         {children}
       </div>
