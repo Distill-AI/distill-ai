@@ -2,8 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { env } from '@config/env';
 import * as SYS_MSG from '@constants/system-messages';
 import { matchDemoFixture } from '@common/demo/demo-fixtures';
-import { LLMProvider } from '@modules/llm/llm.provider';
-import { ToolContract } from '@modules/tools/interfaces/tool-contract.interface';
+import { LlmClientService } from '@modules/llm/llm-client.service';
+import {
+  ToolContract,
+  type ToolCallContext,
+} from '@modules/tools/interfaces/tool-contract.interface';
 import {
   ExtractRequestInputSchema,
   ExtractionV1Schema,
@@ -14,7 +17,7 @@ import {
 
 @Injectable()
 export class ExtractRequestToolFactory {
-  constructor(private readonly llm: LLMProvider) {}
+  constructor(private readonly llm: LlmClientService) {}
 
   create(): ToolContract<typeof ExtractRequestInputSchema, typeof ExtractionV1Schema> {
     return {
@@ -23,27 +26,43 @@ export class ExtractRequestToolFactory {
         'Extract structured company, contact, line items, and dates from raw request text.',
       inputSchema: ExtractRequestInputSchema,
       outputSchema: ExtractionV1Schema,
-      execute: (input: ExtractRequestInput): Promise<ExtractionV1> => this.execute(input),
+      execute: (input: ExtractRequestInput, context?: ToolCallContext): Promise<ExtractionV1> =>
+        this.execute(input, context),
     };
   }
 
-  private async execute(input: ExtractRequestInput): Promise<ExtractionV1> {
+  private async execute(
+    input: ExtractRequestInput,
+    context?: ToolCallContext,
+  ): Promise<ExtractionV1> {
     // Keys-removed path (NFR-OPS-4): in DEMO_MODE replay the seeded extraction fixture instead of
-    // calling the LLM, so extraction completes with no provider key. LLMProvider hard-requires a key,
-    // so without this the whole keys-removed run would escalate at extraction.
+    // calling the LLM, so extraction completes with no provider key. LlmClientService hard-requires
+    // a key, so without this the whole keys-removed run would escalate at extraction.
     if (env.DEMO_MODE) {
       return this.extractFromFixture(input.text);
     }
 
     const prompt = this.buildPrompt(input);
-    const response = await this.llm.invoke({
-      prompt,
-      temperature: 0.2,
-      maxTokens: 1500,
-    });
+    const completion = await this.llm.createChatCompletion(
+      {
+        model: env.LLM_MODEL,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.2,
+        max_tokens: 1500,
+      },
+      {
+        orgId: context?.orgId ?? '',
+        requestId: context?.requestId ?? '',
+        node: 'extract',
+        // requestType intentionally omitted: extraction runs before classification, so the
+        // request's actual type isn't known yet here. Falls back to createChatCompletion's own
+        // default fixture selection, same as explain_routing/draft_clarification/draft_quote_email.
+      },
+    );
+    const text = completion.choices[0]?.message?.content ?? '';
 
-    const wrapped = response.text.match(/^\s*```(?:json)?\s*([\s\S]*)\s*```\s*$/i);
-    const cleaned = (wrapped ? wrapped[1] : response.text).trim();
+    const wrapped = text.match(/^\s*```(?:json)?\s*([\s\S]*)\s*```\s*$/i);
+    const cleaned = (wrapped ? wrapped[1] : text).trim();
 
     let parsed: unknown;
     try {

@@ -1,6 +1,6 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { LLMModule } from '@modules/llm/llm.module';
+import { LlmModule } from '@modules/llm/llm.module';
 import { ToolsModule } from '@modules/tools/tools.module';
 import { ToolRegistry } from '@modules/tools/registry';
 import { RequestsDataModule } from '@modules/requests/requests-data.module';
@@ -13,7 +13,7 @@ import { ExtractRequestToolFactory } from './tools/extract-request.tool';
 
 @Module({
   imports: [
-    LLMModule,
+    LlmModule,
     ToolsModule,
     RequestsDataModule,
     // CatalogModule owns the catalog entity registration so the worker graph also gets it via PipelineQueueModule.
