@@ -45,6 +45,10 @@ function formatDelta(value: number, suffix: string): string {
   return `${value >= 0 ? '+' : ''}${value}${suffix}`;
 }
 
+/** The backend exposes no dedicated sample-size field, so quote_funnel.ingested (total requests
+ * in the window) stands in as the count for EC-01's small-sample gate. */
+const SMALL_SAMPLE_THRESHOLD = 20;
+
 type Sentiment = 'positive' | 'negative';
 
 /** Metrics where a falling value is the good outcome (e.g. fewer false negatives, a faster draft). */
@@ -79,7 +83,9 @@ export function AnalyticsView({ data, isLoading, isError, onRetry }: AnalyticsVi
   // Funnel's first stage is the true "nothing happened this period" signal — quotes_this_week or an
   // individual chart being zero doesn't mean the whole period was empty (e.g. a lull this week with a
   // non-zero crash-recovery count from earlier in the period should still show its card).
-  const isEmpty = num(data.quote_funnel?.ingested) === 0;
+  const ingested = num(data.quote_funnel?.ingested);
+  const isEmpty = ingested === 0;
+  const isSmallSample = ingested > 0 && ingested < SMALL_SAMPLE_THRESHOLD;
 
   if (isEmpty) {
     return (
@@ -91,6 +97,12 @@ export function AnalyticsView({ data, isLoading, isError, onRetry }: AnalyticsVi
 
   return (
     <div className="flex flex-col gap-6 px-6 py-6">
+      {isSmallSample && (
+        <div className="rounded-card border border-border bg-surface px-3 py-2 text-sm text-muted">
+          Not enough requests yet for reliable rate-based metrics ({ingested} of{' '}
+          {SMALL_SAMPLE_THRESHOLD}). Counts below still reflect the period.
+        </div>
+      )}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <KpiCard
           label="Median time to draft"
