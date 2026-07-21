@@ -25,8 +25,11 @@ COPY events.schema.json ./events.schema.json
 COPY config/ ./config/
 # Create the object-store root in the image so the shared named volume inherits `node` ownership on
 # first mount; Docker would otherwise create it root-owned and the runtime user could not write.
-RUN mkdir -p /app/var/object-store
-RUN chown -R node:node /app
+# Ownership is scoped to that directory rather than a recursive chown of /app: it is the only path
+# written at runtime (attachments and generated quotes both live under it), so leaving dist/ and
+# node_modules root-owned keeps them read-only to the runtime user and avoids duplicating the whole
+# dependency tree into an extra image layer.
+RUN mkdir -p /app/var/object-store && chown -R node:node /app/var
 USER node
 EXPOSE 3000
 # `node -e` rather than wget/curl: the Debian slim image ships neither, and Node 22 has global fetch.
