@@ -33,7 +33,7 @@ OpenAI-compatible endpoint, configured through `LLM_BASE_URL` and `EMBEDDINGS_BA
 - SSH on port `22` is restricted to a single operator IP, not `0.0.0.0/0`.
 - Secrets live in a `chmod 600` `.env` on the instance and are never committed.
 
-### Verified end to end in production
+### Verified end-to-end in production
 
 Real RFQs were submitted through both the UI and the API against the live deployment. The
 `tool_calls` audit table confirms live Qwen traffic (`extract_request` and `search_catalog`
